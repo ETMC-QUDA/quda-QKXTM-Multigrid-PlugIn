@@ -1,8 +1,9 @@
 ETMC-QUDA production code base                        24th February 2017
 ------------------------------------------------------------------------
 
-This library is an extension to QUDA mainline: 21st September 2016. It 
-contains routines to calculate 2- and 3-point hadronic correlation functions,
+This library is an extension to QUDA mainline: 03rd March 2017
+(hotfix/delta_mu). 
+It contains routines to calculate 2- and 3-point hadronic correlation functions,
 and an All-to-All propagator with a gauge covariant derivative, with a 
 variety of correlation functions.
 
@@ -40,13 +41,13 @@ derivative functions in QUDA are compiled. MAGMA, and MULTIGRID booleans also
 must be switched ON. One must manually give the explicit path to magma.h in 
 the file blas_magma.cu.
 One must pass to the plug-in the mainline QUDA source code directory and 
-it will recompile all the kernels as specified by your CMake configuration.
+it will recompile all the kernels as specified by your plug-in CMake configuration.
 This lightweight version of quda-QKXTM-Multigrid is volatile in that 
 succesful compilatin and execution of the code is depenedent on the stability
 of the QUDA mainline source code against which you compile.
 
 For safe results, please use quda-QKXTM-Multigrid which has been thoroughly 
-tested. For more recent builds, use this plug-in with caution.
+tested. For more recent QUDA builds, use this plug-in with caution.
 
 This plug-in can be compiled against:
 LATEST SUCCESSFUL COMPILATION: https://github.com/lattice/quda/pull/565
@@ -72,7 +73,7 @@ header qudaQKXTM_Kepler.h. For clarity, we also have a file,
 
 that contains calculation and data write functions specific to All-to-All
 calculatons. These qudaQKXTM_<CLASS>.cpp (and Loops) files are NOT individually
-compiled, rather included in interface_quda.cpp as,
+compiled, rather included in qudaQKXTM_interface.cpp as,
 
 ... [end interface_quda.cpp code]
 

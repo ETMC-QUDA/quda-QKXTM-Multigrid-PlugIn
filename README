@@ -39,21 +39,39 @@ One must have the CONTRACT boolean ON in order to ensure that the covariant
 derivative functions in QUDA are compiled. MAGMA, and MULTIGRID booleans also
 must be switched ON. One must manually give the explicit path to magma.h in 
 the file blas_magma.cu.
+One must pass to the plug-in the mainline QUDA source code directory and 
+it will recompile all the kernels as specified by your CMake configuration.
+This lightweight version of quda-QKXTM-Multigrid is volatile in that 
+succesful compilatin and execution of the code is depenedent on the stability
+of the QUDA mainline source code against which you compile.
+
+For safe results, please use quda-QKXTM-Multigrid which has been thoroughly 
+tested. For more recent builds, use this plug-in with caution.
+
+This plug-in can be compiled against:
+LATEST SUCCESSFUL COMPILATION: https://github.com/lattice/quda/pull/565
 
 
 Overview:
 
 The QKXTM (Quda Kepler and Twisted Mass) calculation routines are appended
-to the interface_quda.cpp file of mainline QUDA. This is so we can use the
-internal gauge field structures directly. The class definitions and header
-files of auxiliary functions are contained in files prepended like so,
+to the interface_quda.cpp file of mainline QUDA, and renamed to
+qudaQKXTM_interface.cpp. This is so we can use the internal gauge field 
+structures directly, though this should be resolved so that QKXTM files can 
+be compiled separately.  The class definitions and header files of auxiliary 
+functions are contained in files prepended like so,
 
    qudaQKXTM_<some file>.suffix
 
 There is a single .cu file for kernels, a 'code_pieces' directory in lib/,
 a single qudaQKXTM_Kepler_utils.cpp and .h file for containers and general 
 functions, and a suite of qudaQKXTM_<CLASS>_Kepler.cpp files under a single
-header qudaQKXTM_Kepler.h. These <CLASS> .cpp files are NOT individually
+header qudaQKXTM_Kepler.h. For clarity, we also have a file,
+
+   qudaQKXTM_Loops_Kepler.cpp
+
+that contains calculation and data write functions specific to All-to-All
+calculatons. These qudaQKXTM_<CLASS>.cpp (and Loops) files are NOT individually
 compiled, rather included in interface_quda.cpp as,
 
 ... [end interface_quda.cpp code]
@@ -64,6 +82,7 @@ compiled, rather included in interface_quda.cpp as,
 
 ... [begin QKXTM calculation functions]
 
+
 Known Issues:
 
 One must pass gauge fields to the QKXTM executables in IDLG lime format. It
@@ -71,8 +90,11 @@ expects a separate smeared gauge field for source construction in the
 hadronic 2pt3pt functions. QUDA has gauge smearing functionality, which
 should be utilised.
 It would be desirable to completely separate out the QKXTM files from QUDA
-so that a `plug-in` can be installed alongside any suitable compiled copy
-of QUDA.
+so that this plug-in can be installed alongside any suitable compiled copy
+of QUDA, without having to recompile all the .o files. This would require
+some CMake code to identify which .o files from mainline QUDA may be reused,
+and which must be recompiled.
+
 
 Authors:
 
@@ -81,11 +103,13 @@ The majority of the QKXTM code base was authored by,
 Kyriakos Hadjiyiannakou
 Christos Kallidonis
 
-The multigrid upgrades and QUDA 0.9.0 compatibility were done by
+The multigrid upgrades, plug-in functionality, and QUDA 0.9.0 compatibility 
+were done by
 
 Dean Howarth
 
 Bug reports, suggestions, comments, and queries are welcome.
+
 
 QUDA's mainline README follows.
 

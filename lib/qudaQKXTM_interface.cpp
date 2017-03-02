@@ -6472,12 +6472,12 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	     X[0]*X[1]*X[2]*X[3]*
 	     spinorSiteSize*sizeof(double));
       param->twist_flavor = QUDA_TWIST_PLUS;
-      // b->changeTwist(QUDA_TWIST_PLUS);
-      // x->changeTwist(QUDA_TWIST_PLUS);
-      // b->Even().changeTwist(QUDA_TWIST_PLUS);
-      // b->Odd().changeTwist(QUDA_TWIST_PLUS);
-      // x->Even().changeTwist(QUDA_TWIST_PLUS);
-      // x->Odd().changeTwist(QUDA_TWIST_PLUS);
+      b->changeTwist(QUDA_TWIST_PLUS);
+      x->changeTwist(QUDA_TWIST_PLUS);
+      b->Even().changeTwist(QUDA_TWIST_PLUS);
+      b->Odd().changeTwist(QUDA_TWIST_PLUS);
+      x->Even().changeTwist(QUDA_TWIST_PLUS);
+      x->Odd().changeTwist(QUDA_TWIST_PLUS);
 
       for(int i = 0 ; i < 4 ; i++)
 	my_src[i] = (info.sourcePosition[isource][i] - 
@@ -6542,12 +6542,12 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	     spinorSiteSize*sizeof(double));
 
       param->twist_flavor = QUDA_TWIST_MINUS;
-      // b->changeTwist(QUDA_TWIST_MINUS);
-      // x->changeTwist(QUDA_TWIST_MINUS);
-      // b->Even().changeTwist(QUDA_TWIST_MINUS);
-      // b->Odd().changeTwist(QUDA_TWIST_MINUS);
-      // x->Even().changeTwist(QUDA_TWIST_MINUS);
-      // x->Odd().changeTwist(QUDA_TWIST_MINUS);
+      b->changeTwist(QUDA_TWIST_MINUS);
+      x->changeTwist(QUDA_TWIST_MINUS);
+      b->Even().changeTwist(QUDA_TWIST_MINUS);
+      b->Odd().changeTwist(QUDA_TWIST_MINUS);
+      x->Even().changeTwist(QUDA_TWIST_MINUS);
+      x->Odd().changeTwist(QUDA_TWIST_MINUS);
 
       for(int i = 0 ; i < 4 ; i++)
 	my_src[i] = (info.sourcePosition[isource][i] - 
@@ -6727,23 +6727,23 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
 	      if(NUCLEON == PROTON){
 		param->twist_flavor = QUDA_TWIST_MINUS;
-		// b->changeTwist(QUDA_TWIST_MINUS); 
-		// x->changeTwist(QUDA_TWIST_MINUS); 
-		// b->Even().changeTwist(QUDA_TWIST_MINUS);
-		// b->Odd().changeTwist(QUDA_TWIST_MINUS); 
-		// x->Even().changeTwist(QUDA_TWIST_MINUS); 
-		// x->Odd().changeTwist(QUDA_TWIST_MINUS);
+		b->changeTwist(QUDA_TWIST_MINUS); 
+		x->changeTwist(QUDA_TWIST_MINUS); 
+		b->Even().changeTwist(QUDA_TWIST_MINUS);
+		b->Odd().changeTwist(QUDA_TWIST_MINUS); 
+		x->Even().changeTwist(QUDA_TWIST_MINUS); 
+		x->Odd().changeTwist(QUDA_TWIST_MINUS);
 		//Set MG Preconditioner to DN
 		param->preconditioner = param->preconditionerDN;
 	      }
 	      else{
 		param->twist_flavor = QUDA_TWIST_PLUS;
-		// b->changeTwist(QUDA_TWIST_PLUS); 
-		// x->changeTwist(QUDA_TWIST_PLUS); 
-		// b->Even().changeTwist(QUDA_TWIST_PLUS);
-		// b->Odd().changeTwist(QUDA_TWIST_PLUS); 
-		// x->Even().changeTwist(QUDA_TWIST_PLUS); 
-		// x->Odd().changeTwist(QUDA_TWIST_PLUS);
+		b->changeTwist(QUDA_TWIST_PLUS); 
+		x->changeTwist(QUDA_TWIST_PLUS); 
+		b->Even().changeTwist(QUDA_TWIST_PLUS);
+		b->Odd().changeTwist(QUDA_TWIST_PLUS); 
+		x->Even().changeTwist(QUDA_TWIST_PLUS); 
+		x->Odd().changeTwist(QUDA_TWIST_PLUS);
 		//Set MG Preconditioner to UP
 		param->preconditioner = param->preconditionerUP;
 	      }
@@ -6875,23 +6875,23 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 
 	      if(NUCLEON == PROTON){
 		param->twist_flavor = QUDA_TWIST_PLUS;
-		// b->changeTwist(QUDA_TWIST_PLUS); 
-		// x->changeTwist(QUDA_TWIST_PLUS); 
-		// b->Even().changeTwist(QUDA_TWIST_PLUS);
-		// b->Odd().changeTwist(QUDA_TWIST_PLUS); 
-		// x->Even().changeTwist(QUDA_TWIST_PLUS); 
-		// x->Odd().changeTwist(QUDA_TWIST_PLUS);
+		b->changeTwist(QUDA_TWIST_PLUS); 
+		x->changeTwist(QUDA_TWIST_PLUS); 
+		b->Even().changeTwist(QUDA_TWIST_PLUS);
+		b->Odd().changeTwist(QUDA_TWIST_PLUS); 
+		x->Even().changeTwist(QUDA_TWIST_PLUS); 
+		x->Odd().changeTwist(QUDA_TWIST_PLUS);
 		//Set MG Preconditioner to UP
 		param->preconditioner = param->preconditionerUP;
 	      }
 	      else{
 		param->twist_flavor = QUDA_TWIST_MINUS;
-		// b->changeTwist(QUDA_TWIST_MINUS); 
-		// x->changeTwist(QUDA_TWIST_MINUS); 
-		// b->Even().changeTwist(QUDA_TWIST_MINUS);
-		// b->Odd().changeTwist(QUDA_TWIST_MINUS); 
-		// x->Even().changeTwist(QUDA_TWIST_MINUS); 
-		// x->Odd().changeTwist(QUDA_TWIST_MINUS);
+		b->changeTwist(QUDA_TWIST_MINUS); 
+		x->changeTwist(QUDA_TWIST_MINUS); 
+		b->Even().changeTwist(QUDA_TWIST_MINUS);
+		b->Odd().changeTwist(QUDA_TWIST_MINUS); 
+		x->Even().changeTwist(QUDA_TWIST_MINUS); 
+		x->Odd().changeTwist(QUDA_TWIST_MINUS);
 		//Set MG Preconditioner to DN
 		param->preconditioner = param->preconditionerDN;
 	      }

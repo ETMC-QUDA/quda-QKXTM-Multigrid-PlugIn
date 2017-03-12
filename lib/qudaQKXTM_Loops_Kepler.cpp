@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
-//#include <mkl.h> //QXKTM: FIXME
+//#include <mkl.h>
 #include <cblas.h>
 #include <common.h>
 #include <omp.h>
@@ -97,7 +97,7 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   cudaColorSpinorField *x1 = NULL;
 
   double *eigVec = (double*) malloc(bytes_total_length_per_NeV);
- memcpy(eigVec,&(h_elem[n*total_length_per_NeV]),bytes_total_length_per_NeV);
+  memcpy(eigVec,&(h_elem[n*total_length_per_NeV]),bytes_total_length_per_NeV);
 
   QKXTM_Vector_Kepler<double> *Kvec = 
     new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
@@ -195,22 +195,29 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 
   // ONE-DERIVATIVE Generalized one-end trick
   for(int mu=0; mu<4; mu++){
-    cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu);
+    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	   static_cast<cudaColorSpinorField&>(tmp3),mu);
     // Term 0
     contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5); 
     
-    cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(x),  mu+4);
+    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	   static_cast<cudaColorSpinorField&>(x),mu+4);
+
     // Term 0 + Term 3
     contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
     cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
-    
-    cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(x), mu);
+
+    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	   static_cast<cudaColorSpinorField&>(x),mu);    
+
     // Term 0 + Term 3 + Term 2 (C Sum)
     contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
     // Term 0 + Term 3 - Term 2 (D Dif)
     contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);                
-    
-    cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(tmp3),  mu+4);
+
+    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	   static_cast<cudaColorSpinorField&>(tmp3),mu+4);    
+
     // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
     contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
     // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
@@ -238,8 +245,11 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 
   // ONE-DERIVATIVE Standard one-end trick
   for(int mu=0; mu<4; mu++){
-    cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(x),  mu);
-    cov->M  (static_cast<cudaColorSpinorField&>(tmp3), static_cast<cudaColorSpinorField&>(x),  mu+4);
+    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	   static_cast<cudaColorSpinorField&>(x),mu);
+    cov->M(static_cast<cudaColorSpinorField&>(tmp3), 
+	   static_cast<cudaColorSpinorField&>(x),mu+4);
+
     // Term 0
     contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
     // Term 0 + Term 3
@@ -389,22 +399,27 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   // for generalized one-end trick
   for(int mu=0; mu<4; mu++)	
     {
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu);
+    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	   static_cast<cudaColorSpinorField&>(tmp3),mu);
       // Term 0
       contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
-
-      cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(x),  mu+4);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	   static_cast<cudaColorSpinorField&>(x),mu+4);
+ 
       // Term 0 + Term 3
       contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
       cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
 
       // Term 0 + Term 3 + Term 2 (C Sum)
-      cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(x), mu);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	     static_cast<cudaColorSpinorField&>(x),mu);
       contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
       // Term 0 + Term 3 - Term 2 (D Dif)
       contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
 
-      cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(tmp3),  mu+4);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	     static_cast<cudaColorSpinorField&>(tmp3),mu+4);
+    
       // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
       contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
       // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
@@ -438,8 +453,10 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   
   for(int mu=0; mu<4; mu++) // for standard one-end trick
     {
-      cov->M  (static_cast<cudaColorSpinorField&>(tmp4), static_cast<cudaColorSpinorField&>(x),  mu);
-      cov->M  (static_cast<cudaColorSpinorField&>(tmp3), static_cast<cudaColorSpinorField&>(x),  mu+4);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
+	     static_cast<cudaColorSpinorField&>(x),mu);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp3), 
+	     static_cast<cudaColorSpinorField&>(x),mu+4);
       // Term 0
       contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
       // Term 0 + Term 3

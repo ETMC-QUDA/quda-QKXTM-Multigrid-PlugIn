@@ -117,7 +117,7 @@ set(QUDA_QKXTM_HDF5HOME "" CACHE PATH "path to HDF5")
 set(QUDA_QKXTM_OPENBLAS_BUILD "" CACHE PATH "path to OPENBLAS_BUILD")
 set(QUDA_QKXTM_OPENBLAS_SRC "" CACHE PATH "path to OPENBLAS_SRC")
 
-set(QUDA_QKXTM_ARPACK OFF CACHE BOOL "enable QKXTM ARPACK")
+set(QUDA_QKXTM_ARPACK ON CACHE BOOL "enable QKXTM ARPACK")
 if(QUDA_QKXTM_ARPACK)
   set(QUDA_QKXTM_ARPACKHOME "" CACHE PATH "path to ARPACK")
 endif(QUDA_QKXTM_ARPACK)
@@ -633,7 +633,7 @@ mark_as_advanced(CMAKE_F_FLAGS)
 
 ### add tests and quda library
 add_subdirectory(lib)
+add_subdirectory(tests)
 #QKXTM: Begin DMH Add QKXTM directory
-#add_subdirectory(tests)
 add_subdirectory(qkxtm)
 #QKXTM: End DMH

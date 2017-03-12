@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
-//#include <mkl.h> //QXKTM: FIXME
+//#include <mkl.h>
 #include <cblas.h>
 #include <common.h>
 #include <omp.h>
@@ -58,6 +58,23 @@ extern int GK_timeSize;
 #include <sys/stat.h>
 #include <unistd.h>
 #define TIMING_REPORT
+
+//Though only some template forward declarations
+//are needed presently, future development may require the
+//others, and are therefore placed here for convenience
+// template  class QKXTM_Field_Kepler<double>;
+// template  class QKXTM_Gauge_Kepler<double>;
+// template  class QKXTM_Vector_Kepler<double>;
+// template  class QKXTM_Propagator_Kepler<double>;
+// template  class QKXTM_Propagator3D_Kepler<double>;
+// template  class QKXTM_Vector3D_Kepler<double>;
+
+// template  class QKXTM_Field_Kepler<float>;
+// template  class QKXTM_Gauge_Kepler<float>;
+// template  class QKXTM_Vector_Kepler<float>;
+// template  class QKXTM_Propagator_Kepler<float>;
+// template  class QKXTM_Propagator3D_Kepler<float>;
+// template  class QKXTM_Vector3D_Kepler<float>;
 
 static bool exists_file (const char* name) {
   return ( access( name, F_OK ) != -1 );
@@ -389,6 +406,270 @@ void getStochasticRandomSource(void *spinorIn, gsl_rng *rNum){
 
 }
 */
+
+
+/* Moved to qudaQKXTM_Loops_Kepler.cpp 
+//-C.K. This is a new function to print all the loops in ASCII format
+template<typename Float>
+void writeLoops_ASCII(Float *writeBuf, const char *Pref, 
+		      qudaQKXTM_loopInfo loopInfo, 
+		      int **momQsq, int type, 
+		      int mu, bool exact_loop, 
+		      bool useTSM, bool LowPrec){
+  
+  if(exact_loop && useTSM) errorQuda("writeLoops_ASCII: Got conflicting options - exact_loop AND useTSM.\n");
+
+  if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+    FILE *ptr;
+    char file_name[512];
+    char *lpart,*ptrVal;
+    int Nprint,Ndump;
+    int Nmoms = loopInfo.Nmoms;
+
+    if(exact_loop) Nprint = 1;
+    else{
+      if(useTSM){
+	if(LowPrec){
+	  Nprint = loopInfo.TSM_NprintLP;
+	  Ndump  = loopInfo.TSM_NdumpLP; 
+	}
+	else{
+	  Nprint = loopInfo.TSM_NprintHP;
+	  Ndump  = loopInfo.TSM_NdumpHP; 
+	}
+      }
+      else{
+	Nprint = loopInfo.Nprint;
+	Ndump  = loopInfo.Ndump;
+      }
+    }
+
+    for(int iPrint=0;iPrint<Nprint;iPrint++){
+      if(exact_loop || useTSM) asprintf(&ptrVal,"%d_%d", GK_nProc[3], GK_timeRank);
+      else asprintf(&ptrVal,"%04d.%d_%d",(iPrint+1)*Ndump, GK_nProc[3], GK_timeRank);
+
+      if(useTSM) sprintf(file_name, "%s_%s%04d_%s.loop.%s", Pref, LowPrec ? "NLP" : "NHP", (iPrint+1)*Ndump, loopInfo.loop_type[type], ptrVal);
+      else sprintf(file_name, "%s_%s.loop.%s",Pref,loopInfo.loop_type[type],ptrVal);
+
+      if(loopInfo.loop_oneD[type] && mu!=0) ptr = fopen(file_name,"a");
+      else ptr = fopen(file_name,"w");
+      if(ptr == NULL) errorQuda("Cannot open %s to write the loop\n",file_name);
+
+      if(loopInfo.loop_oneD[type]){
+	for(int ip=0; ip < Nmoms; ip++){
+	  for(int lt=0; lt < GK_localL[3]; lt++){
+	    int t  = lt+comm_coords(default_topo)[3]*GK_localL[3];
+	    for(int gm=0; gm<16; gm++){
+	      fprintf(ptr, "%02d %02d %02d %+d %+d %+d %+16.15e %+16.15e\n",t, gm, mu, momQsq[ip][0], momQsq[ip][1], momQsq[ip][2],
+		      0.25*writeBuf[0+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint],
+		      0.25*writeBuf[1+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint]);
+	    }
+	  }//-lt
+	}//-ip
+      }
+      else{
+	for(int ip=0; ip < Nmoms; ip++){
+	  for(int lt=0; lt < GK_localL[3]; lt++){
+	    int t  = lt+comm_coords(default_topo)[3]*GK_localL[3];
+	    for(int gm=0; gm<16; gm++){
+	      fprintf(ptr, "%02d %02d %+d %+d %+d %+16.15e %+16.15e\n",t, gm, momQsq[ip][0], momQsq[ip][1], momQsq[ip][2],
+		      writeBuf[0+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint],
+		      writeBuf[1+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint]);
+	    }
+	  }//-lt
+	}//-ip
+      }
+    
+      fclose(ptr);
+    }//-iPrint
+  }//-if GK_timeRank
+
+}
+*/
+
+/* Moved to qudaQKXTM_Loops_Kepler.cpp
+//-C.K: Copy the HDF5 dataset chunk into writeBuf
+template<typename Float>
+void getLoopWriteBuf(Float *writeBuf, Float *loopBuf, int iPrint, int Nmoms, int imom, bool oneD){
+
+  if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+    if(oneD){
+      for(int lt=0;lt<GK_localL[3];lt++){
+	for(int gm=0;gm<16;gm++){
+	  writeBuf[0+2*gm+2*16*lt] = 0.25*loopBuf[0+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint];
+	  writeBuf[1+2*gm+2*16*lt] = 0.25*loopBuf[1+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint];
+	}
+      }
+    }
+    else{
+      for(int lt=0;lt<GK_localL[3];lt++){
+	for(int gm=0;gm<16;gm++){
+	  writeBuf[0+2*gm+2*16*lt] = loopBuf[0+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint];
+	  writeBuf[1+2*gm+2*16*lt] = loopBuf[1+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint];
+	}
+      }
+    }
+  }//-if GK_timeRank
+
+}
+*/
+
+/* Moved to qudaQKXTM_Loops_Kepler.cpp
+//-C.K: Funtion to write the loops in HDF5 format
+template<typename Float>
+void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc, 
+		     Float **buf_std_oneD, Float **buf_std_csvC, 
+		     Float **buf_gen_oneD, Float **buf_gen_csvC, 
+		     char *file_pref, 
+		     qudaQKXTM_loopInfo loopInfo, int **momQsq,
+		     bool exact_loop, bool useTSM, bool LowPrec){
+
+  if(exact_loop && useTSM) errorQuda("writeLoops_HDF5: Got conflicting options - exact_loop AND useTSM.\n");
+
+  if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+    char fname[512];
+    int Nprint,Ndump;
+
+    if(exact_loop){
+      Nprint = 1;
+      sprintf(fname,"%s_Qsq%d.h5",file_pref,loopInfo.Qsq);
+    }
+    else{
+      if(useTSM){
+	if(LowPrec){
+	  Nprint = loopInfo.TSM_NprintLP;
+	  Ndump  = loopInfo.TSM_NdumpLP;
+	  sprintf(fname,"%s_NLP%04d_step%04d_Qsq%d.h5",file_pref,loopInfo.TSM_NLP,Ndump,loopInfo.Qsq);
+	}
+	else{
+	  Nprint = loopInfo.TSM_NprintHP;
+	  Ndump  = loopInfo.TSM_NdumpHP;
+	  sprintf(fname,"%s_NHP%04d_step%04d_Qsq%d.h5",file_pref,loopInfo.TSM_NHP,Ndump,loopInfo.Qsq);
+	}	
+      }
+      else{
+	Nprint = loopInfo.Nprint;
+	Ndump  = loopInfo.Ndump;
+	sprintf(fname,"%s_Ns%04d_step%04d_Qsq%d.h5",file_pref,loopInfo.Nstoch,Ndump,loopInfo.Qsq);
+      }
+    }
+
+    double *loopBuf = NULL;
+    double *writeBuf = (double*) malloc(GK_localL[3]*16*2*sizeof(double));
+
+    hsize_t start[3]  = {GK_timeRank*GK_localL[3], 0, 0};
+
+    // Dimensions of the dataspace
+    hsize_t dims[3]  = {GK_totalL[3], 16, 2}; // Global
+    hsize_t ldims[3] = {GK_localL[3], 16, 2}; // Local
+
+    hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fapl_mpio(fapl_id, GK_timeComm, MPI_INFO_NULL);
+    hid_t file_id = H5Fcreate(fname, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+    if(file_id<0) errorQuda("Cannot open %s. Check that directory exists!\n",fname);
+
+    H5Pclose(fapl_id);
+
+    char *group1_tag;
+    asprintf(&group1_tag,"conf_%04d",loopInfo.traj);
+    hid_t group1_id = H5Gcreate(file_id, group1_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    hid_t group2_id;
+    hid_t group3_id;
+    hid_t group4_id;
+    hid_t group5_id;
+
+    for(int iPrint=0;iPrint<Nprint;iPrint++){
+
+      if(!exact_loop){
+	char *group2_tag;
+	if(useTSM){
+	  if(LowPrec) asprintf(&group2_tag,"NLP_%04d",(iPrint+1)*Ndump);
+	  else        asprintf(&group2_tag,"NHP_%04d",(iPrint+1)*Ndump);
+	}
+	else asprintf(&group2_tag,"Nstoch_%04d",(iPrint+1)*Ndump);
+	group2_id = H5Gcreate(group1_id, group2_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+      }
+
+      for(int it=0;it<6;it++){
+	char *group3_tag;
+	asprintf(&group3_tag,"%s",loopInfo.loop_type[it]);
+
+	if(exact_loop) group3_id = H5Gcreate(group1_id, group3_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	else           group3_id = H5Gcreate(group2_id, group3_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	for(int imom=0;imom<loopInfo.Nmoms;imom++){
+	  char *group4_tag;
+	  asprintf(&group4_tag,"mom_xyz_%+d_%+d_%+d",momQsq[imom][0],momQsq[imom][1],momQsq[imom][2]);
+	  group4_id = H5Gcreate(group3_id, group4_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	  if(loopInfo.loop_oneD[it]){
+	    for(int mu=0;mu<4;mu++){
+	      if(strcmp(loopInfo.loop_type[it],"Loops")==0)   loopBuf = buf_std_oneD[mu];
+	      if(strcmp(loopInfo.loop_type[it],"LoopsCv")==0) loopBuf = buf_std_csvC[mu];
+	      if(strcmp(loopInfo.loop_type[it],"LpsDw")==0)   loopBuf = buf_gen_oneD[mu];
+	      if(strcmp(loopInfo.loop_type[it],"LpsDwCv")==0) loopBuf = buf_gen_csvC[mu];
+
+	      char *group5_tag;
+	      asprintf(&group5_tag,"dir_%02d",mu);
+	      group5_id = H5Gcreate(group4_id, group5_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	      hid_t filespace  = H5Screate_simple(3, dims, NULL);
+	      hid_t dataset_id = H5Dcreate(group5_id, "loop", H5T_NATIVE_DOUBLE, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	      hid_t subspace   = H5Screate_simple(3, ldims, NULL);
+	      filespace = H5Dget_space(dataset_id);
+	      H5Sselect_hyperslab(filespace, H5S_SELECT_SET, start, NULL, ldims, NULL);
+	      hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+	      H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+	      getLoopWriteBuf(writeBuf,loopBuf,iPrint,loopInfo.Nmoms,imom, loopInfo.loop_oneD[it]);
+
+	      herr_t status = H5Dwrite(dataset_id, H5T_NATIVE_DOUBLE, subspace, filespace, plist_id, writeBuf);
+
+	      H5Sclose(subspace);
+	      H5Dclose(dataset_id);
+	      H5Sclose(filespace);
+	      H5Pclose(plist_id);
+
+	      H5Gclose(group5_id);
+	    }//-mu
+	  }//-if
+	  else{
+	    if(strcmp(loopInfo.loop_type[it],"Scalar")==0) loopBuf = buf_std_uloc;
+	    if(strcmp(loopInfo.loop_type[it],"dOp")==0)    loopBuf = buf_gen_uloc;
+
+	    hid_t filespace  = H5Screate_simple(3, dims, NULL);
+	    hid_t dataset_id = H5Dcreate(group4_id, "loop", H5T_NATIVE_DOUBLE, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+	    hid_t subspace   = H5Screate_simple(3, ldims, NULL);
+	    filespace = H5Dget_space(dataset_id);
+	    H5Sselect_hyperslab(filespace, H5S_SELECT_SET, start, NULL, ldims, NULL);
+	    hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+	    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+	    getLoopWriteBuf(writeBuf,loopBuf,iPrint,loopInfo.Nmoms,imom, loopInfo.loop_oneD[it]);
+
+	    herr_t status = H5Dwrite(dataset_id, H5T_NATIVE_DOUBLE, subspace, filespace, plist_id, writeBuf);
+
+	    H5Sclose(subspace);
+	    H5Dclose(dataset_id);
+	    H5Sclose(filespace);
+	    H5Pclose(plist_id);
+	  }
+	  H5Gclose(group4_id);
+	}//-imom
+	H5Gclose(group3_id);
+      }//-it
+
+      if(!exact_loop) H5Gclose(group2_id);
+    }//-iPrint
+    H5Gclose(group1_id);
+    H5Fclose(file_id);
+  
+    free(writeBuf);
+  }
+}
+*/
+
 
 /* Quarantined Code
 template <typename Float>

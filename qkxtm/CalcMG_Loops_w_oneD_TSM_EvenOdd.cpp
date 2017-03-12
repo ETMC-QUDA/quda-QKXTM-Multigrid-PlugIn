@@ -52,10 +52,6 @@ extern QudaReconstructType link_recon_sloppy;
 extern QudaReconstructType link_recon_precondition;
 extern double mass; // mass of Dirac operator
 extern double mu;
-//QKXTM: DMH Experimental MG additions
-extern double delta_muMG;
-extern double delta_kappaMG;
-extern double delta_massMG;
 
 extern double anisotropy;
 extern double tol; // tolerance for inverter
@@ -70,8 +66,10 @@ extern bool generate_nullspace;
 extern bool generate_all_levels;
 extern int nu_pre;
 extern int nu_post;
+extern double mu_factor[QUDA_MAX_MG_LEVEL];
 extern int geo_block_size[QUDA_MAX_MG_LEVEL][QUDA_MAX_DIM];
 
+extern QudaInverterType setup_inv;
 extern QudaInverterType smoother_type;
 
 extern QudaMatPCType matpc_type;
@@ -352,9 +350,6 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
     inv_param.mu = mu;
-    mg_param.delta_muMG = delta_muMG;
-    mg_param.delta_kappaMG = delta_kappaMG;
-    mg_param.delta_massMG = delta_massMG;
 
     //inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
@@ -393,7 +388,8 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
     mg_param.n_vec[i] = nvec[i] == 0 ? 24 : nvec[i]; 
     mg_param.nu_pre[i] = nu_pre;
     mg_param.nu_post[i] = nu_post;
-    
+    mg_param.mu_factor[i] = mu_factor[i];    
+
     mg_param.cycle_type[i] = QUDA_MG_CYCLE_RECURSIVE;
     
     mg_param.smoother[i] = smoother_type;

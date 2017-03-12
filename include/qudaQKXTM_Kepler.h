@@ -470,6 +470,12 @@ namespace quda {
 // Multigrid Inversion Routines //
 //////////////////////////////////
 
+void MG_bench(void **gaugeSmeared, 
+	      void **gauge,
+	      QudaGaugeParam *gauge_param, 
+	      QudaInvertParam *param,
+	      quda::qudaQKXTMinfo_Kepler info);
+
 void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       QudaGaugeParam *gauge_param,
 			       QudaInvertParam *param,
@@ -478,7 +484,8 @@ void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       quda::WHICHPARTICLE NUCLEON);
 
 
-void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, QudaInvertParam *param,
+void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, 
+				   QudaInvertParam *param,
 				   QudaGaugeParam *gauge_param, 
 				   quda::qudaQKXTM_loopInfo loopInfo, 
 				   quda::qudaQKXTMinfo_Kepler info);
@@ -493,9 +500,10 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				  QudaInvertParam *param,
 				  QudaGaugeParam *gauge_param, 
 				  quda::qudaQKXTM_arpackInfo arpackInfo,
-				  quda::qudaQKXTM_arpackInfo arpackInfoEO, 
 				  quda::qudaQKXTM_loopInfo loopInfo, 
 				  quda::qudaQKXTMinfo_Kepler info);
 #endif
+// HAVE_ARPACK
 
 #endif
+//_QUDAQKXTM_KEPLER_H

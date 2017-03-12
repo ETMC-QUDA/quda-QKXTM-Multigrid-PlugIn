@@ -1,11 +1,12 @@
 
 include_directories(.)
+include_directories(../lib)
+include_directories(../include)
+include_directories(../tests)
+include_directories(../lib/code_pieces_Kepler)
 include_directories(${QUDA_HOME}/lib)
 include_directories(${QUDA_HOME}/include)
 include_directories(${QUDA_HOME}/tests)
-include_directories(../lib)
-include_directories(../include)
-include_directories(../lib/code_pieces_Kepler)
 include_directories(${QUDA_QKXTM_HDF5HOME}/include)
 include_directories(${QUDA_QKXTM_LIMEHOME}/include)
 include_directories(SYSTEM ${QUDA_QKXTM_GSLHOME}/include)
@@ -16,8 +17,8 @@ if(QUDA_QKXTM_ARPACK)
   include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/UTIL)
 endif(QUDA_QKXTM_ARPACK)  
 
-#build a common library for all QKXTM utilities
-set(QKXTM_COMMON gtest-all.cc QKXTM_util.cpp misc.cpp)
+#build a common library for all test utilities
+set(QKXTM_COMMON ${QUDA_HOME}/tests/gtest-all.cc ${QUDA_HOME}/tests/misc.cpp QKXTM_util.cpp)
 cuda_add_library(qkxtm STATIC ${QKXTM_COMMON})
 set(QKXTM_LIBS QKXTMquda qkxtm ${CMAKE_THREAD_LIBS_INIT} ${QUDA_LIBS} cuda)
 
@@ -67,6 +68,12 @@ target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
 # Trunacted Solver Method, as well as QUDA's MG solver routines.
 cuda_add_executable(CalcMG_Loops_w_oneD_TSM_EvenOdd CalcMG_Loops_w_oneD_TSM_EvenOdd.cpp ${QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QUDA_HOME}/tests/clover_reference.cpp ${QUDA_HOME}/tests/blas_reference.cpp)
 target_link_libraries(CalcMG_Loops_w_oneD_TSM_EvenOdd ${QKXTM_LIBS})
+
+#MG_Bench
+# This function will invert a single flavour, Gaussian smeared source
+# using the MG preconditioner.
+cuda_add_executable(MG_Bench MG_Bench.cpp ${QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QUDA_HOME}/tests/clover_reference.cpp ${QUDA_HOME}/tests/blas_reference.cpp)
+target_link_libraries(MG_Bench ${QKXTM_LIBS})
 
 #CalcMG_Loops_w_oneD_TSM_wExact
 # This function will calculate the All-to-All propagator with a covariant 

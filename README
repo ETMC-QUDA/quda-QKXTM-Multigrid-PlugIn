@@ -1,8 +1,8 @@
 ETMC-QUDA production code base                        24th February 2017
 ------------------------------------------------------------------------
 
-This library is an extension to QUDA mainline: 03rd March 2017
-(hotfix/delta_mu). 
+This library is an extension to QUDA mainline: 11th March 2017
+(hotfix/mu_factor). 
 It contains routines to calculate 2- and 3-point hadronic correlation functions,
 and an All-to-All propagator with a gauge covariant derivative, with a 
 variety of correlation functions.
@@ -50,7 +50,14 @@ For safe results, please use quda-QKXTM-Multigrid which has been thoroughly
 tested. For more recent QUDA builds, use this plug-in with caution.
 
 This plug-in can be compiled against:
-LATEST SUCCESSFUL COMPILATION: https://github.com/lattice/quda/pull/565
+LATEST SUCCESSFUL COMPILATION: https://github.com/lattice/quda/pull/581
+with the following additions,
+One must add to color_spinor_field.h the 'changeTwist' helper function:
+https://github.com/ETMC-QUDA/quda-QKXTM-Multigrid/blob/master/include/color_spinor_field.h#L451
+One must add to quda.h two extra preconditioner pointers:
+https://github.com/ETMC-QUDA/quda-QKXTM-Multigrid/blob/master/include/quda.h#L226
+
+If you have compilation issues, please @cpviolator
 
 
 Overview:

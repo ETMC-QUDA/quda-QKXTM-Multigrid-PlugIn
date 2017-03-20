@@ -1,8 +1,8 @@
 ETMC-QUDA production code base                        24th February 2017
 ------------------------------------------------------------------------
 
-This library is an extension to QUDA mainline: 11th March 2017
-(hotfix/mu_factor). 
+This library is an (WORK IN PROGRESS) extension to QUDA mainline: 19th March 2017
+(hotfix/single_twisted_nullspace). 
 It contains routines to calculate 2- and 3-point hadronic correlation functions,
 and an All-to-All propagator with a gauge covariant derivative, with a 
 variety of correlation functions.

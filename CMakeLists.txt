@@ -108,20 +108,41 @@ set(QUDA_INTERFACE_QDPJIT OFF CACHE BOOL "build qdpjit interface")
 set(QUDA_INTERFACE_BQCD OFF CACHE BOOL "build bqcd interface")
 set(QUDA_INTERFACE_TIFR OFF CACHE BOOL "build tifr interface")
 
-#QKXTM: begin DMH
-# Locations for QUDA GSL HDF5 LIME OPENBLAS ARPACK
-set(QUDA_HOME "" CACHE PATH "path to QUDA")
-set(QUDA_QKXTM_GSLHOME "" CACHE PATH "path to GSL")
-set(QUDA_QKXTM_LIMEHOME "" CACHE PATH "path to LIME")
-set(QUDA_QKXTM_HDF5HOME "" CACHE PATH "path to HDF5")
-set(QUDA_QKXTM_OPENBLAS_BUILD "" CACHE PATH "path to OPENBLAS_BUILD")
-set(QUDA_QKXTM_OPENBLAS_SRC "" CACHE PATH "path to OPENBLAS_SRC")
+#QKXTM: DMH
+set(QUDA_INTERFACE_QKXTM ON CACHE BOOL "build QKXTM interface")
+set(QKXTM_ARPACK OFF CACHE BOOL "enable QKXTM ARPACK")
 
-set(QUDA_QKXTM_ARPACK ON CACHE BOOL "enable QKXTM ARPACK")
-if(QUDA_QKXTM_ARPACK)
-  set(QUDA_QKXTM_ARPACKHOME "" CACHE PATH "path to ARPACK")
-endif(QUDA_QKXTM_ARPACK)
-#QKXTM: End DMH
+if(QUDA_INTERFACE_QKXTM)
+
+  # Locations for QUDA GSL HDF5 LIME
+  set(QKXTM_QUDA_HOME "" CACHE PATH "path to QUDA")
+  set(QKXTM_GSLHOME "" CACHE PATH "path to GSL")
+  set(QKXTM_LIMEHOME "" CACHE PATH "path to LIME")
+  set(QKXTM_HDF5HOME "" CACHE PATH "path to HDF5")
+
+  #-C.K. Switch between Intel/MKL and GNU/OpenBlas
+  set(QKXTM_INTEL-BUILD OFF CACHE BOOL "build QKXTM with Intel")
+  set(QKXTM_GNU-BUILD OFF CACHE BOOL "build QKXTM with GNU")
+  
+  #-C.K. Locations for OPENBLAS or MKL, depending on GNU/OpenBlas, Intel/MKL switches
+  if(${QKXTM_GNU-BUILD})
+    set(QKXTM_OPENBLAS_LIBDIR "" CACHE PATH "path to OPENBLAS_BUILD")
+    set(QKXTM_OPENBLAS_INCDIR "" CACHE PATH "path to OPENBLAS_SRC")
+  endif()
+
+#-C.K. In facts, it seems that these options do not really contribute something,
+# but may be useful for future iterations
+  if(${QKXTM_INTEL-BUILD})
+    set(QKXTM_MKL_LIBDIR "" CACHE PATH "path to MKL library dir")
+    set(QKXTM_MKL_INCDIR "" CACHE PATH "path to MKL include dir")
+  endif()
+#-C.K.
+
+  if(QKXTM_ARPACK)
+    set(QKXTM_ARPACKHOME "" CACHE PATH "path to ARPACK")
+  endif(QKXTM_ARPACK)
+endif(QUDA_INTERFACE_QKXTM)
+#QKXTM: DMH
 
 # QDPJIT
 set(QUDA_QDPJIT OFF CACHE BOOL "build QDP-JIT support?")
@@ -276,38 +297,53 @@ if(QUDA_ARPACK)
   endif()
 endif(QUDA_ARPACK)
 
-#QKXTM: Begin DMH
-add_definitions(-DHAVE_GSL)
-FIND_LIBRARY(QKXTM_GSL_LIB gsl ${QUDA_QKXTM_GSLHOME}/lib)
-include_directories(SYSTEM ${QUDA_QKXTM_GSLHOME}/include/gsl)
-
-add_definitions(-DHAVE_HDF5)
-FIND_LIBRARY(QKXTM_HDF5_LIB hdf5 ${QUDA_QKXTM_HDF5HOME}/lib)
-include_directories(SYSTEM ${QUDA_QKXTM_HDF5HOME}/include)
-
-add_definitions(-DHAVE_LIME)
-FIND_LIBRARY(QKXTM_LIME_LIB lime ${QUDA_QKXTM_LIMEHOME}/lib)
-include_directories(SYSTEM ${QUDA_QKXTM_LIMEHOME}/include)
-
-add_definitions(-DHAVE_OPENBLAS)
-FIND_LIBRARY(QKXTM_OPENBLAS_LIB openblas ${QUDA_QKXTM_OPENBLAS_BUILD}/lib)
-include_directories(SYSTEM ${QUDA_QKXTM_OPENBLAS_SRC})
-
-include_directories(lib/code_pieces_Kepler)
-
-if(QUDA_QKXTM_ARPACK)
-  add_definitions(-DHAVE_ARPACK)
-  FIND_LIBRARY(QKXTM_PARPACK_LIB parpack  ${QUDA_QKXTM_ARPACKHOME})
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
+#QKXTM: DMH
+if(QUDA_INTERFACE_QKXTM)
   
-  FIND_LIBRARY(QKXTM_ARPACK_LIB arpack ${QUDA_QKXTM_ARPACKHOME})
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/SRC)
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/UTIL)
-endif(QUDA_QKXTM_ARPACK)
+  #-C.K. Modified here to take OpenBlas and MKL switches into account  
+  if(${QKXTM_GNU-BUILD})
+    add_definitions(-DHAVE_OPENBLAS)
+    FIND_LIBRARY(QKXTM_OPENBLAS_LIB openblas ${QKXTM_OPENBLAS_LIBDIR})
+    include_directories(SYSTEM ${QKXTM_OPENBLAS_INCDIR})
+    include_directories(SYSTEM ${QKXTM_OPENBLAS_INCDIR}/include)
+  endif()
 
-LIST(APPEND QUDA_LIBS ${CUDA_cufft_LIBRARY} ${CUDA_curand_LIBRARY})
-#QKXTM: End DMH
+  if(${QKXTM_INTEL-BUILD})
+    add_definitions(-DHAVE_MKL)
+    FIND_LIBRARY(QKXTM_MKL_LIB mkl_intel_lp64 ${QKXTM_MKL_LIBDIR})
+    include_directories(SYSTEM ${QKXTM_MKL_INCDIR})
+  endif()
+#-C.K.
+
+  if(QKXTM_ARPACK)
+    add_definitions(-DHAVE_ARPACK)
+    FIND_LIBRARY(QKXTM_PARPACK_LIB parpack  ${QKXTM_ARPACKHOME})
+    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
+    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
+    
+    FIND_LIBRARY(QKXTM_ARPACK_LIB arpack ${QKXTM_ARPACKHOME})
+    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/SRC)
+    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/UTIL)
+  endif(QKXTM_ARPACK)
+
+  add_definitions(-DHAVE_GSL)
+  FIND_LIBRARY(QKXTM_GSL_LIB gsl ${QKXTM_GSLHOME}/lib)
+  include_directories(SYSTEM ${QKXTM_GSLHOME})
+
+  add_definitions(-DHAVE_HDF5)
+  FIND_LIBRARY(QKXTM_HDF5_LIB hdf5 ${QKXTM_HDF5HOME}/lib)
+  include_directories(SYSTEM ${QKXTM_HDF5HOME}/include)
+
+  add_definitions(-DHAVE_LIME)
+  FIND_LIBRARY(QKXTM_LIME_LIB lime ${QKXTM_LIMEHOME}/lib)
+  include_directories(SYSTEM ${QKXTM_LIMEHOME}/include)
+
+  include_directories(lib/code_pieces_Kepler)
+  
+  LIST(APPEND QUDA_LIBS ${CUDA_cufft_LIBRARY} ${CUDA_curand_LIBRARY})
+
+endif(QUDA_INTERFACE_QKXTM)
+#QKXTM: DMH
 
 if(QUDA_SSTEP)
   add_definitions(-DSSTEP)
@@ -481,8 +517,8 @@ endif(QUDA_CONTRACT)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
 #QKXTM: Begin DMH Include mainline QUDA 
-include_directories(${QUDA_HOME}/include)
-include_directories(${QUDA_HOME}/lib)
+include_directories(${QKXTM_QUDA_HOME}/include)
+include_directories(${QKXTM_QUDA_HOME}/lib)
 #QKXTM: End DMH
 include_directories(include)
 include_directories(lib)
@@ -634,6 +670,8 @@ mark_as_advanced(CMAKE_F_FLAGS)
 ### add tests and quda library
 add_subdirectory(lib)
 add_subdirectory(tests)
-#QKXTM: Begin DMH Add QKXTM directory
-add_subdirectory(qkxtm)
-#QKXTM: End DMH
+#QKXTM: DMH Add QKXTM directory
+if(QUDA_INTERFACE_QKXTM)
+  add_subdirectory(qkxtm)
+endif(QUDA_INTERFACE_QKXTM)
+#QKXTM: DMH

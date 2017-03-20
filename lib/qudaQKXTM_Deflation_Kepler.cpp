@@ -9,9 +9,16 @@
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
-//#include <mkl.h>
+
+#ifdef HAVE_MKL
+#include <mkl.h>
+#endif
+
+#ifdef HAVE_OPENBLAS
 #include <cblas.h>
 #include <common.h>
+#endif
+
 #include <omp.h>
 #include <hdf5.h>
  
@@ -111,7 +118,7 @@ QKXTM_Deflation_Kepler(QudaInvertParam *param,
   amax = arpackInfo.amax;
   isEv = arpackInfo.isEven;
   isFullOp = arpackInfo.isFullOp;
-  flavor_sign = param->twist_flavor;
+  flavor_sign = param->mu;
 
   if(NeV == 0){
     printfQuda("###############################\n");
@@ -161,12 +168,12 @@ void QKXTM_Deflation_Kepler<Float>::printInfo(){
   printfQuda("\n======= DEFLATION INFO =======\n"); 
   if(isFullOp){
     printfQuda(" The EigenVectors are for the Full %smu operator\n", 
-	       (flavor_sign==QUDA_TWIST_PLUS) ? "+" : "-");
+	       (flavor_sign > 0) ? "+" : "-");
   }
   else{
     printfQuda(" Will calculate EigenVectors for the %s %smu operator\n", 
 	       isEv ? "even-even" : "odd-odd", 
-	       (flavor_sign==QUDA_TWIST_PLUS) ? "+" : "-" );
+	       (flavor_sign > 0) ? "+" : "-" );
   }
 
   printfQuda(" Number of requested EigenVectors is %d in precision %d\n",
@@ -1690,34 +1697,34 @@ projectVector(QKXTM_Vector_Kepler<Float> &vec_defl,
     
     //-C.K: out_vec_reduce = h_elem^dag * tmp_vec -> U^dag * vec_in
     cblas_cgemv(CblasColMajor, CblasConjTrans, NN, NeV, 
-		(void*) alpha, (void*) h_elem, NN, 
-		tmp_vec, incx, (void*) beta, out_vec, incy );
+		(float*) alpha, (float*) h_elem, NN, 
+		tmp_vec, incx, (float*) beta, out_vec, incy );
     
     MPI_Allreduce(out_vec,out_vec_reduce,NeV*2,MPI_FLOAT,MPI_SUM,
 		  MPI_COMM_WORLD); 
     
     //-C.K: ptr_elem = h_elem * out_vec_reduce -> ptr_elem = U*U^dag * vec_in
-    cblas_cgemv(CblasColMajor, CblasNoTrans, NN, NeV, (void*) alpha, 
-		(void*) h_elem, NN, out_vec_reduce, incx, 
-		(void*) beta, ptr_elem, incy );
+    cblas_cgemv(CblasColMajor, CblasNoTrans, NN, NeV, (float*) alpha, 
+		(float*) h_elem, NN, out_vec_reduce, incx, 
+		(float*) beta, ptr_elem, incy );
     
     //-C.K. tmp_vec = -1.0*ptr_elem + tmp_vec -> 
     //       tmp_vec = vec_in - U*U^dag * vec_in
-    cblas_caxpy (NN, (void*)al, (void*)ptr_elem, incx, (void*)tmp_vec, incy);
+    cblas_caxpy (NN, (float*)al, (float*)ptr_elem, incx, (float*)tmp_vec, incy);
   }
   else if( typeid(Float) == typeid(double) ){
     cblas_zgemv(CblasColMajor, CblasConjTrans, NN, NeV, 
-		(void*) alpha, (void*) h_elem, NN, 
-		tmp_vec, incx, (void*) beta, out_vec, incy );
+		(double*) alpha, (double*) h_elem, NN, 
+		tmp_vec, incx, (double*) beta, out_vec, incy );
     
     MPI_Allreduce(out_vec,out_vec_reduce,NeV*2,MPI_DOUBLE,MPI_SUM,
 		  MPI_COMM_WORLD);
     
     cblas_zgemv(CblasColMajor, CblasNoTrans, NN, NeV, 
-		(void*) alpha, (void*) h_elem, NN, 
-		out_vec_reduce, incx, (void*) beta, ptr_elem, incy );
+		(double*) alpha, (double*) h_elem, NN, 
+		out_vec_reduce, incx, (double*) beta, ptr_elem, incy );
     
-    cblas_zaxpy (NN, (void*)al, (void*)ptr_elem, incx, (void*)tmp_vec, incy);
+    cblas_zaxpy (NN, (double*)al, (double*)ptr_elem, incx, (double*)tmp_vec, incy);
   }
   
 
@@ -1822,32 +1829,32 @@ projectVector(QKXTM_Vector_Kepler<Float> &vec_defl,
   if( typeid(Float) == typeid(float) ){
     //-C.K: out_vec_reduce = h_elem^dag * tmp_vec -> U^dag * vec_in
     cblas_cgemv(CblasColMajor, CblasConjTrans, NN, NeV_defl, 
-		(void*) alpha, (void*) h_elem, 
-		NN, tmp_vec, incx, (void*) beta, out_vec, incy );  
+		(float*) alpha, (float*) h_elem, 
+		NN, (float*)tmp_vec, incx, (float*) beta, (float*)out_vec, incy );  
     MPI_Allreduce(out_vec,out_vec_reduce,NeV_defl*2,MPI_FLOAT,
 		  MPI_SUM,MPI_COMM_WORLD);
     
     //-C.K: ptr_elem = h_elem * out_vec_reduce -> ptr_elem = U*U^dag * vec_in
     cblas_cgemv(CblasColMajor, CblasNoTrans, NN, NeV_defl, 
-		(void*) alpha, (void*) h_elem, NN,
-		out_vec_reduce, incx, (void*) beta, ptr_elem, incy );  
+		(float*) alpha, (float*) h_elem, NN,
+		(float*)out_vec_reduce, incx, (float*) beta, (float*)ptr_elem, incy );  
     
     //-C.K. tmp_vec = -1.0*ptr_elem + tmp_vec -> 
     //      tmp_vec = vec_in - U*U^dag * vec_in
-    cblas_caxpy (NN, (void*)al, (void*)ptr_elem, incx, (void*)tmp_vec, incy);
+    cblas_caxpy (NN, (float*)al, (float*)ptr_elem, incx, (float*)tmp_vec, incy);
   }
   else if( typeid(Float) == typeid(double) ){
     cblas_zgemv(CblasColMajor, CblasConjTrans, NN, NeV_defl, 
-		(void*) alpha, (void*) h_elem, 
-		NN, tmp_vec, incx, (void*) beta, out_vec, incy );
+		(double*) alpha, (double*) h_elem, 
+		NN, (double*)tmp_vec, incx, (double*) beta, (double*)out_vec, incy );
     MPI_Allreduce(out_vec,out_vec_reduce,NeV_defl*2,MPI_DOUBLE,MPI_SUM,
 		  MPI_COMM_WORLD);
 
     cblas_zgemv(CblasColMajor, CblasNoTrans, NN, NeV_defl, 
-		(void*) alpha, (void*) h_elem, NN,
-		out_vec_reduce, incx, (void*) beta, ptr_elem, incy );    
+		(double*) alpha, (double*) h_elem, NN,
+		(double*)out_vec_reduce, incx, (double*) beta, (double*)ptr_elem, incy );    
     
-    cblas_zaxpy (NN, (void*)al, (void*)ptr_elem, incx, (void*)tmp_vec, incy);
+    cblas_zaxpy (NN, (double*)al, (double*)ptr_elem, incx, (double*)tmp_vec, incy);
   }
 
   

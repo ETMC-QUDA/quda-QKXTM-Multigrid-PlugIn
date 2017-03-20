@@ -4,21 +4,21 @@ include_directories(../lib)
 include_directories(../include)
 include_directories(../tests)
 include_directories(../lib/code_pieces_Kepler)
-include_directories(${QUDA_HOME}/lib)
-include_directories(${QUDA_HOME}/include)
-include_directories(${QUDA_HOME}/tests)
-include_directories(${QUDA_QKXTM_HDF5HOME}/include)
-include_directories(${QUDA_QKXTM_LIMEHOME}/include)
-include_directories(SYSTEM ${QUDA_QKXTM_GSLHOME}/include)
-if(QUDA_QKXTM_ARPACK)
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/SRC)
-  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/UTIL)
-endif(QUDA_QKXTM_ARPACK)  
+include_directories(${QKXTM_QUDA_HOME}/lib)
+include_directories(${QKXTM_QUDA_HOME}/include)
+include_directories(${QKXTM_QUDA_HOME}/tests)
+include_directories(${QKXTM_HDF5HOME}/include)
+include_directories(${QKXTM_LIMEHOME}/include)
+include_directories(SYSTEM ${QKXTM_GSLHOME}/include)
+if(QKXTM_ARPACK)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/SRC)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/UTIL)
+endif(QKXTM_ARPACK)  
 
 #build a common library for all test utilities
-set(QKXTM_COMMON ${QUDA_HOME}/tests/gtest-all.cc ${QUDA_HOME}/tests/misc.cpp QKXTM_util.cpp)
+set(QKXTM_COMMON ${QKXTM_QUDA_HOME}/tests/gtest-all.cc ${QKXTM_QUDA_HOME}/tests/misc.cpp QKXTM_util.cpp)
 cuda_add_library(qkxtm STATIC ${QKXTM_COMMON})
 set(QKXTM_LIBS QKXTMquda qkxtm ${CMAKE_THREAD_LIBS_INIT} ${QUDA_LIBS} cuda)
 
@@ -46,10 +46,10 @@ endif()
 LIST(APPEND QKXTM_LIBS ${QKXTM_GSL_LIB})
 LIST(APPEND QKXTM_LIBS ${QKXTM_HDF5_LIB})
 LIST(APPEND QKXTM_LIBS ${QKXTM_LIME_LIB})
-if(QUDA_QKXTM_ARPACK)
+if(QKXTM_ARPACK)
   LIST(APPEND QKXTM_LIBS ${QKXTM_PARPACK_LIB})
   LIST(APPEND QKXTM_LIBS ${QKXTM_ARPACK_LIB})
-endif(QUDA_QKXTM_ARPACK)
+endif(QKXTM_ARPACK)
 
 #define QKXTM executables
 
@@ -58,7 +58,7 @@ endif(QUDA_QKXTM_ARPACK)
 # handful of randomly separated, gaussian smeared point sources, constructed 
 # with a smeared gauge field. Even/Odd preconditioning is employed, as well
 # as QUDA's MG solver routines.
-cuda_add_executable(CalcMG_2pt3pt_EvenOdd CalcMG_2pt3pt_EvenOdd.cpp ${QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QUDA_HOME}/tests/clover_reference.cpp ${QUDA_HOME}/tests/blas_reference.cpp)
+cuda_add_executable(CalcMG_2pt3pt_EvenOdd CalcMG_2pt3pt_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
 target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
 
 #CalcMG_Loops_w_oneD_TSM_EvenOdd
@@ -66,13 +66,13 @@ target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
 # derivate, and correlation functions thereof. It employs undiluted 
 # stochastic sources, Even/Odd preconditioning, functionality for using the 
 # Trunacted Solver Method, as well as QUDA's MG solver routines.
-cuda_add_executable(CalcMG_Loops_w_oneD_TSM_EvenOdd CalcMG_Loops_w_oneD_TSM_EvenOdd.cpp ${QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QUDA_HOME}/tests/clover_reference.cpp ${QUDA_HOME}/tests/blas_reference.cpp)
+cuda_add_executable(CalcMG_Loops_w_oneD_TSM_EvenOdd CalcMG_Loops_w_oneD_TSM_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
 target_link_libraries(CalcMG_Loops_w_oneD_TSM_EvenOdd ${QKXTM_LIBS})
 
 #MG_Bench
 # This function will invert a single flavour, Gaussian smeared source
 # using the MG preconditioner.
-cuda_add_executable(MG_Bench MG_Bench.cpp ${QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QUDA_HOME}/tests/clover_reference.cpp ${QUDA_HOME}/tests/blas_reference.cpp)
+cuda_add_executable(MG_Bench MG_Bench.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
 target_link_libraries(MG_Bench ${QKXTM_LIBS})
 
 #CalcMG_Loops_w_oneD_TSM_wExact
@@ -83,7 +83,7 @@ target_link_libraries(MG_Bench ${QKXTM_LIBS})
 # stochastic sources, Even/Odd preconditioning, functionality for using the 
 # Trunacted Solver Method, as well as QUDA's MG solver routines for the 
 # remainder.
-if(QUDA_QKXTM_ARPACK)
-  cuda_add_executable(CalcMG_Loops_w_oneD_TSM_wExact CalcMG_Loops_w_oneD_TSM_wExact.cpp ${QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QUDA_HOME}/tests/clover_reference.cpp ${QUDA_HOME}/tests/blas_reference.cpp)
+if(QKXTM_ARPACK)
+  cuda_add_executable(CalcMG_Loops_w_oneD_TSM_wExact CalcMG_Loops_w_oneD_TSM_wExact.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
   target_link_libraries(CalcMG_Loops_w_oneD_TSM_wExact ${QKXTM_LIBS})
-endif(QUDA_QKXTM_ARPACK)
+endif(QKXTM_ARPACK)

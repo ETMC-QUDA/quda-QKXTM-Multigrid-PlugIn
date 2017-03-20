@@ -574,26 +574,26 @@ int main(int argc, char **argv)
   inv_param.solve_type = solve_type; 
 
   // setup the multigrid solver for UP flavour
-  mg_param.invert_param->twist_flavor = QUDA_TWIST_PLUS;
-  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
-  inv_param.preconditionerUP = mg_preconditionerUP;
+  //mg_param.invert_param->twist_flavor = QUDA_TWIST_PLUS;
+  void *mg_preconditioner = newMultigridQuda(&mg_param);
+  inv_param.preconditioner = mg_preconditioner;
 
   // setup the multigrid solver for DN flavour
-  mg_param.invert_param->twist_flavor = QUDA_TWIST_MINUS;
-  void *mg_preconditionerDN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDN = mg_preconditionerDN;  
-  mg_param.invert_param->twist_flavor = twist_flavor;
+  //mg_param.invert_param->twist_flavor = QUDA_TWIST_MINUS;
+  //void *mg_preconditionerDN = newMultigridQuda(&mg_param);
+  //inv_param.preconditionerDN = mg_preconditionerDN;  
+  //mg_param.invert_param->twist_flavor = twist_flavor;
 
   printfQuda("\n\n");
   printfQuda("**************************\n");  
   printfQuda("* Begin MG bench routine *\n"); 
   printfQuda("**************************\n\n");  
-  MG_bench(gauge_APE, gauge, &gauge_param, &inv_param, info);
+  //MG_bench(gauge_APE, gauge, &gauge_param, &inv_param, info);
 
   // free the multigrid solver(s)
-  //destroyMultigridQuda(mg_preconditioner);
-  destroyMultigridQuda(mg_preconditionerUP);
-  destroyMultigridQuda(mg_preconditionerDN);
+  destroyMultigridQuda(mg_preconditioner);
+  //destroyMultigridQuda(mg_preconditionerUP);
+  //destroyMultigridQuda(mg_preconditionerDN);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 

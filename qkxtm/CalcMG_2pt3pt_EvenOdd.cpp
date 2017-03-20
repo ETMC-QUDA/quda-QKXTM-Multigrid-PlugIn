@@ -700,16 +700,16 @@ int main(int argc, char **argv)
   
   //QKXTM: DMH EXP
   // setup the multigrid solver for UP flavour
-  mg_param.invert_param->twist_flavor = QUDA_TWIST_PLUS;
-  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
-  inv_param.preconditionerUP = mg_preconditionerUP;
+  //mg_param.invert_param->twist_flavor = QUDA_TWIST_PLUS;
+  void *mg_preconditioner = newMultigridQuda(&mg_param);
+  inv_param.preconditioner = mg_preconditioner;
 
   // setup the multigrid solver for DN flavour
-  mg_param.invert_param->twist_flavor = QUDA_TWIST_MINUS;
-  void *mg_preconditionerDN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDN = mg_preconditionerDN;  
+  //mg_param.invert_param->twist_flavor = QUDA_TWIST_MINUS;
+  //void *mg_preconditionerDN = newMultigridQuda(&mg_param);
+  //inv_param.preconditionerDN = mg_preconditionerDN;  
   // reset twist flavour
-  mg_param.invert_param->twist_flavor = twist_flavor;  
+  //mg_param.invert_param->twist_flavor = twist_flavor;  
 
 
   calcMG_threepTwop_EvenOdd(gauge_APE, gaugeContract, &gauge_param,
@@ -717,8 +717,8 @@ int main(int argc, char **argv)
 			    threep_filename, NEUTRON);
 
   // free the multigrid solvers
-  destroyMultigridQuda(mg_preconditionerUP);
-  destroyMultigridQuda(mg_preconditionerDN);
+  destroyMultigridQuda(mg_preconditioner);
+  //destroyMultigridQuda(mg_preconditionerDN);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 

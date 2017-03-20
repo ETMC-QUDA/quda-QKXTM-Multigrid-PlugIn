@@ -304,9 +304,9 @@ namespace quda {
 			       int isource, CORR_SPACE CorrSpace);
    
    void copyTwopBaryonsToHDF5_Buf(void *Twop_baryons_HDF5, void *corrBaryons,
-				  int isource, CORR_SPACE CorrSpace);
+				  int isource, CORR_SPACE CorrSpace, bool HighMomForm);
    void copyTwopMesonsToHDF5_Buf (void *Twop_mesons_HDF5 , void *corrMesons, 
-				  CORR_SPACE CorrSpace);
+				  CORR_SPACE CorrSpace, bool HighMomForm);
    
    void writeTwopBaryonsHDF5(void *twopBaryons, char *filename, 
 			     qudaQKXTMinfo_Kepler info, int isource);
@@ -321,6 +321,11 @@ namespace quda {
 				      qudaQKXTMinfo_Kepler info,int isource);
    void writeTwopMesonsHDF5_PosSpace (void *twopMesons , char *filename, 
 				      qudaQKXTMinfo_Kepler info,int isource);
+
+   void writeTwopBaryonsHDF5_MomSpace_HighMomForm(void *twopBaryons, char *filename,
+                                                  qudaQKXTMinfo_Kepler info, int isource);
+   void writeTwopMesonsHDF5_MomSpace_HighMomForm (void *twopMesons , char *filename,
+                                                  qudaQKXTMinfo_Kepler info, int isource);
 
    void seqSourceFixSinkPart1(QKXTM_Vector_Kepler<Float> &vec, 
 			      QKXTM_Propagator3D_Kepler<Float> &prop1, 
@@ -356,7 +361,7 @@ namespace quda {
 			int tsinkMtsource, CORR_SPACE CorrSpace);
    void copyThrpToHDF5_Buf(void *Thrp_HDF5, void *corrThp,  int mu, int uORd,
 			   int its, int Nsink, int pr, int thrp_sign, 
-			   THRP_TYPE type, CORR_SPACE CorrSpace);
+			   THRP_TYPE type, CORR_SPACE CorrSpace, bool HighMomForm);
    void writeThrpHDF5(void *Thrp_local_HDF5, void *Thrp_noether_HDF5, 
 		      void **Thrp_oneD_HDF5, char *filename, 
 		      qudaQKXTMinfo_Kepler info, int isource, 
@@ -371,8 +376,14 @@ namespace quda {
 			       void **Thrp_oneD_HDF5, char *filename, 
 			       qudaQKXTMinfo_Kepler info, int isource, 
 			       WHICHPARTICLE NUCLEON);
+   void writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_local_HDF5,
+                                           void *Thrp_noether_HDF5,
+                                           void **Thrp_oneD_HDF5, char *filename,
+                                           qudaQKXTMinfo_Kepler info, int isource,
+                                           WHICHPARTICLE NUCLEON);
   };
 
+#ifdef HAVE_ARPACK
   ////////////////////////////
   // CLASS: QKXTM_Deflation //
   //////////////////////////// 
@@ -399,7 +410,7 @@ namespace quda {
     double amax;
     bool isEv;
     bool isFullOp;
-    QudaTwistFlavorType flavor_sign;
+    double flavor_sign;
     
     int fullorHalf;
     
@@ -461,7 +472,7 @@ namespace quda {
 		       int is, int NeV_defl);
     void copyToEigenVector(Float *vec, Float *vals);
   };
-  
+#endif  
 }
 // End quda namespace
 
@@ -469,12 +480,6 @@ namespace quda {
 //////////////////////////////////
 // Multigrid Inversion Routines //
 //////////////////////////////////
-
-void MG_bench(void **gaugeSmeared, 
-	      void **gauge,
-	      QudaGaugeParam *gauge_param, 
-	      QudaInvertParam *param,
-	      quda::qudaQKXTMinfo_Kepler info);
 
 void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       QudaGaugeParam *gauge_param,
@@ -484,8 +489,7 @@ void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       quda::WHICHPARTICLE NUCLEON);
 
 
-void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, 
-				   QudaInvertParam *param,
+void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, QudaInvertParam *param,
 				   QudaGaugeParam *gauge_param, 
 				   quda::qudaQKXTM_loopInfo loopInfo, 
 				   quda::qudaQKXTMinfo_Kepler info);

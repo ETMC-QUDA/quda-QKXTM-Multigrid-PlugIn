@@ -11,9 +11,16 @@
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
-//#include <mkl.h>
+
+#ifdef HAVE_MKL
+#include <mkl.h>
+#endif
+
+#ifdef HAVE_OPENBLAS
 #include <cblas.h>
 #include <common.h>
+#endif
+
 #include <omp.h>
 #include <hdf5.h>
  
@@ -176,9 +183,9 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
 
   if( typeid(Float) == typeid(float) ) 
-    cblas_caxpy(NN,(void*)pceval,(void*)h_ctrn,incx,(void*)gen_uloc,incy);
+    cblas_caxpy(NN,(float*)pceval,(float*)h_ctrn,incx,(float*)gen_uloc,incy);
   else if( typeid(Float) == typeid(double) ) 
-    cblas_zaxpy(NN,(void*)pceval,(void*)h_ctrn,incx,(void*)gen_uloc,incy);
+    cblas_zaxpy(NN,(double*)pceval,(double*)h_ctrn,incx,(double*)gen_uloc,incy);
   //------------------------------------------------
 
   // ULTRA-LOCAL Standard one-end trick
@@ -186,38 +193,31 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
 
   if( typeid(Float) == typeid(float) ) 
-    cblas_caxpy(NN,(void*)mceval,(void*)h_ctrn,incx,(void*)std_uloc,incy);
+    cblas_caxpy(NN,(float*)mceval,(float*)h_ctrn,incx,(float*)std_uloc,incy);
   else if( typeid(Float) == typeid(double) ) 
-    cblas_zaxpy(NN,(void*)mceval,(void*)h_ctrn,incx,(void*)std_uloc,incy);
+    cblas_zaxpy(NN,(double*)mceval,(double*)h_ctrn,incx,(double*)std_uloc,incy);
   //------------------------------------------------
 
   cudaDeviceSynchronize();
 
   // ONE-DERIVATIVE Generalized one-end trick
   for(int mu=0; mu<4; mu++){
-    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	   static_cast<cudaColorSpinorField&>(tmp3),mu);
+    cov->M(tmp4,tmp3,mu);
     // Term 0
     contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5); 
     
-    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	   static_cast<cudaColorSpinorField&>(x),mu+4);
-
+    cov->M  (tmp4, x,  mu+4);
     // Term 0 + Term 3
     contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
     cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
-
-    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	   static_cast<cudaColorSpinorField&>(x),mu);    
-
+    
+    cov->M  (tmp4, x, mu);
     // Term 0 + Term 3 + Term 2 (C Sum)
     contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
     // Term 0 + Term 3 - Term 2 (D Dif)
     contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);                
-
-    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	   static_cast<cudaColorSpinorField&>(tmp3),mu+4);    
-
+    
+    cov->M  (tmp4, tmp3,  mu+4);
     // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
     contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
     // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
@@ -225,31 +225,24 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
     cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
 
     if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		  (void*) gen_oneD[mu], incy);
+      cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) gen_oneD[mu], incy);
     else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		  (void*) gen_oneD[mu], incy);
+      cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) gen_oneD[mu], incy);
     
     cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
 
     if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		  (void*) gen_csvC[mu], incy);
+      cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) gen_csvC[mu], incy);
     else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		  (void*) gen_csvC[mu], incy);
+      cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) gen_csvC[mu], incy);
   }
   
   //------------------------------------------------
 
   // ONE-DERIVATIVE Standard one-end trick
   for(int mu=0; mu<4; mu++){
-    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	   static_cast<cudaColorSpinorField&>(x),mu);
-    cov->M(static_cast<cudaColorSpinorField&>(tmp3), 
-	   static_cast<cudaColorSpinorField&>(x),mu+4);
-
+    cov->M  (tmp4, x,  mu);
+    cov->M  (tmp3, x,  mu+4);
     // Term 0
     contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
     // Term 0 + Term 3
@@ -267,20 +260,16 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
     cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
 
     if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		  (void*) std_oneD[mu], incy);
+      cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) std_oneD[mu], incy);
     else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		  (void*) std_oneD[mu], incy);
+      cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) std_oneD[mu], incy);
     
     cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
     
     if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		  (void*) std_csvC[mu], incy);
+      cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) std_csvC[mu], incy);
     else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		  (void*) std_csvC[mu], incy);
+      cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) std_csvC[mu], incy);
   }
 
   //------------------------------------------------
@@ -370,9 +359,9 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
   
   if( typeid(Float) == typeid(float) ) 
-    cblas_caxpy(NN,(void*)pceval,(void*)h_ctrn,incx,(void*)cnRes_gv,incy);
+    cblas_caxpy(NN,(float*)pceval,(float*)h_ctrn,incx,(float*)cnRes_gv,incy);
   else if( typeid(Float) == typeid(double) ) 
-    cblas_zaxpy(NN,(void*)pceval,(void*)h_ctrn,incx,(void*)cnRes_gv,incy);
+    cblas_zaxpy(NN,(double*)pceval,(double*)h_ctrn,incx,(double*)cnRes_gv,incy);
   
   //    for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
   //      ((Float*) cnRes_gv)[ix] += ((Float*)h_ctrn)[ix]; // generalized one end trick
@@ -384,12 +373,10 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   //      ((Float*) cnRes_vv)[ix] -= ((Float*)h_ctrn)[ix]; // standard one end trick
   
   if( typeid(Float) == typeid(float) ) {
-    cblas_caxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		(void*) cnRes_vv, incy);
+    cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnRes_vv, incy);
   }
   else if( typeid(Float) == typeid(double) ) {
-    cblas_zaxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		(void*) cnRes_vv, incy);
+    cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnRes_vv, incy);
   }  
   cudaDeviceSynchronize();
   
@@ -399,27 +386,22 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   // for generalized one-end trick
   for(int mu=0; mu<4; mu++)	
     {
-    cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	   static_cast<cudaColorSpinorField&>(tmp3),mu);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu);
       // Term 0
       contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	   static_cast<cudaColorSpinorField&>(x),mu+4);
- 
+
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu+4);
       // Term 0 + Term 3
       contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
       cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
 
       // Term 0 + Term 3 + Term 2 (C Sum)
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	     static_cast<cudaColorSpinorField&>(x),mu);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
       contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
       // Term 0 + Term 3 - Term 2 (D Dif)
       contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
 
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	     static_cast<cudaColorSpinorField&>(tmp3),mu+4);
-    
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu+4);
       // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
       contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
       // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
@@ -427,12 +409,10 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
       cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
       
       if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		    (void*) cnD_gv[mu], incy);
+	cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx,  (float*) cnD_gv[mu], incy);
       }
       else if( typeid(Float) == typeid(double) ) {
-	cblas_zaxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		    (void*) cnD_gv[mu], incy);
+	cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnD_gv[mu], incy);
       }
       //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
       //	((Float *) cnD_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
@@ -440,12 +420,10 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
       cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
       
       if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		    (void*) cnC_gv[mu], incy);
+	cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) cnC_gv[mu], incy);
       }
       else if( typeid(Float) == typeid(double) ) {
-	cblas_zaxpy(NN, (void*) pceval, (void*) h_ctrn, incx, 
-		    (void*) cnC_gv[mu], incy);
+	cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnC_gv[mu], incy);
       }
       //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
       //	((Float *) cnC_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
@@ -453,10 +431,8 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   
   for(int mu=0; mu<4; mu++) // for standard one-end trick
     {
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4), 
-	     static_cast<cudaColorSpinorField&>(x),mu);
-      cov->M(static_cast<cudaColorSpinorField&>(tmp3), 
-	     static_cast<cudaColorSpinorField&>(x),mu+4);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
+      cov->M(static_cast<cudaColorSpinorField&>(tmp3),static_cast<cudaColorSpinorField&>(x),mu+4);
       // Term 0
       contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
       // Term 0 + Term 3
@@ -474,12 +450,10 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
       cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
       
       if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		    (void*) cnD_vv[mu], incy);
+	cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnD_vv[mu], incy);
       }
       else if( typeid(Float) == typeid(double) ) { 
-	cblas_zaxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		    (void*) cnD_vv[mu], incy);
+	cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnD_vv[mu], incy);
       }
       //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
       //	((Float *) cnD_vv[mu])[ix]  -= ((Float*)h_ctrn)[ix];
@@ -487,12 +461,10 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
       cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
       
       if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		    (void*) cnC_vv[mu], incy);
+	cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnC_vv[mu], incy);
       }
       else if( typeid(Float) == typeid(double) ) {
-	cblas_zaxpy(NN, (void*) mceval, (void*) h_ctrn, incx, 
-		    (void*) cnC_vv[mu], incy);
+	cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnC_vv[mu], incy);
       }
       
       //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)

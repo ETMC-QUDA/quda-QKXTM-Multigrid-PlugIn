@@ -629,11 +629,11 @@ int main(int argc, char **argv)
   
   //QKXTM: DMH EXP
   // setup the multigrid solver for DN flavour
-  mg_param.invert_param->twist_flavor = QUDA_TWIST_MINUS;
+  //mg_param.invert_param->twist_flavor = QUDA_TWIST_MINUS;
   void *mg_preconditioner = newMultigridQuda(&mg_param);
   inv_param.preconditioner = mg_preconditioner;  
   // reset twist flavour
-  mg_param.invert_param->twist_flavor = twist_flavor;  
+  //mg_param.invert_param->twist_flavor = twist_flavor;  
   
   calcMG_loop_wOneD_TSM_EvenOdd(gauge_Plaq, &inv_param, &gauge_param, loopInfo, info);
   

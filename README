@@ -1,9 +1,12 @@
 ETMC-QUDA production code base                        24th February 2017
 ------------------------------------------------------------------------
 
-This library is an (WORK IN PROGRESS) extension to QUDA mainline: 19th March 2017
-(hotfix/single_twisted_nullspace). 
-It contains routines to calculate 2- and 3-point hadronic correlation functions,
+This library is an extension to QUDA mainline: 19th March 2017
+
+The current QUDA branch to be pointed to is:
+feature/multigrid
+
+This plug-in contains routines to calculate 2- and 3-point hadronic correlation functions,
 and an All-to-All propagator with a gauge covariant derivative, with a 
 variety of correlation functions.
 
@@ -49,13 +52,12 @@ of the QUDA mainline source code against which you compile.
 For safe results, please use quda-QKXTM-Multigrid which has been thoroughly 
 tested. For more recent QUDA builds, use this plug-in with caution.
 
-This plug-in can be compiled against:
-LATEST SUCCESSFUL COMPILATION: https://github.com/lattice/quda/pull/581
+This plug-in can be compiled against: https://github.com/lattice/quda/tree/feature/multigrid
 with the following additions,
-One must add to color_spinor_field.h the 'changeTwist' helper function:
-https://github.com/ETMC-QUDA/quda-QKXTM-Multigrid/blob/master/include/color_spinor_field.h#L451
 One must add to quda.h two extra preconditioner pointers:
 https://github.com/ETMC-QUDA/quda-QKXTM-Multigrid/blob/master/include/quda.h#L226
+
+LATEST SUCCESSFUL COMPILATION: 28 March 2017
 
 If you have compilation issues, please @cpviolator
 

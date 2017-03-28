@@ -2218,51 +2218,19 @@ multigrid_solver::multigrid_solver(QudaMultigridParam &mg_param, TimeProfile &pr
   dSmoothSloppy = Dirac::create(diracSmoothSloppyParam);;
   mSmoothSloppy = new DiracM(*dSmoothSloppy);
 
-  //Detect if using Twisted operator
-  if (mg_param.invert_param->dslash_type == QUDA_TWISTED_MASS_DSLASH ||
-      mg_param.invert_param->dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    for (int j=0; j<2; j++) {
-      if (j == 0) {	
-	//This is the first call, we must generate or load the null space.
-	printfQuda("Creating vector of null space fields of length %d for twist %s\n", 
-		   mg_param.n_vec[0], (mg_param.invert_param->mu > 0) ? "UP" : "DOWN");
-	
-	ColorSpinorParam cpuParam(0, *param, cudaGauge->X(), pc_solution, QUDA_CPU_FIELD_LOCATION);
-	cpuParam.create = QUDA_ZERO_FIELD_CREATE;
-	cpuParam.precision = param->cuda_prec_sloppy;
-	B.resize(mg_param.n_vec[0]);
-	for (int i=0; i<mg_param.n_vec[0]; i++) B[i] = new cpuColorSpinorField(cpuParam);
-      } else {
-	//This is a subsequent call, we reference the null space.
-	printfQuda("Referencing null space fields of length %d for twist %s\n", 
-		   mg_param.n_vec[0], (mg_param.invert_param->mu < 0) ? "UP" : "DOWN");
-      }
-      
-      // fill out the MG parameters for the fine level
-      mgParam = new MGParam(mg_param, B, m, mSmooth, mSmoothSloppy);
-      if (j == 0) mgParam->reference_null = false;
-      else mgParam->reference_null = true;
-      
-      mgArray[j] = new MG(*mgParam, profile);
-      mgParam->updateInvertParam(*param);
-    }
-  } else {
+  printfQuda("Creating vector of null space fields of length %d\n", mg_param.n_vec[0]);
+  
+  ColorSpinorParam cpuParam(0, *param, cudaGauge->X(), pc_solution, QUDA_CPU_FIELD_LOCATION);
+  cpuParam.create = QUDA_ZERO_FIELD_CREATE;
+  cpuParam.precision = param->cuda_prec_sloppy;
+  B.resize(mg_param.n_vec[0]);
+  for (int i=0; i<mg_param.n_vec[0]; i++) B[i] = new cpuColorSpinorField(cpuParam);
     
-    printfQuda("Creating vector of null space fields of length %d\n", mg_param.n_vec[0]);
-    
-    ColorSpinorParam cpuParam(0, *param, cudaGauge->X(), pc_solution, QUDA_CPU_FIELD_LOCATION);
-    cpuParam.create = QUDA_ZERO_FIELD_CREATE;
-    cpuParam.precision = param->cuda_prec_sloppy;
-    B.resize(mg_param.n_vec[0]);
-    for (int i=0; i<mg_param.n_vec[0]; i++) B[i] = new cpuColorSpinorField(cpuParam);
-    
-    // fill out the MG parameters for the fine level
-    mgParam = new MGParam(mg_param, B, m, mSmooth, mSmoothSloppy);
-    mgParam->reference_null = false;    
-    mg = new MG(*mgParam, profile);
+  // fill out the MG parameters for the fine level
+  mgParam = new MGParam(mg_param, B, m, mSmooth, mSmoothSloppy);
 
-    mgParam->updateInvertParam(*param);
-  }    
+  mg = new MG(*mgParam, profile);  
+  mgParam->updateInvertParam(*param);    
   profile.TPSTOP(QUDA_PROFILE_INIT);
 }
 
@@ -2536,36 +2504,11 @@ void invertQuda(void *hp_x, void *hp_b, QudaInvertParam *param)
 
   if (direct_solve) {
     DiracM m(dirac), mSloppy(diracSloppy), mPre(diracPre);
-    //Detect if using Twisted operator
-    if (param->dslash_type == QUDA_TWISTED_MASS_DSLASH ||
-	param->dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-
-      if(param->mu < 0) param->mu *= -1.0;
-      printfQuda("UP type solve\n");
-      ((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[0];
-      SolverParam solverParamU(*param);
-      Solver *solveU = Solver::create(solverParamU, m, mSloppy, mPre, profileInvert);
-      (*solveU)(*out, *in);
-      solverParamU.updateInvertParam(*param);
-      delete solveU;
-      
-      param->mu *= -1.0;
-      printfQuda("DOWN type solve\n");
-      ((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[1];
-      SolverParam solverParamD(*param);
-      Solver *solveD = Solver::create(solverParamD, m, mSloppy, mPre, profileInvert);
-      (*solveD)(*out, *in);
-      solverParamD.updateInvertParam(*param);
-      delete solveD;
-      
-      ((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mg;
-    } else {
-      SolverParam solverParam(*param);
-      Solver *solve = Solver::create(solverParam, m, mSloppy, mPre, profileInvert);
-      (*solve)(*out, *in);
-      solverParam.updateInvertParam(*param);
-      delete solve;
-    }
+    SolverParam solverParam(*param);
+    Solver *solve = Solver::create(solverParam, m, mSloppy, mPre, profileInvert);
+    (*solve)(*out, *in);
+    solverParam.updateInvertParam(*param);
+    delete solve;
   } else if (!norm_error_solve) {
     DiracMdagM m(dirac), mSloppy(diracSloppy), mPre(diracPre);
     SolverParam solverParam(*param);
@@ -6253,8 +6196,7 @@ void MG_bench(void **gaugeSmeared, void **gauge,
       dirac.prepare(in,out,*x,*b,param->solution_type);
 
       //Set MG Preconditioner to UP
-      ((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[0];
-      //param->preconditioner = param->preconditionerUP;
+      param->preconditioner = param->preconditionerUP;
 
       SolverParam solverParamU(*param);
       Solver *solveU = Solver::create(solverParamU, m, mSloppy, 
@@ -6317,8 +6259,7 @@ void MG_bench(void **gaugeSmeared, void **gauge,
       dirac.prepare(in,out,*x,*b,param->solution_type);
 
       //Set MG Preconditioner to DN
-      ((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[1];
-      //param->preconditioner = param->preconditionerDN;
+      param->preconditioner = param->preconditionerDN;
 
       SolverParam solverParamD(*param);
       Solver *solveD = Solver::create(solverParamD, m, mSloppy, 
@@ -6782,8 +6723,7 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
       dirac.prepare(in,out,*x,*b,param->solution_type);
 
       //Set MG Preconditioner to UP
-      ((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[0];
-      //param->preconditioner = param->preconditionerUP;
+      param->preconditioner = param->preconditionerUP;
 
       SolverParam solverParamU(*param);
       Solver *solveU = Solver::create(solverParamU, m, mSloppy, 
@@ -6848,8 +6788,7 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
       dirac.prepare(in,out,*x,*b,param->solution_type);
 
       //Set MG Preconditioner to DN
-      ((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[1];
-      //param->preconditioner = param->preconditionerDN;
+      param->preconditioner = param->preconditionerDN;
 
       SolverParam solverParamD(*param);
       Solver *solveD = Solver::create(solverParamD, m, mSloppy, 
@@ -7007,15 +6946,13 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 		//Ensure mu is negative:
 		if(param->mu > 0) param->mu *= -1.0;
 		//Set MG Preconditioner to DN
-		((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[1];
-		//param->preconditioner = param->preconditionerDN;
+		param->preconditioner = param->preconditionerDN;
 	      }
 	      else{
 		//Ensure mu is positive:
 		if(param->mu < 0) param->mu *= -1.0;
 		//Set MG Preconditioner to UP
-		((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[0];
-		//param->preconditioner = param->preconditionerUP;
+		param->preconditioner = param->preconditionerUP;
 	      }
       	      K_guess->uploadToCuda(b,flag_eo);
 	      dirac.prepare(in,out,*x,*b,param->solution_type);
@@ -7150,15 +7087,13 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 		//Ensure mu is positive:
 		if(param->mu < 0) param->mu *= -1.0;
 		//Set MG Preconditioner to UP
-		((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[0];
-		//param->preconditioner = param->preconditionerUP;
+		param->preconditioner = param->preconditionerUP;
 	      }
 	      else{
 		//Ensure mu is negative:
 		if(param->mu > 0) param->mu *= -1.0;
 		//Set MG Preconditioner to DN
-		((multigrid_solver*)param->preconditioner)->mg = ((multigrid_solver*)param->preconditioner)->mgArray[1];
-		//param->preconditioner = param->preconditionerDN;
+		param->preconditioner = param->preconditionerDN;
 	      }
 
 	      K_guess->uploadToCuda(b,flag_eo);

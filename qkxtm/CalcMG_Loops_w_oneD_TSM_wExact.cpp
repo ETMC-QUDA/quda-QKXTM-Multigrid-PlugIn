@@ -718,17 +718,24 @@ int main(int argc, char **argv)
   printfQuda("After clover term\n");
   
   //QKXTM: DMH EXP
-  // setup the multigrid solver.
-  mg_param.invert_param->twist_flavor = twist_flavor;
-  void *mg_preconditioner = newMultigridQuda(&mg_param);
-  inv_param.preconditioner = mg_preconditioner;  
+  // setup the multigrid solvers.
+  if(inv_param.mu < 0.0) inv_param.mu *= -1.0;
+  if(mg_param.invert_param->mu < 0.0)  mg_param.invert_param->mu *= -1.0;
+  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
+  inv_param.preconditionerUP = mg_preconditionerUP;
+
+  if(inv_param.mu > 0.0) inv_param.mu *= -1.0;
+  if(mg_param.invert_param->mu > 0.0)  mg_param.invert_param->mu *= -1.0;
+  void *mg_preconditionerDN = newMultigridQuda(&mg_param);
+  inv_param.preconditionerDN = mg_preconditionerDN;
 
   //Launch calculation.
   calcMG_loop_wOneD_TSM_wExact(gauge_Plaq, &EVinv_param, &inv_param, 
 			       &gauge_param, arpackInfo, loopInfo, info);
   
-  // free the multigrid solver
-  destroyMultigridQuda(mg_preconditioner);
+  // free the multigrid solvers
+  destroyMultigridQuda(mg_preconditionerUP);
+  destroyMultigridQuda(mg_preconditionerDN);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 

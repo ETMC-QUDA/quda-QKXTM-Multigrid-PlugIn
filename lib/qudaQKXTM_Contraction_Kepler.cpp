@@ -21,7 +21,7 @@
 
 #include <omp.h>
 #include <hdf5.h>
- 
+
 #define PI 3.141592653589793
  
 //using namespace quda;

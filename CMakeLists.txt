@@ -305,7 +305,6 @@ if(QUDA_INTERFACE_QKXTM)
     add_definitions(-DHAVE_OPENBLAS)
     FIND_LIBRARY(QKXTM_OPENBLAS_LIB openblas ${QKXTM_OPENBLAS_LIBDIR})
     include_directories(SYSTEM ${QKXTM_OPENBLAS_INCDIR})
-    include_directories(SYSTEM ${QKXTM_OPENBLAS_INCDIR}/include)
   endif()
 
   if(${QKXTM_INTEL-BUILD})
@@ -331,8 +330,8 @@ if(QUDA_INTERFACE_QKXTM)
   include_directories(SYSTEM ${QKXTM_GSLHOME}/include)
 
   add_definitions(-DHAVE_HDF5)
-  FIND_LIBRARY(QKXTM_HDF5_LIB hdf5 ${QKXTM_HDF5HOME}/lib)
-  include_directories(SYSTEM ${QKXTM_HDF5HOME}/include)
+  FIND_LIBRARY(QKXTM_HDF5_LIB hdf5 ${QKXTM_HDF5HOME}/GNU/5.1/lib)
+  include_directories(SYSTEM ${QKXTM_HDF5HOME}/GNU/5.1/include)
 
   add_definitions(-DHAVE_LIME)
   FIND_LIBRARY(QKXTM_LIME_LIB lime ${QKXTM_LIMEHOME}/lib)

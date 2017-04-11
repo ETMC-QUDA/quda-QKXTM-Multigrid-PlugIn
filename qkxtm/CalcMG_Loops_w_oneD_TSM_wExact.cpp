@@ -28,12 +28,15 @@
 #include <quda.h>
 #include <contractQuda.h>
 #include <qudaQKXTM_Kepler.h>
+// Wilson, clover-improved Wilson, twisted mass, and domain wall are supported.
 
 //========================================================================//
 //====== P A R A M E T E R   S E T T I N G S   A N D   C H E C K S =======//
 //========================================================================//
 
-// Wilson, clover-improved Wilson, twisted mass, and domain wall are supported.
+//-----------------//
+// QUDA Parameters //
+//-----------------//
 extern QudaDslashType dslash_type;
 extern bool tune;
 extern int device;
@@ -51,10 +54,10 @@ extern QudaReconstructType link_recon_sloppy;
 extern QudaReconstructType link_recon_precondition;
 extern double mass; // mass of Dirac operator
 extern double mu;
-
 extern double anisotropy;
 extern double tol; // tolerance for inverter
 extern double tol_hq; // heavy-quark tolerance for inverter
+extern char latfile[];
 extern QudaMassNormalization normalization; // mass normalization of Dirac operators
 
 extern int niter;
@@ -65,10 +68,12 @@ extern bool generate_nullspace;
 extern bool generate_all_levels;
 extern int nu_pre;
 extern int nu_post;
-extern double mu_factor[QUDA_MAX_MG_LEVEL];
 extern int geo_block_size[QUDA_MAX_MG_LEVEL][QUDA_MAX_DIM];
+extern double mu_factor[QUDA_MAX_MG_LEVEL];
 
-extern QudaInverterType setup_inv;
+extern QudaVerbosity mg_verbosity[QUDA_MAX_MG_LEVEL];
+
+extern QudaInverterType setup_inv[QUDA_MAX_MG_LEVEL];
 extern QudaInverterType smoother_type;
 
 extern QudaMatPCType matpc_type;
@@ -77,7 +82,6 @@ extern QudaSolveType solve_type;
 extern char vec_infile[];
 extern char vec_outfile[];
 
-//Twisted mass flavor type
 extern QudaTwistFlavorType twist_flavor;
 
 extern void usage(char** );
@@ -85,14 +89,9 @@ extern void usage(char** );
 extern double clover_coeff;
 extern bool compute_clover;
 
-//QKXTM: DMH extra inputs
-//If using MG, these are fixed to be GCR and MG respectively.
-//extern QudaInverterType  inv_type;
-//extern QudaInverterType  precon_type;
-extern int multishift; // whether to test multi-shift or standard solver
-
-
-extern char latfile[];
+//------------------//
+// QKXTM Parameters //
+//------------------//
 extern char latfile_smeared[];
 extern char verbosity_level[];
 extern int traj;

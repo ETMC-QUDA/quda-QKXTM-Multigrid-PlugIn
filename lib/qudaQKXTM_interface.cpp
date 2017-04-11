@@ -7363,6 +7363,76 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 
 #ifdef HAVE_ARPACK
 
+
+void calcLowModeProjection(void **gaugeToPlaquette, 
+			   QudaInvertParam *EvInvParam, 
+			   QudaInvertParam *param, 
+			   QudaGaugeParam *gauge_param,
+			   qudaQKXTM_arpackInfo arpackInfo, 
+			   qudaQKXTMinfo_Kepler info){
+  
+  double t1,t2,t3,t4;
+  char fname[256];
+  sprintf(fname, "calcLowModeProjection");
+  
+  //======================================================================//
+  //================= P A R A M E T E R   C H E C K S ====================//
+  //======================================================================//
+
+  if (!initialized) 
+    errorQuda("%s: QUDA not initialized", fname);
+  pushVerbosity(param->verbosity);
+  if (getVerbosity() >= QUDA_DEBUG_VERBOSE) printQudaInvertParam(param);
+  
+  //-Checks for exact deflation part 
+  profileInvert.TPSTART(QUDA_PROFILE_TOTAL);
+  if( (EvInvParam->matpc_type != QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) && 
+      (EvInvParam->matpc_type != QUDA_MATPC_ODD_ODD_ASYMMETRIC) ) 
+    errorQuda("Only asymmetric operators are supported in deflation\n");
+  if( arpackInfo.isEven    && 
+      (EvInvParam->matpc_type != QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) ) 
+    errorQuda("%s: Inconsistency between operator types!",fname);
+  if( (!arpackInfo.isEven) && 
+      (EvInvParam->matpc_type != QUDA_MATPC_ODD_ODD_ASYMMETRIC) )   
+    errorQuda("%s: Inconsistency between operator types!",fname);
+
+  // QKXTM: DMH Here the low modes of the normal M^{\dagger}M 
+  //        operator are constructed. We then apply gamma_5 to
+  //        each eigenvector u, and then take the inner product:
+  //        G5iProd_i = u^dag_i \gamma_5 u_i
+  
+  printfQuda("\n ### Exact part calculation ###\n");
+
+  int NeV_Full = arpackInfo.nEv;  
+  
+  //Create object to store and calculate eigenpairs
+  QKXTM_Deflation_Kepler<double> *deflation = 
+    new QKXTM_Deflation_Kepler<double>(param,arpackInfo);
+  deflation->printInfo();
+  
+  //- Calculate the eigenVectors
+  t1 = MPI_Wtime(); 
+  deflation->eigenSolver();
+  t2 = MPI_Wtime();
+  printfQuda("%s TIME REPORT:",fname);
+  printfQuda("Full Operator EigenVector Calculation: %f sec\n",t2-t1);
+
+  //======================================================================//
+  //================ M E M O R Y   C L E A N - U P =======================// 
+  //======================================================================//
+
+  printfQuda("\nCleaning up...\n");
+  
+  delete deflation;
+
+  printfQuda("...Done\n");
+  popVerbosity();
+  saveTuneCache();
+  profileInvert.TPSTOP(QUDA_PROFILE_TOTAL);
+}
+
+
+
 void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette, 
 				  QudaInvertParam *EvInvParam, 
 				  QudaInvertParam *param, 

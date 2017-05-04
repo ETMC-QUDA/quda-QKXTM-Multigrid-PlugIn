@@ -405,6 +405,7 @@ namespace quda {
     bool isACC;
     double tolArpack;
     int maxIterArpack;
+    int modeArpack;
     char arpack_logfile[512];
     double amin;
     double amax;
@@ -451,6 +452,7 @@ namespace quda {
     void ApplyMdagM(Float *vec_out, Float *vec_in, QudaInvertParam *param);
     void MapEvenOddToFull();
     void MapEvenOddToFull(int i);
+    void G5innerProduct();
     void copyEigenVectorToQKXTM_Vector(int eigenVector_id, 
 					      Float *vec);
     void copyEigenVectorFromQKXTM_Vector(int eigenVector_id,
@@ -494,9 +496,9 @@ void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, QudaInvertParam *par
 				   quda::qudaQKXTM_loopInfo loopInfo, 
 				   quda::qudaQKXTMinfo info);
 
-///////////////////////////////////////
-// MG with Exact Deflation Routines  //
-///////////////////////////////////////
+/////////////////////////////
+// MG with Exact Deflation //
+/////////////////////////////
 
 #ifdef HAVE_ARPACK
 void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette, 
@@ -506,6 +508,18 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				  quda::qudaQKXTM_arpackInfo arpackInfo,
 				  quda::qudaQKXTM_loopInfo loopInfo, 
 				  quda::qudaQKXTMinfo info);
+
+/////////////////////////
+// Low Mode Projection //
+/////////////////////////
+
+void calcLowModeProjection(void **gaugeToPlaquette,
+			   QudaInvertParam *EvInvParam,
+			   QudaInvertParam *param,
+			   QudaGaugeParam *gauge_param,
+			   quda::qudaQKXTM_arpackInfo arpackInfo,
+			   quda::qudaQKXTMinfo info);
+  
 #endif
 // HAVE_ARPACK
 

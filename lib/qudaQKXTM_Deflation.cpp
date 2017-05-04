@@ -113,6 +113,7 @@ QKXTM_Deflation(QudaInvertParam *param,
   isACC = arpackInfo.isACC;
   tolArpack = arpackInfo.tolArpack;
   maxIterArpack = arpackInfo.maxIterArpack;
+  modeArpack = arpackInfo.modeArpack;
   strcpy(arpack_logfile,arpackInfo.arpack_logfile);
   amin = arpackInfo.amin;
   amax = arpackInfo.amax;
@@ -382,6 +383,66 @@ void QKXTM_Deflation<Float>::MapEvenOddToFull(int i){
   
   printfQuda("MapEvenOddToFull: Vector %d completed successfully\n",i);
 }
+
+/*
+template<typename Float>
+void QKXTM_Deflation_Kepler<Float>::G5innerProduct(){
+
+  size_t bytes = bytes_total_length_per_NeV;
+  int size = total_length_per_NeV;
+
+  int site_size = 4*3*2;
+  size_t bytes_per_site = site_size*sizeof(Float);
+
+  // Allocate space for a single vector u^dag
+  char fname[256];
+  sprintf(fname,"v_g5_product.txt");  
+  FILE *fptr;
+  fptr = fopen(fname,"wa");
+  Complex Result(0.0,0.0);
+
+  QKXTM_Vector_Kepler<double> *K_G5eVec = 
+    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector_Kepler<double> *K_eVec = 
+    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+
+  ColorSpinorField *eVec = NULL;
+  ColorSpinorField *G5eVec = NULL;
+  //Zero out spinors
+  ColorSpinorParam cudaParam(cpuParam, *param);
+  cudaParam.create = QUDA_ZERO_FIELD_CREATE;
+  eVec = new cudaColorSpinorField(*h_b, cudaParam);
+  cudaParam.create = QUDA_ZERO_FIELD_CREATE;
+  G5eVec = new cudaColorSpinorField(cudaParam);
+
+  for(int i=0; i < NeV; i++) {
+
+    printfQuda("Start Vector %d\n",i);
+
+    copyEigenVectorToQKXTM_Vector_Kepler(i, (double*)K_eVec);
+    printfQuda("Flag 1\n");
+    //eVec->loadVector();
+    printfQuda("Flag 2\n");
+
+    copyEigenVectorToQKXTM_Vector_Kepler(i, (double*)K_G5eVec);
+    printfQuda("Flag 3\n");
+    //G5eVec->loadVector();
+    printfQuda("Flag 4\n");
+    G5eVec->apply_gamma5();
+    printfQuda("Flag 5\n");
+
+    Result = blas::cDotProduct((ColorSpinorField&)eVec, 
+			       (ColorSpinorField&)G5eVec);
+    
+    printfQuda("Flag 6\n");
+    fprintf(fptr, "V_G5_Product: %d %.10e %.10e Eigenvalue %.10e\n", 
+	    i, Result.real(), Result.imag(), eigenValues[2*i]);    
+  }
+  free(G5eVec);
+  free(eVec);
+  fclose(fptr);
+}
+*/
 
 
 template<typename Float>
@@ -942,6 +1003,11 @@ void QKXTM_Deflation<Float>::eigenSolver(){
   iparam[2] = maxIterArpack;
   iparam[3] = 1;
   iparam[6] = 1;
+  //iparam[7] = modeArpack;
+  //if(iparam[7] == 3) {
+  //populate array with 'sigma' shift values
+    
+  
 
   double d1,d2,d3;
 
@@ -1176,6 +1242,28 @@ void QKXTM_Deflation<Float>::eigenSolver(){
 	       i,real(evals_cplx[i]),imag(evals_cplx[i]),sqrt(norma));
     delete h_v3;
   }
+  // Caluclate v^dag gamma_5 v
+  char fname[256];
+  sprintf(fname,"v_g5_product.txt");  
+  FILE *fptr;
+  fptr = fopen(fname,"wa");
+
+  for(int i =0 ; i < NeV ; i++){
+    cpuParam3.v = (helem_cplx+i*LDV);
+    h_v3 = new cpuColorSpinorField(cpuParam3);
+    *d_v = *h_v3;                                    //d_v  = v
+    gamma5Cuda(d_v2,d_v);                            //d_v2 = g5*v
+    Complex sig = blas::cDotProduct(*d_v,*d_v2);     //sig  = v^dag * g5 *v
+    fprintf(fptr, "V_G5_Product: %d %.10e %.10e Eigenvalue %.10e\n", 
+	    i, real(sig), imag(sig), real(evals_cplx[i]));    
+
+    //QKXTM: DMH careful here. It might be norm() in a different namespace...
+    printfQuda("vG5v[%04d] = %+e  %+e\n",
+	       i,real(sig),imag(sig));
+    delete h_v3;
+  }
+  fclose(fptr);
+
   t2 = MPI_Wtime();
   printfQuda("\neigenSolver: TIME_REPORT - Eigenvalues of Dirac operator: %f sec\n",t2-t1);
 
@@ -1473,8 +1561,7 @@ void QKXTM_Deflation<Float>::readEigenVectors(char *prefix_path){
 			       ((t*GK_localL[2]*GK_localL[1]*GK_localL[0]+
 				 z*GK_localL[1]*GK_localL[0]+
 				 y*GK_localL[0]+
-				 x)/2)*4*3*2 + 
-			       mu*3*2 + c1*2 + 0 ] = ((double*)buffer)[i];
+				 x)/2)*4*3*2 + mu*3*2 + c1*2 + 0 ] = ((double*)buffer)[i];
 			h_elem[nev*total_length_per_NeV + 
 			       ((t*GK_localL[2]*GK_localL[1]*GK_localL[0]+
 				 z*GK_localL[1]*GK_localL[0]+

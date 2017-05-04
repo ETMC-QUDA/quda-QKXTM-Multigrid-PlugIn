@@ -1634,6 +1634,7 @@ char *spectrumPart = "SR"; // for which part of the spectrum we want to solve
 bool isACC = true;
 double tolArpack = 1.0e-5;
 int maxIterArpack = 100000;
+int modeArpack = 1;
 char arpack_logfile[512] = "arpack.log";
 double amin = 3.0e-4;
 double amax = 3.5;
@@ -1859,6 +1860,7 @@ void usage(char** argv )
   printf("    --isACC                                   # Whether we want to use polynomial acceleration (yes/no, default yes)\n");
   printf("    --tolARPACK                               # Tolerance for convergence, used by ARPACK (default 1.0e-5)\n");
   printf("    --maxIterARPACK                           # Maximum iterations number for ARPACK (default 100000)\n");
+  printf("    --modeARPACK                              # MODE for ARPACK soluton (default 1)\n");
   printf("    --pathArpackLogfile                       # Path to the ARPACK log file (default  \"arpack.log\")\n");
   printf("    --aminARPACK                              # amin parameter used in Cheb. Poly. Acc. (default 3.0e-4)\n");
   printf("    --amaxARPACK                              # amax parameter used in Cheb. Poly. Acc. (default 3.5)\n");
@@ -3381,6 +3383,16 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }
     maxIterArpack = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--modeARPACK") ==0){
+    if(i+1 >= argc){
+      usage(argv);
+    }
+    modeArpack = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;

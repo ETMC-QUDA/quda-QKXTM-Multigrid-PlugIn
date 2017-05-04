@@ -101,22 +101,6 @@ extern double kappa;
 extern char prop_path[];
 extern double csw;
 
-//-C.K. Loop parameters
-extern int Nstoch;
-extern unsigned long int seed;
-extern char loop_fname[];
-extern char *loop_file_format;
-extern int Ndump;
-extern char source_type[];
-extern char filename_dSteps[];
-extern bool useTSM;
-extern int TSM_NHP;
-extern int TSM_NLP;
-extern int TSM_NdumpHP;
-extern int TSM_NdumpLP;
-extern int TSM_maxiter;
-extern double TSM_tol;
-
 //-C.K. ARPACK Parameters
 extern int PolyDeg;
 extern int nEv;
@@ -125,6 +109,7 @@ extern char *spectrumPart;
 extern bool isACC;
 extern double tolArpack;
 extern int maxIterArpack;
+extern int modeArpack;
 extern char arpack_logfile[];
 extern double amin;
 extern double amax;
@@ -209,7 +194,6 @@ void setInvertParam(QudaInvertParam &inv_param) {
 
   inv_param.kappa = kappa;
   inv_param.mass = 0.5/kappa - 4.0;
-  inv_param.epsilon = 0.0;
 
   inv_param.Ls = 1;
 
@@ -364,7 +348,7 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
     inv_param.mu = mu;
 
-    //inv_param.twist_flavor = twist_flavor;
+    inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
     
@@ -394,6 +378,8 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
       mg_param.geo_block_size[i][j] = geo_block_size[i][j] ? 
 	geo_block_size[i][j] : 4;      
     }
+    mg_param.verbosity[i] = mg_verbosity[i];
+    mg_param.setup_inv_type[i] = setup_inv[i];
     mg_param.spin_block_size[i] = 1;
     
     //QKXTM: DMH Develop branch code
@@ -414,12 +400,10 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
     mg_param.smoother_tol[i] = tol_hq; 
     mg_param.global_reduction[i] = QUDA_BOOLEAN_YES;
 
-    // set to QUDA_DIRECT_SOLVE for no even/odd 
-    // preconditioning on the smoother
     // set to QUDA_DIRECT_PC_SOLVE for to enable even/odd 
     // preconditioning on the smoother
     mg_param.smoother_solve_type[i] = QUDA_DIRECT_PC_SOLVE; // EVEN-ODD
-
+    
     // set to QUDA_MAT_SOLUTION to inject a full field into coarse grid
     // set to QUDA_MATPC_SOLUTION to inject single parity field into 
     // coarse grid
@@ -439,11 +423,6 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
   // coarse grid solver is GCR
   mg_param.smoother[mg_levels-1] = QUDA_GCR_INVERTER;
 
-  //QKXTM: DMH tmLQCD code
-  //mg_param.compute_null_vector = QUDA_COMPUTE_NULL_VECTOR_YES;;
-  //mg_param.generate_all_levels = QUDA_BOOLEAN_YES;
-  
-  //QKXTM: DMH develop code
   mg_param.compute_null_vector = generate_nullspace ? 
     QUDA_COMPUTE_NULL_VECTOR_YES : QUDA_COMPUTE_NULL_VECTOR_NO;
   mg_param.generate_all_levels = generate_all_levels ? 
@@ -467,7 +446,6 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
   inv_param.verbosity = QUDA_SUMMARIZE;
   inv_param.verbosity_precondition = QUDA_SUMMARIZE;
 }
-
 
 //=======================================================================//
 //== C O N T A I N E R   A N D   Q U D A   I N I T I A L I S A T I O N  =//
@@ -538,99 +516,6 @@ int main(int argc, char **argv)
   info.lL[3] = tdim;
   info.Q_sq = Q_sq;
   info.isEven = isEven;
-  if( strcmp(source_type,"random")==0 ) info.source_type = RANDOM;
-  else if( strcmp(source_type,"unity")==0 ) info.source_type = UNITY;
-  else{
-    printf("Wrong type for stochastic source type. Must be either random/unity. Exiting.\n");
-    exit(1);
-  }
-
-  //-C.K. Pass loop parameters to loopInfo
-  qudaQKXTM_loopInfo loopInfo;
-  loopInfo.Nstoch = Nstoch;
-  loopInfo.seed = seed;
-  loopInfo.Ndump = Ndump;
-  loopInfo.traj = traj;
-  loopInfo.Qsq = Q_sq;
-  strcpy(loopInfo.loop_fname,loop_fname);
-
-  if( strcmp(loop_file_format,"ASCII")==0 || 
-      strcmp(loop_file_format,"ascii")==0 ) {
-    // Determine whether to write the loops in ASCII
-    loopInfo.FileFormat = ASCII_FORM;
-  }
-  else if( strcmp(loop_file_format,"HDF5")==0 || 
-	   strcmp(loop_file_format,"hdf5")==0 ) {
-    // Determine whether to write the loops in HDF5
-    loopInfo.FileFormat = HDF5_FORM; 
-  }
-  else fprintf(stderr,"Undefined option for --loop-file-format. Options are ASCII(ascii)/HDF5(hdf5)\n");
-
-  if(loopInfo.Nstoch%loopInfo.Ndump==0) loopInfo.Nprint = loopInfo.Nstoch/loopInfo.Ndump;
-  else errorQuda("NdumpStep MUST divide Nstoch exactly! Exiting.\n");
-
-
-  //-C.K. Determine the deflation steps
-  if(strcmp(filename_dSteps,"none")==0){
-    loopInfo.nSteps_defl = 1;
-    loopInfo.deflStep[0] = nEv;
-  }
-  else{
-    FILE *ptr_dstep;
-    if( (ptr_dstep = fopen(filename_dSteps,"r"))==NULL ){
-      fprintf(stderr,"Cannot open %s for reading. Exiting\n",filename_dSteps);
-      exit(-1);
-    }
-    fscanf(ptr_dstep,"%d\n",&loopInfo.nSteps_defl);
-    fscanf(ptr_dstep,"%d\n",&loopInfo.deflStep[0]);
-    if(loopInfo.deflStep[0]>nEv){
-      printf("ERROR: Supplied deflation step is larger than eigenvalues requested. Exiting.\n");
-      exit(-1);
-    }
-    for(int s=1;s<loopInfo.nSteps_defl;s++){
-      fscanf(ptr_dstep,"%d\n",&loopInfo.deflStep[s]);
-      if(loopInfo.deflStep[s]<loopInfo.deflStep[s-1]){
-        printf("ERROR: Deflation steps MUST be in ascending order. Exiting.\n");
-        exit(-1);
-      }
-      if(loopInfo.deflStep[s]>nEv){
-        printf("WARNING: Supplied deflation step %d is larger than eigenvalues requested. Discarding this step.\n",s);
-        s--;
-        loopInfo.nSteps_defl--;
-      }
-    }
-    fclose(ptr_dstep);
-
-    //- This is to always make sure that the total number of eigenvalues is included
-    if(loopInfo.deflStep[loopInfo.nSteps_defl-1] != nEv){
-      loopInfo.nSteps_defl++;
-      loopInfo.deflStep[loopInfo.nSteps_defl-1] = nEv;
-    }
-  }
-
-  //- TSM parameters
-  loopInfo.useTSM = useTSM;
-  if(useTSM){
-    loopInfo.TSM_NHP = TSM_NHP;
-    loopInfo.TSM_NLP = TSM_NLP;
-    loopInfo.TSM_NdumpHP = TSM_NdumpHP;
-    loopInfo.TSM_NdumpLP = TSM_NdumpLP;
-    
-    if(loopInfo.TSM_NHP%loopInfo.TSM_NdumpHP==0) {
-      loopInfo.TSM_NprintHP = loopInfo.TSM_NHP/loopInfo.TSM_NdumpHP;
-    } else errorQuda("TSM_NdumpHP MUST divide TSM_NHP exactly! Exiting.\n");
-    
-    if(loopInfo.TSM_NLP%loopInfo.TSM_NdumpLP==0) {
-      loopInfo.TSM_NprintLP = loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP;
-    } else errorQuda("TSM_NdumpLP MUST divide TSM_NLP exactly! Exiting.\n");
-    
-    loopInfo.TSM_tol = TSM_tol;
-    loopInfo.TSM_maxiter = TSM_maxiter;
-    if( (TSM_maxiter==0) && (TSM_tol==0) ) {
-      errorQuda("Criterion for low-precision sources not set!\n");
-    }
-    if(TSM_tol!=0) errorQuda("Setting the tolerance as low-precision criterion for Truncated Solver method not supported! Re-run using --TSM_maxiter <iter> as criterion.\n");
-  }
 
   // QUDA parameters begin here.
   //-----------------------------------------------------------------
@@ -705,36 +590,27 @@ int main(int argc, char **argv)
   } 
 
   printfQuda("Before clover term\n");
-  // This line ensure that if we need to construct the clover inverse 
+  // This line ensures that if we need to construct the clover inverse 
   // (in either the smoother or the solver) we do so
-  if (mg_param.smoother_solve_type[0] == QUDA_DIRECT_PC_SOLVE || 
-      solve_type == QUDA_DIRECT_PC_SOLVE) {
+  if (mg_param.smoother_solve_type[0] == QUDA_DIRECT_PC_SOLVE || solve_type == QUDA_DIRECT_PC_SOLVE) {
     inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
   }
-
   if (dslash_type == QUDA_TWISTED_CLOVER_DSLASH) 
     loadCloverQuda(NULL, NULL, &inv_param);
   printfQuda("After clover term\n");
   
   //QKXTM: DMH EXP
-  // setup the multigrid solvers.
-  if(inv_param.mu < 0.0) inv_param.mu *= -1.0;
-  if(mg_param.invert_param->mu < 0.0)  mg_param.invert_param->mu *= -1.0;
-  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
-  inv_param.preconditionerUP = mg_preconditionerUP;
-
-  if(inv_param.mu > 0.0) inv_param.mu *= -1.0;
-  if(mg_param.invert_param->mu > 0.0)  mg_param.invert_param->mu *= -1.0;
-  void *mg_preconditionerDN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDN = mg_preconditionerDN;
+  // setup the multigrid solver for UP flavour
+  //mg_param.invert_param->twist_flavor = QUDA_TWIST_PLUS;
+  //void *mg_preconditioner = newMultigridQuda(&mg_param);
+  //inv_param.preconditioner = mg_preconditioner;
 
   //Launch calculation.
-  calcMG_loop_wOneD_TSM_wExact(gauge_Plaq, &EVinv_param, &inv_param, 
-			       &gauge_param, arpackInfo, loopInfo, info);
-  
+  calcLowModeProjection(gauge_Plaq, &EVinv_param, &inv_param, 
+			&gauge_param, arpackInfo, info);
+
   // free the multigrid solvers
-  destroyMultigridQuda(mg_preconditionerUP);
-  destroyMultigridQuda(mg_preconditionerDN);
+  //destroyMultigridQuda(mg_preconditioner);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 

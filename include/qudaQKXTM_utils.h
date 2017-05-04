@@ -91,6 +91,7 @@ namespace quda {
     double amax;
     bool isEven;
     bool isFullOp;
+    int modeArpack;
   }qudaQKXTM_arpackInfo;
 #endif  
 

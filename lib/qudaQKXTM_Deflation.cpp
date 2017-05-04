@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
@@ -46,7 +46,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -65,10 +65,10 @@ extern int GK_timeSize;
 
 //-C.K. Constructor for the even-odd operator functions
 template<typename Float>
-QKXTM_Deflation_Kepler<Float>::
-QKXTM_Deflation_Kepler(int N_EigenVectors, bool isEven): 
+QKXTM_Deflation<Float>::
+QKXTM_Deflation(int N_EigenVectors, bool isEven): 
   h_elem(NULL), eigenValues(NULL){
-  if(GK_init_qudaQKXTM_Kepler_flag == false)
+  if(GK_init_qudaQKXTM_flag == false)
     errorQuda("You must initialize QKXTM library first\n");
   NeV=N_EigenVectors;
   if(NeV == 0){
@@ -97,11 +97,11 @@ QKXTM_Deflation_Kepler(int N_EigenVectors, bool isEven):
 
 //-C.K. Constructor for the full Operator functions
 template<typename Float>
-QKXTM_Deflation_Kepler<Float>::
-QKXTM_Deflation_Kepler(QudaInvertParam *param, 
+QKXTM_Deflation<Float>::
+QKXTM_Deflation(QudaInvertParam *param, 
 		       qudaQKXTM_arpackInfo arpackInfo): 
   h_elem(NULL), eigenValues(NULL), diracOp(NULL){
-  if(GK_init_qudaQKXTM_Kepler_flag == false)
+  if(GK_init_qudaQKXTM_flag == false)
     errorQuda("You must initialize QKXTM library first\n");
 
   PolyDeg = arpackInfo.PolyDeg;
@@ -156,7 +156,7 @@ QKXTM_Deflation_Kepler(QudaInvertParam *param,
 }
 
 template<typename Float>
-QKXTM_Deflation_Kepler<Float>::~QKXTM_Deflation_Kepler(){
+QKXTM_Deflation<Float>::~QKXTM_Deflation(){
   if(NeV == 0)return;
 
   free(h_elem);
@@ -165,7 +165,7 @@ QKXTM_Deflation_Kepler<Float>::~QKXTM_Deflation_Kepler(){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::printInfo(){
+void QKXTM_Deflation<Float>::printInfo(){
   printfQuda("\n======= DEFLATION INFO =======\n"); 
   if(isFullOp){
     printfQuda(" The EigenVectors are for the Full %smu operator\n", 
@@ -187,7 +187,7 @@ void QKXTM_Deflation_Kepler<Float>::printInfo(){
 //==================================================
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out, 
+void QKXTM_Deflation<Float>::ApplyMdagM(Float *vec_out, 
 					       Float *vec_in, 
 					       QudaInvertParam *param){
 
@@ -200,8 +200,8 @@ void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out,
     cudaColorSpinorField *in    = NULL;
     cudaColorSpinorField *out   = NULL;
     
-    QKXTM_Vector_Kepler<double> *Kvec = 
-      new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+    QKXTM_Vector<double> *Kvec = 
+      new QKXTM_Vector<double>(BOTH,VECTOR);
 
     ColorSpinorParam cpuParam((void*)vec_in,*param,GK_localL,opFlag);
     ColorSpinorParam cudaParam(cpuParam, *param);
@@ -255,8 +255,8 @@ void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out,
     cudaParam.create = QUDA_ZERO_FIELD_CREATE;
     out = new cudaColorSpinorField(cudaParam);
 
-    QKXTM_Vector_Kepler<double> *Kvec = 
-      new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+    QKXTM_Vector<double> *Kvec = 
+      new QKXTM_Vector<double>(BOTH,VECTOR);
 
     Kvec->packVector(vec_in);
     Kvec->loadVector();
@@ -282,7 +282,7 @@ void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out,
 //==================================================
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::MapEvenOddToFull(){
+void QKXTM_Deflation<Float>::MapEvenOddToFull(){
 
   if(!isFullOp){ warningQuda("MapEvenOddToFull: This function only works with the Full Operator\n");
     return;
@@ -336,7 +336,7 @@ void QKXTM_Deflation_Kepler<Float>::MapEvenOddToFull(){
 
 //-For a single vector
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::MapEvenOddToFull(int i){
+void QKXTM_Deflation<Float>::MapEvenOddToFull(int i){
 
   if(!isFullOp) errorQuda("MapEvenOddToFull: This function only works with the Full Operator\n");
 
@@ -446,8 +446,8 @@ void QKXTM_Deflation_Kepler<Float>::G5innerProduct(){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-copyEigenVectorToQKXTM_Vector_Kepler(int eigenVector_id, Float *vec){
+void QKXTM_Deflation<Float>::
+copyEigenVectorToQKXTM_Vector(int eigenVector_id, Float *vec){
   if(NeV == 0)return;
   
   if(!isFullOp){
@@ -535,8 +535,8 @@ copyEigenVectorToQKXTM_Vector_Kepler(int eigenVector_id, Float *vec){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-copyEigenVectorFromQKXTM_Vector_Kepler(int eigenVector_id,Float *vec){
+void QKXTM_Deflation<Float>::
+copyEigenVectorFromQKXTM_Vector(int eigenVector_id,Float *vec){
   if(NeV == 0)return;
   
   if(!isFullOp){
@@ -602,7 +602,7 @@ copyEigenVectorFromQKXTM_Vector_Kepler(int eigenVector_id,Float *vec){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::copyToEigenVector(Float *vec, 
+void QKXTM_Deflation<Float>::copyToEigenVector(Float *vec, 
 						      Float *vals){
   memcpy(&(h_elem[0]), vec, bytes_total_length);
   memcpy(&(eigenValues[0]), vals, NeV*2*sizeof(Float));
@@ -611,9 +611,9 @@ void QKXTM_Deflation_Kepler<Float>::copyToEigenVector(Float *vec,
 
 //-C.K: This member function performs the operation vec_defl = U (\Lambda)^(-1) U^dag vec_in
 template <typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-deflateVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-	      QKXTM_Vector_Kepler<Float> &vec_in){
+void QKXTM_Deflation<Float>::
+deflateVector(QKXTM_Vector<Float> &vec_defl, 
+	      QKXTM_Vector<Float> &vec_in){
   if(NeV == 0){
     vec_defl.zero_device();
     return;
@@ -782,7 +782,7 @@ deflateVector(QKXTM_Vector_Kepler<Float> &vec_defl,
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
+void QKXTM_Deflation<Float>::
 writeEigenVectors_ASCII(char *prefix_path){
   if(NeV == 0)return;
   char filename[257];
@@ -803,7 +803,7 @@ writeEigenVectors_ASCII(char *prefix_path){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
+void QKXTM_Deflation<Float>::
 polynomialOperator(cudaColorSpinorField &out, 
 		   const cudaColorSpinorField &in){
   
@@ -874,7 +874,7 @@ polynomialOperator(cudaColorSpinorField &out,
 #include <arpackHeaders.h>
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::eigenSolver(){
+void QKXTM_Deflation<Float>::eigenSolver(){
 
   double t1,t2,t_ini,t_fin;
 
@@ -1288,7 +1288,7 @@ void QKXTM_Deflation_Kepler<Float>::eigenSolver(){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::rotateFromChiralToUKQCD(){
+void QKXTM_Deflation<Float>::rotateFromChiralToUKQCD(){
   if(NeV == 0) return;
   std::complex<Float> transMatrix[4][4];
   for(int mu = 0 ; mu < 4 ; mu++)
@@ -1330,7 +1330,7 @@ void QKXTM_Deflation_Kepler<Float>::rotateFromChiralToUKQCD(){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::multiply_by_phase(){
+void QKXTM_Deflation<Float>::multiply_by_phase(){
   if(NeV == 0)return;
   Float phaseRe, phaseIm;
   Float tmp0,tmp1;
@@ -1392,7 +1392,7 @@ void QKXTM_Deflation_Kepler<Float>::multiply_by_phase(){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::readEigenVectors(char *prefix_path){
+void QKXTM_Deflation<Float>::readEigenVectors(char *prefix_path){
   if(NeV == 0)return;
   LimeReader *limereader;
   FILE *fid;
@@ -1716,7 +1716,7 @@ void QKXTM_Deflation_Kepler<Float>::readEigenVectors(char *prefix_path){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::readEigenValues(char *filename){
+void QKXTM_Deflation<Float>::readEigenValues(char *filename){
   if(NeV == 0)return;
   FILE *ptr;
   Float dummy;
@@ -1740,9 +1740,9 @@ void QKXTM_Deflation_Kepler<Float>::readEigenValues(char *filename){
 //-C.K: This member function performs the operation 
 // vec_defl = vec_in - (U U^dag) vec_in
 template <typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-projectVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-	      QKXTM_Vector_Kepler<Float> &vec_in, 
+void QKXTM_Deflation<Float>::
+projectVector(QKXTM_Vector<Float> &vec_defl, 
+	      QKXTM_Vector<Float> &vec_in, 
 	      int is){
   
   if(!isFullOp) errorQuda("projectVector: This function only works with the Full Operator\n");
@@ -1874,9 +1874,9 @@ projectVector(QKXTM_Vector_Kepler<Float> &vec_defl,
 //-C.K: This member function performs the operation 
 //vec_defl = vec_in - (U U^dag) vec_in
 template <typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-projectVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-	      QKXTM_Vector_Kepler<Float> &vec_in, 
+void QKXTM_Deflation<Float>::
+projectVector(QKXTM_Vector<Float> &vec_defl, 
+	      QKXTM_Vector<Float> &vec_in, 
 	      int is, int NeV_defl){
   
   if(!isFullOp) errorQuda("projectVector: This function only works with the Full Operator\n");

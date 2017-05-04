@@ -1,146 +1,55 @@
 # all files for quda -- needs some cleanup
 set (QUDA_OBJS 
-  ${QKXTM_QUDA_HOME}/lib/dirac_coarse.cpp 
-  ${QKXTM_QUDA_HOME}/lib/dslash_coarse.cu 
-  ${QKXTM_QUDA_HOME}/lib/coarse_op.cu 
-  ${QKXTM_QUDA_HOME}/lib/coarsecoarse_op.cu
-  ${QKXTM_QUDA_HOME}/lib/multigrid.cpp 
-  ${QKXTM_QUDA_HOME}/lib/transfer.cpp 
-  ${QKXTM_QUDA_HOME}/lib/transfer_util.cu 
-  ${QKXTM_QUDA_HOME}/lib/inv_bicgstab_quda.cpp
+  ${QKXTM_QUDA_HOME}/lib/dirac_coarse.cpp ${QKXTM_QUDA_HOME}/lib/dslash_coarse.cu ${QKXTM_QUDA_HOME}/lib/coarse_op.cu ${QKXTM_QUDA_HOME}/lib/coarsecoarse_op.cu
+  ${QKXTM_QUDA_HOME}/lib/multigrid.cpp ${QKXTM_QUDA_HOME}/lib/transfer.cpp ${QKXTM_QUDA_HOME}/lib/transfer_util.cu ${QKXTM_QUDA_HOME}/lib/inv_bicgstab_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_bicgstabl_quda.cpp
-  ${QKXTM_QUDA_HOME}/lib/prolongator.cu 
-  ${QKXTM_QUDA_HOME}/lib/restrictor.cu 
-  ${QKXTM_QUDA_HOME}/lib/gauge_phase.cu 
-  ${QKXTM_QUDA_HOME}/lib/timer.cpp 
-  ${QKXTM_QUDA_HOME}/lib/malloc.cpp
-  ${QKXTM_QUDA_HOME}/lib/solver.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_bicgstab_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_cg_quda.cpp
-  ${QKXTM_QUDA_HOME}/lib/inv_multi_cg_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_eigcg_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/gauge_ape.cu
-  ${QKXTM_QUDA_HOME}/lib/gauge_stout.cu 
-  ${QKXTM_QUDA_HOME}/lib/gauge_plaq.cu
-  ${QKXTM_QUDA_HOME}/lib/inv_gcr_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_mr_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_sd_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_xsd_quda.cpp
-  ${QKXTM_QUDA_HOME}/lib/inv_pcg_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_mre.cpp 
-  ${QKXTM_QUDA_HOME}/lib/util_quda.cpp
-  ${QKXTM_QUDA_HOME}/lib/color_spinor_field.cpp 
-  ${QKXTM_QUDA_HOME}/lib/color_spinor_util.cu 
-  ${QKXTM_QUDA_HOME}/lib/color_spinor_pack.cu
-  ${QKXTM_QUDA_HOME}/lib/cpu_color_spinor_field.cpp 
-  ${QKXTM_QUDA_HOME}/lib/cuda_color_spinor_field.cu 
-  ${QKXTM_QUDA_HOME}/lib/dirac.cpp
-  ${QKXTM_QUDA_HOME}/lib/clover_field.cpp 
-  ${QKXTM_QUDA_HOME}/lib/covd.cpp 
-  ${QKXTM_QUDA_HOME}/lib/lattice_field.cpp 
-  ${QKXTM_QUDA_HOME}/lib/gauge_field.cpp
-  ${QKXTM_QUDA_HOME}/lib/cpu_gauge_field.cpp 
-  ${QKXTM_QUDA_HOME}/lib/cuda_gauge_field.cu
-  ${QKXTM_QUDA_HOME}/lib/extract_gauge_ghost.cu
-  ${QKXTM_QUDA_HOME}/lib/extract_gauge_ghost_mg.cu 
-  ${QKXTM_QUDA_HOME}/lib/max_gauge.cu
-  ${QKXTM_QUDA_HOME}/lib/gauge_update_quda.cu
-  ${QKXTM_QUDA_HOME}/lib/dirac_clover.cpp 
-  ${QKXTM_QUDA_HOME}/lib/dirac_wilson.cpp 
-  ${QKXTM_QUDA_HOME}/lib/dirac_staggered.cpp
-  ${QKXTM_QUDA_HOME}/lib/dirac_improved_staggered.cpp 
-  ${QKXTM_QUDA_HOME}/lib/dirac_domain_wall.cpp
-  ${QKXTM_QUDA_HOME}/lib/dirac_domain_wall_4d.cpp 
-  ${QKXTM_QUDA_HOME}/lib/dirac_mobius.cpp 
-  ${QKXTM_QUDA_HOME}/lib/dirac_twisted_clover.cpp
-  ${QKXTM_QUDA_HOME}/lib/dirac_twisted_mass.cpp 
-  ${QKXTM_QUDA_HOME}/lib/tune.cpp 
-  ${QKXTM_QUDA_HOME}/lib/fat_force_quda.cpp
-  ${QKXTM_QUDA_HOME}/lib/llfat_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/gauge_force.cu
-  ${QKXTM_QUDA_HOME}/lib/field_strength_tensor.cu 
-  ${QKXTM_QUDA_HOME}/lib/clover_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/covDev.cu
-  ${QKXTM_QUDA_HOME}/lib/dslash_wilson.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_clover.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_clover_asym.cu
-  ${QKXTM_QUDA_HOME}/lib/dslash_twisted_mass.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_ndeg_twisted_mass.cu
-  ${QKXTM_QUDA_HOME}/lib/dslash_twisted_clover.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_domain_wall.cu
-  ${QKXTM_QUDA_HOME}/lib/dslash_domain_wall_4d.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_mobius.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_staggered.cu
-  ${QKXTM_QUDA_HOME}/lib/dslash_improved_staggered.cu 
-  ${QKXTM_QUDA_HOME}/lib/dslash_pack.cu 
-  ${QKXTM_QUDA_HOME}/lib/blas_quda.cu
-  ${QKXTM_QUDA_HOME}/lib/multi_blas_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/multi_reduce_quda.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/reduce_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/face_buffer.cpp 
-  ${QKXTM_QUDA_HOME}/lib/face_gauge.cpp
-  ${QKXTM_QUDA_HOME}/lib/comm_common.cpp 
-  ${QKXTM_QUDA_HOME}/lib/${COMM_OBJS} ${NUMA_AFFINITY_OBJS} ${QIO_UTIL}
-  ${QKXTM_QUDA_HOME}/lib/clover_deriv_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/clover_invert.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_gauge_extended.cu
-  ${QKXTM_QUDA_HOME}/lib/extract_gauge_ghost_extended.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_dd.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_ds.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_dh.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_ss.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_sd.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_sh.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_hd.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_hs.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_hh.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_dd.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ds.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_sd.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ss.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_gauge_double.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_gauge_single.cu
-  ${QKXTM_QUDA_HOME}/lib/copy_gauge_half.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_gauge.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_gauge_mg.cu 
-  ${QKXTM_QUDA_HOME}/lib/copy_clover.cu
-  ${QKXTM_QUDA_HOME}/lib/staggered_oprod.cu 
-  ${QKXTM_QUDA_HOME}/lib/clover_trace_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/ks_force_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/staggered_oprod_new.cu
-  ${QKXTM_QUDA_HOME}/lib/hisq_paths_force_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/fermion_force_quda.cu
-  ${QKXTM_QUDA_HOME}/lib/unitarize_force_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/unitarize_links_quda.cu 
-  ${QKXTM_QUDA_HOME}/lib/milc_interface.cpp
-  ${QKXTM_QUDA_HOME}/lib/extended_color_spinor_utilities.cu 
-  ${QKXTM_QUDA_HOME}/lib/eig_lanczos_quda.cpp
-  ${QKXTM_QUDA_HOME}/lib/ritz_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/eig_solver.cpp 
-  ${QKXTM_QUDA_HOME}/lib/blas_magma.cu 
-  ${QKXTM_QUDA_HOME}/lib/misc_helpers.cu
-  ${QKXTM_QUDA_HOME}/lib/inv_mpcg_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_mpbicgstab_quda.cpp 
-  ${QKXTM_QUDA_HOME}/lib/inv_gmresdr_quda.cpp
-  ${QKXTM_QUDA_HOME}/lib/pgauge_exchange.cu 
-  ${QKXTM_QUDA_HOME}/lib/pgauge_init.cu 
-  ${QKXTM_QUDA_HOME}/lib/pgauge_heatbath.cu 
-  ${QKXTM_QUDA_HOME}/lib/random.cu
-  ${QKXTM_QUDA_HOME}/lib/gauge_fix_ovr_extra.cu 
-  ${QKXTM_QUDA_HOME}/lib/gauge_fix_fft.cu 
-  ${QKXTM_QUDA_HOME}/lib/gauge_fix_ovr.cu
-  ${QKXTM_QUDA_HOME}/lib/pgauge_det_trace.cu 
-  ${QKXTM_QUDA_HOME}/lib/clover_outer_product.cu
-  ${QKXTM_QUDA_HOME}/lib/clover_sigma_outer_product.cu 
-  ${QKXTM_QUDA_HOME}/lib/momentum.cu 
-  ${QKXTM_QUDA_HOME}/lib/qcharge_quda.cu
-  ${QKXTM_QUDA_HOME}/lib/quda_memcpy.cpp
-  ${QKXTM_QUDA_HOME}/lib/quda_arpack_interface.cpp  
-  ${QKXTM_QUDA_HOME}/lib/version.cpp
-  qudaQKXTM_Kepler_kernels.cu qudaQKXTM_interface.cpp )
+  ${QKXTM_QUDA_HOME}/lib/prolongator.cu ${QKXTM_QUDA_HOME}/lib/restrictor.cu ${QKXTM_QUDA_HOME}/lib/gauge_phase.cu ${QKXTM_QUDA_HOME}/lib/timer.cpp ${QKXTM_QUDA_HOME}/lib/malloc.cpp
+  ${QKXTM_QUDA_HOME}/lib/solver.cpp ${QKXTM_QUDA_HOME}/lib/inv_bicgstab_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_cg_quda.cpp
+  ${QKXTM_QUDA_HOME}/lib/inv_multi_cg_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_eigcg_quda.cpp ${QKXTM_QUDA_HOME}/lib/gauge_ape.cu
+  ${QKXTM_QUDA_HOME}/lib/gauge_stout.cu ${QKXTM_QUDA_HOME}/lib/gauge_plaq.cu
+  ${QKXTM_QUDA_HOME}/lib/inv_gcr_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_mr_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_sd_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_xsd_quda.cpp
+  ${QKXTM_QUDA_HOME}/lib/inv_pcg_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_mre.cpp ${QKXTM_QUDA_HOME}/lib/util_quda.cpp
+  ${QKXTM_QUDA_HOME}/lib/color_spinor_field.cpp ${QKXTM_QUDA_HOME}/lib/color_spinor_util.cu ${QKXTM_QUDA_HOME}/lib/color_spinor_pack.cu
+  ${QKXTM_QUDA_HOME}/lib/cpu_color_spinor_field.cpp ${QKXTM_QUDA_HOME}/lib/cuda_color_spinor_field.cu ${QKXTM_QUDA_HOME}/lib/dirac.cpp
+  ${QKXTM_QUDA_HOME}/lib/clover_field.cpp ${QKXTM_QUDA_HOME}/lib/covd.cpp ${QKXTM_QUDA_HOME}/lib/lattice_field.cpp ${QKXTM_QUDA_HOME}/lib/gauge_field.cpp
+  ${QKXTM_QUDA_HOME}/lib/cpu_gauge_field.cpp ${QKXTM_QUDA_HOME}/lib/cuda_gauge_field.cu ${QKXTM_QUDA_HOME}/lib/extract_gauge_ghost.cu
+  ${QKXTM_QUDA_HOME}/lib/extract_gauge_ghost_mg.cu ${QKXTM_QUDA_HOME}/lib/max_gauge.cu ${QKXTM_QUDA_HOME}/lib/gauge_update_quda.cu
+  ${QKXTM_QUDA_HOME}/lib/dirac_clover.cpp ${QKXTM_QUDA_HOME}/lib/dirac_wilson.cpp ${QKXTM_QUDA_HOME}/lib/dirac_staggered.cpp
+  ${QKXTM_QUDA_HOME}/lib/dirac_improved_staggered.cpp ${QKXTM_QUDA_HOME}/lib/dirac_domain_wall.cpp
+  ${QKXTM_QUDA_HOME}/lib/dirac_domain_wall_4d.cpp ${QKXTM_QUDA_HOME}/lib/dirac_mobius.cpp ${QKXTM_QUDA_HOME}/lib/dirac_twisted_clover.cpp
+  ${QKXTM_QUDA_HOME}/lib/dirac_twisted_mass.cpp ${QKXTM_QUDA_HOME}/lib/tune.cpp ${QKXTM_QUDA_HOME}/lib/fat_force_quda.cpp
+  ${QKXTM_QUDA_HOME}/lib/llfat_quda.cu ${QKXTM_QUDA_HOME}/lib/gauge_force.cu
+  ${QKXTM_QUDA_HOME}/lib/field_strength_tensor.cu ${QKXTM_QUDA_HOME}/lib/clover_quda.cu ${QKXTM_QUDA_HOME}/lib/dslash_quda.cu ${QKXTM_QUDA_HOME}/lib/covDev.cu
+  ${QKXTM_QUDA_HOME}/lib/dslash_wilson.cu ${QKXTM_QUDA_HOME}/lib/dslash_clover.cu ${QKXTM_QUDA_HOME}/lib/dslash_clover_asym.cu
+  ${QKXTM_QUDA_HOME}/lib/dslash_twisted_mass.cu ${QKXTM_QUDA_HOME}/lib/dslash_ndeg_twisted_mass.cu
+  ${QKXTM_QUDA_HOME}/lib/dslash_twisted_clover.cu ${QKXTM_QUDA_HOME}/lib/dslash_domain_wall.cu
+  ${QKXTM_QUDA_HOME}/lib/dslash_domain_wall_4d.cu ${QKXTM_QUDA_HOME}/lib/dslash_mobius.cu ${QKXTM_QUDA_HOME}/lib/dslash_staggered.cu
+  ${QKXTM_QUDA_HOME}/lib/dslash_improved_staggered.cu ${QKXTM_QUDA_HOME}/lib/dslash_pack.cu ${QKXTM_QUDA_HOME}/lib/blas_quda.cu
+  ${QKXTM_QUDA_HOME}/lib/multi_blas_quda.cu ${QKXTM_QUDA_HOME}/lib/multi_reduce_quda.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_quda.cu ${QKXTM_QUDA_HOME}/lib/reduce_quda.cu ${QKXTM_QUDA_HOME}/lib/face_buffer.cpp ${QKXTM_QUDA_HOME}/lib/face_gauge.cpp
+  ${QKXTM_QUDA_HOME}/lib/comm_common.cpp ${QKXTM_QUDA_HOME}/lib/${COMM_OBJS} ${NUMA_AFFINITY_OBJS} ${QIO_UTIL}
+  ${QKXTM_QUDA_HOME}/lib/clover_deriv_quda.cu ${QKXTM_QUDA_HOME}/lib/clover_invert.cu ${QKXTM_QUDA_HOME}/lib/copy_gauge_extended.cu
+  ${QKXTM_QUDA_HOME}/lib/extract_gauge_ghost_extended.cu ${QKXTM_QUDA_HOME}/lib/copy_color_spinor.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_dd.cu ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_ds.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_dh.cu ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_ss.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_sd.cu ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_sh.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_hd.cu ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_hs.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_hh.cu ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_dd.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ds.cu ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_sd.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ss.cu ${QKXTM_QUDA_HOME}/lib/copy_gauge_double.cu ${QKXTM_QUDA_HOME}/lib/copy_gauge_single.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_gauge_half.cu ${QKXTM_QUDA_HOME}/lib/copy_gauge.cu ${QKXTM_QUDA_HOME}/lib/copy_gauge_mg.cu ${QKXTM_QUDA_HOME}/lib/copy_clover.cu
+  ${QKXTM_QUDA_HOME}/lib/staggered_oprod.cu ${QKXTM_QUDA_HOME}/lib/clover_trace_quda.cu ${QKXTM_QUDA_HOME}/lib/ks_force_quda.cu ${QKXTM_QUDA_HOME}/lib/staggered_oprod_new.cu
+  ${QKXTM_QUDA_HOME}/lib/hisq_paths_force_quda.cu ${QKXTM_QUDA_HOME}/lib/fermion_force_quda.cu
+  ${QKXTM_QUDA_HOME}/lib/unitarize_force_quda.cu ${QKXTM_QUDA_HOME}/lib/unitarize_links_quda.cu ${QKXTM_QUDA_HOME}/lib/milc_interface.cpp
+  ${QKXTM_QUDA_HOME}/lib/extended_color_spinor_utilities.cu ${QKXTM_QUDA_HOME}/lib/eig_lanczos_quda.cpp
+  ${QKXTM_QUDA_HOME}/lib/ritz_quda.cpp ${QKXTM_QUDA_HOME}/lib/eig_solver.cpp ${QKXTM_QUDA_HOME}/lib/blas_magma.cu ${QKXTM_QUDA_HOME}/lib/misc_helpers.cu
+  ${QKXTM_QUDA_HOME}/lib/inv_mpcg_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_mpbicgstab_quda.cpp ${QKXTM_QUDA_HOME}/lib/inv_gmresdr_quda.cpp
+  ${QKXTM_QUDA_HOME}/lib/pgauge_exchange.cu ${QKXTM_QUDA_HOME}/lib/pgauge_init.cu ${QKXTM_QUDA_HOME}/lib/pgauge_heatbath.cu ${QKXTM_QUDA_HOME}/lib/random.cu
+  ${QKXTM_QUDA_HOME}/lib/gauge_fix_ovr_extra.cu ${QKXTM_QUDA_HOME}/lib/gauge_fix_fft.cu ${QKXTM_QUDA_HOME}/lib/gauge_fix_ovr.cu
+  ${QKXTM_QUDA_HOME}/lib/pgauge_det_trace.cu ${QKXTM_QUDA_HOME}/lib/clover_outer_product.cu
+  ${QKXTM_QUDA_HOME}/lib/clover_sigma_outer_product.cu ${QKXTM_QUDA_HOME}/lib/momentum.cu ${QKXTM_QUDA_HOME}/lib/qcharge_quda.cu
+  ${QKXTM_QUDA_HOME}/lib/quda_memcpy.cpp ${QKXTM_QUDA_HOME}/lib/version.cpp
+  qudaQKXTM_kernels.cu qudaQKXTM_interface.cpp )
 
 ## split source into cu and cpp files
 FOREACH(item ${QUDA_OBJS})
@@ -171,16 +80,16 @@ mark_as_advanced(QUDA_GITDIR)
 include_directories(${QKXTM_QUDA_HOME}/lib/dslash_core)
 include_directories(${QKXTM_QUDA_HOME}/lib/)
 #QKXTM: Begin DMH
-include_directories(code_pieces_Kepler)
-include_directories(SYSTEM ${QKXTM_GSLHOME}/include)
-include_directories(SYSTEM ${QKXTM_HDF5HOME}/src)
-include_directories(SYSTEM ${QKXTM_LIMEHOME}/include)
-if(QKXTM_ARPACK)
-  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
-  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
-  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/SRC)
-  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/UTIL)
-endif(QKXTM_ARPACK)
+include_directories(code_pieces)
+include_directories(SYSTEM ${QUDA_QKXTM_GSLHOME}/include)
+include_directories(SYSTEM ${QUDA_QKXTM_HDF5HOME}/src)
+include_directories(SYSTEM ${QUDA_QKXTM_LIMEHOME}/include)
+if(QUDA_QKXTM_ARPACK)
+  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
+  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
+  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/SRC)
+  include_directories(SYSTEM ${QUDA_QKXTM_ARPACKHOME}/UTIL)
+endif(QUDA_QKXTM_ARPACK)
 #QKXTM: End DMH
 
 # generate a cmake object library for all cpp files first
@@ -203,14 +112,13 @@ target_include_directories(QKXTMquda PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR
   $<INSTALL_INTERFACE:include>)
 
 #DMH
-if(QKXTM_ARPACK)
-  LIST(APPEND QKXTMquda ${QKXTM_PARPACK_LIB})
-  LIST(APPEND QKXTMquda ${QKXTM_ARPACK_LIB})
-endif(QKXTM_ARPACK)
 LIST(APPEND QKXTMquda ${QKXTM_GSL_LIB})
 LIST(APPEND QKXTMquda ${QKXTM_HDF5_LIB})
 LIST(APPEND QKXTMquda ${QKXTM_LIME_LIB})
-LIST(APPEND QKXTMquda ${QKXTM_OPENBLAS_LIB})
+if(QUDA_QKXTM_ARPACK)
+  LIST(APPEND QKXTMquda ${QKXTM_PARPACK_LIB})
+  LIST(APPEND QKXTMquda ${QKXTM_ARPACK_LIB})
+endif(QUDA_QKXTM_ARPACK)
 #DMH
 
 # add dependencies for linking

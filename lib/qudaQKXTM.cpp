@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
@@ -39,7 +39,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -132,12 +132,12 @@ static char* qcd_getParam(char token[],char* params,int len)
 /////////////////////////////
 
 /*
-#define CC QKXTM_Field_Kepler<Float>
+#define CC QKXTM_Field<Float>
 #define DEVICE_MEMORY_REPORT
 #define CMPLX_FLOAT std::complex<Float>
 
 //--------------------------//
-// class QKXTM_Field_Kepler //
+// class QKXTM_Field //
 //--------------------------//
 
 // This is is a class which allocates memory on either the
@@ -151,13 +151,13 @@ static char* qcd_getParam(char token[],char* params,int len)
 // Propagtor3D: as above, but with sinks only at one timeslice.
 
 template<typename Float>
-QKXTM_Field_Kepler<Float>::QKXTM_Field_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Field<Float>::QKXTM_Field(ALLOCATION_FLAG alloc_flag, 
 					      CLASS_ENUM classT):
   h_elem(NULL) , d_elem(NULL) , h_ext_ghost(NULL) , h_elem_backup(NULL) , 
   isAllocHost(false) , isAllocDevice(false), isAllocHostBackup(false)
 {
-  if(GK_init_qudaQKXTM_Kepler_flag == false) 
-    errorQuda("You must initialize init_qudaQKXTM_Kepler first");
+  if(GK_init_qudaQKXTM_flag == false) 
+    errorQuda("You must initialize init_qudaQKXTM first");
 
   switch(classT){
   case FIELD:
@@ -217,14 +217,14 @@ QKXTM_Field_Kepler<Float>::QKXTM_Field_Kepler(ALLOCATION_FLAG alloc_flag,
 
 //Destructor
 template<typename Float>
-QKXTM_Field_Kepler<Float>::~QKXTM_Field_Kepler(){
+QKXTM_Field<Float>::~QKXTM_Field(){
   if(h_elem != NULL) destroy_host();
   if(h_elem_backup != NULL) destroy_host_backup();
   if(d_elem != NULL) destroy_device();
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::create_host(){
+void QKXTM_Field<Float>::create_host(){
   h_elem = (Float*) malloc(bytes_total_plus_ghost_length);
   h_ext_ghost = (Float*) malloc(bytes_ghost_length);
   if(h_elem == NULL || 
@@ -234,7 +234,7 @@ void QKXTM_Field_Kepler<Float>::create_host(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::create_host_backup(){
+void QKXTM_Field<Float>::create_host_backup(){
   h_elem_backup = (Float*) malloc(bytes_total_plus_ghost_length);
   if(h_elem_backup == NULL) errorQuda("Error with allocation host memory");
   isAllocHostBackup = true;
@@ -242,7 +242,7 @@ void QKXTM_Field_Kepler<Float>::create_host_backup(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::create_device(){
+void QKXTM_Field<Float>::create_device(){
   cudaMalloc((void**)&d_elem,bytes_total_plus_ghost_length);
   checkCudaError();
 #ifdef DEVICE_MEMORY_REPORT
@@ -255,7 +255,7 @@ void QKXTM_Field_Kepler<Float>::create_device(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroy_host(){
+void QKXTM_Field<Float>::destroy_host(){
   free(h_elem);
   free(h_ext_ghost);
   h_elem=NULL;
@@ -263,13 +263,13 @@ void QKXTM_Field_Kepler<Float>::destroy_host(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroy_host_backup(){
+void QKXTM_Field<Float>::destroy_host_backup(){
   free(h_elem_backup);
   h_elem=NULL;
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroy_device(){
+void QKXTM_Field<Float>::destroy_device(){
   cudaFree(d_elem);
   checkCudaError();
   d_elem = NULL;
@@ -280,22 +280,22 @@ void QKXTM_Field_Kepler<Float>::destroy_device(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::zero_host(){
+void QKXTM_Field<Float>::zero_host(){
   memset(h_elem,0,bytes_total_plus_ghost_length);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::zero_host_backup(){
+void QKXTM_Field<Float>::zero_host_backup(){
   memset(h_elem_backup,0,bytes_total_plus_ghost_length);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::zero_device(){
+void QKXTM_Field<Float>::zero_device(){
   cudaMemset(d_elem,0,bytes_total_plus_ghost_length);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::createTexObject(cudaTextureObject_t *tex){
+void QKXTM_Field<Float>::createTexObject(cudaTextureObject_t *tex){
   cudaChannelFormatDesc desc;
   memset(&desc, 0, sizeof(cudaChannelFormatDesc));
   int precision = CC::Precision();
@@ -331,12 +331,12 @@ void QKXTM_Field_Kepler<Float>::createTexObject(cudaTextureObject_t *tex){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroyTexObject(cudaTextureObject_t tex){
+void QKXTM_Field<Float>::destroyTexObject(cudaTextureObject_t tex){
   cudaDestroyTextureObject(tex);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::printInfo(){
+void QKXTM_Field<Float>::printInfo(){
   printfQuda("This object has precision %d\n",Precision());
   printfQuda("This object needs %f Mb\n",
 	     bytes_total_plus_ghost_length/(1024.*1024.));
@@ -346,17 +346,17 @@ void QKXTM_Field_Kepler<Float>::printInfo(){
 */
 
 //--------------------------//
-// class QKXTM_Gauge_Kepler //
+// class QKXTM_Gauge //
 //--------------------------//
 
 /*
 template<typename Float>
-QKXTM_Gauge_Kepler<Float>::QKXTM_Gauge_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Gauge<Float>::QKXTM_Gauge(ALLOCATION_FLAG alloc_flag, 
 					      CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){ ; }
+  QKXTM_Field<Float>(alloc_flag, classT){ ; }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::packGauge(void **gauge){
+void QKXTM_Gauge<Float>::packGauge(void **gauge){
 
   double **p_gauge = (double**) gauge;
   
@@ -374,7 +374,7 @@ void QKXTM_Gauge_Kepler<Float>::packGauge(void **gauge){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::packGaugeToBackup(void **gauge){
+void QKXTM_Gauge<Float>::packGaugeToBackup(void **gauge){
   double **p_gauge = (double**) gauge;
   if(CC::h_elem_backup != NULL){
     for(int dir = 0 ; dir < GK_nDim ; dir++)
@@ -398,21 +398,21 @@ void QKXTM_Gauge_Kepler<Float>::packGaugeToBackup(void **gauge){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::justDownloadGauge(){
+void QKXTM_Gauge<Float>::justDownloadGauge(){
   cudaMemcpy(CC::h_elem,CC::d_elem,CC::bytes_total_length, 
 	     cudaMemcpyDeviceToHost);
   checkCudaError();
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::loadGauge(){
+void QKXTM_Gauge<Float>::loadGauge(){
   cudaMemcpy(CC::d_elem,CC::h_elem,CC::bytes_total_length, 
 	     cudaMemcpyHostToDevice );
   checkCudaError();
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::loadGaugeFromBackup(){
+void QKXTM_Gauge<Float>::loadGaugeFromBackup(){
   if(CC::h_elem_backup != NULL){
     cudaMemcpy(CC::d_elem,CC::h_elem_backup, CC::bytes_total_length, 
 	       cudaMemcpyHostToDevice );
@@ -425,7 +425,7 @@ void QKXTM_Gauge_Kepler<Float>::loadGaugeFromBackup(){
 
 // gpu collect ghost and send it to host
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::ghostToHost(){   
+void QKXTM_Gauge<Float>::ghostToHost(){   
 
   // direction x 
   if( GK_localL[0] < GK_totalL[0]){
@@ -595,7 +595,7 @@ void QKXTM_Gauge_Kepler<Float>::ghostToHost(){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::cpuExchangeGhost(){
+void QKXTM_Gauge<Float>::cpuExchangeGhost(){
   if( comm_size() > 1 ){
     MsgHandle *mh_send_fwd[4];
     MsgHandle *mh_from_back[4];
@@ -648,7 +648,7 @@ void QKXTM_Gauge_Kepler<Float>::cpuExchangeGhost(){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::ghostToDevice(){
+void QKXTM_Gauge<Float>::ghostToDevice(){
   if(comm_size() > 1){
     Float *host = CC::h_ext_ghost;
     Float *device = CC::d_elem+GK_localVolume*GK_nColor*GK_nColor*GK_nDim*2;
@@ -658,7 +658,7 @@ void QKXTM_Gauge_Kepler<Float>::ghostToDevice(){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::calculatePlaq(){
+void QKXTM_Gauge<Float>::calculatePlaq(){
   cudaTextureObject_t tex;
 
   ghostToHost();
@@ -673,17 +673,17 @@ void QKXTM_Gauge_Kepler<Float>::calculatePlaq(){
 */
 
 //---------------------------//
-// class QKXTM_Vector_Kepler //
+// class QKXTM_Vector //
 //---------------------------//
 
 /*
 template<typename Float>
-QKXTM_Vector_Kepler<Float>::QKXTM_Vector_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Vector<Float>::QKXTM_Vector(ALLOCATION_FLAG alloc_flag, 
 						CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){ ; }
+  QKXTM_Field<Float>(alloc_flag, classT){ ; }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::packVector(Float *vector){
+void QKXTM_Vector<Float>::packVector(Float *vector){
   for(int iv = 0 ; iv < GK_localVolume ; iv++)
     for(int mu = 0 ; mu < GK_nSpin ; mu++)  // always work with format colors inside spins
       for(int c1 = 0 ; c1 < GK_nColor ; c1++)
@@ -696,7 +696,7 @@ void QKXTM_Vector_Kepler<Float>::packVector(Float *vector){
  
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::unpackVector(){
+void QKXTM_Vector<Float>::unpackVector(){
 
   Float *vector_tmp = (Float*) malloc( CC::bytes_total_length );
   if(vector_tmp == NULL)
@@ -717,7 +717,7 @@ void QKXTM_Vector_Kepler<Float>::unpackVector(){
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::unpackVector(Float *vector){
+void QKXTM_Vector<Float>::unpackVector(Float *vector){
   
   for(int iv = 0 ; iv < GK_localVolume ; iv++)
     for(int mu = 0 ; mu < GK_nSpin ; mu++) // always work with format colors inside spins
@@ -731,14 +731,14 @@ void QKXTM_Vector_Kepler<Float>::unpackVector(Float *vector){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::loadVector(){
+void QKXTM_Vector<Float>::loadVector(){
   cudaMemcpy(CC::d_elem,CC::h_elem,CC::bytes_total_length, 
 	     cudaMemcpyHostToDevice );
   checkCudaError();
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::unloadVector(){
+void QKXTM_Vector<Float>::unloadVector(){
   cudaMemcpy(CC::h_elem, CC::d_elem, CC::bytes_total_length, 
 	     cudaMemcpyDeviceToHost);
   checkCudaError();
@@ -746,7 +746,7 @@ void QKXTM_Vector_Kepler<Float>::unloadVector(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::download(){
+void QKXTM_Vector<Float>::download(){
 
   cudaMemcpy(CC::h_elem, CC::d_elem, CC::bytes_total_length, 
 	     cudaMemcpyDeviceToHost);
@@ -771,19 +771,19 @@ void QKXTM_Vector_Kepler<Float>::download(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::castDoubleToFloat(QKXTM_Vector_Kepler<double> &vecIn){
+void QKXTM_Vector<Float>::castDoubleToFloat(QKXTM_Vector<double> &vecIn){
   if(typeid(Float) != typeid(float) )errorQuda("This method works only to convert double to single precision\n");
   run_castDoubleToFloat((void*)CC::d_elem, (void*)vecIn.D_elem());
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::castFloatToDouble(QKXTM_Vector_Kepler<float> &vecIn){
+void QKXTM_Vector<Float>::castFloatToDouble(QKXTM_Vector<float> &vecIn){
   if(typeid(Float) != typeid(double) )errorQuda("This method works only to convert single to double precision\n");
   run_castFloatToDouble((void*)CC::d_elem, (void*)vecIn.D_elem());
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::ghostToHost(){
+void QKXTM_Vector<Float>::ghostToHost(){
   // direction x 
   if( GK_localL[0] < GK_totalL[0]){
     int position;
@@ -933,7 +933,7 @@ void QKXTM_Vector_Kepler<Float>::ghostToHost(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::cpuExchangeGhost(){
+void QKXTM_Vector<Float>::cpuExchangeGhost(){
   if( comm_size() > 1 ){
     MsgHandle *mh_send_fwd[4];
     MsgHandle *mh_from_back[4];
@@ -986,7 +986,7 @@ void QKXTM_Vector_Kepler<Float>::cpuExchangeGhost(){
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::ghostToDevice(){ 
+void QKXTM_Vector<Float>::ghostToDevice(){ 
   if(comm_size() > 1){
     Float *host = CC::h_ext_ghost;
     Float *device = CC::d_elem + GK_localVolume*GK_nSpin*GK_nColor*2;
@@ -997,7 +997,7 @@ void QKXTM_Vector_Kepler<Float>::ghostToDevice(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::gaussianSmearing(QKXTM_Vector_Kepler<Float> &vecIn,QKXTM_Gauge_Kepler<Float> &gaugeAPE){
+void QKXTM_Vector<Float>::gaussianSmearing(QKXTM_Vector<Float> &vecIn,QKXTM_Gauge<Float> &gaugeAPE){
   gaugeAPE.ghostToHost();
   gaugeAPE.cpuExchangeGhost();
   gaugeAPE.ghostToDevice();
@@ -1035,33 +1035,33 @@ void QKXTM_Vector_Kepler<Float>::gaussianSmearing(QKXTM_Vector_Kepler<Float> &ve
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::uploadToCuda(ColorSpinorField *qudaVector, 
+void QKXTM_Vector<Float>::uploadToCuda(ColorSpinorField *qudaVector, 
 					      bool isEv){
   run_UploadToCuda((void*) CC::d_elem, *qudaVector, sizeof(Float), isEv);
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::downloadFromCuda(ColorSpinorField *qudaVector, bool isEv){
+void QKXTM_Vector<Float>::downloadFromCuda(ColorSpinorField *qudaVector, bool isEv){
   run_DownloadFromCuda((void*) CC::d_elem, *qudaVector, sizeof(Float), isEv);
 }
 
 template<typename Float>
-void  QKXTM_Vector_Kepler<Float>::scaleVector(double a){
+void  QKXTM_Vector<Float>::scaleVector(double a){
   run_ScaleVector(a,(void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void  QKXTM_Vector_Kepler<Float>::conjugate(){
+void  QKXTM_Vector<Float>::conjugate(){
   run_conjugate_vector((void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void  QKXTM_Vector_Kepler<Float>::apply_gamma5(){
+void  QKXTM_Vector<Float>::apply_gamma5(){
   run_apply_gamma5_vector((void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::norm2Host(){
+void QKXTM_Vector<Float>::norm2Host(){
   Float res = 0.;
   Float globalRes;
 
@@ -1075,7 +1075,7 @@ void QKXTM_Vector_Kepler<Float>::norm2Host(){
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::copyPropagator3D(QKXTM_Propagator3D_Kepler<Float> &prop, int timeslice, int nu , int c2){
+void QKXTM_Vector<Float>::copyPropagator3D(QKXTM_Propagator3D<Float> &prop, int timeslice, int nu , int c2){
   Float *pointer_src = NULL;
   Float *pointer_dst = NULL;
   int V3 = GK_localVolume/GK_localL[3];
@@ -1102,7 +1102,7 @@ void QKXTM_Vector_Kepler<Float>::copyPropagator3D(QKXTM_Propagator3D_Kepler<Floa
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::copyPropagator(QKXTM_Propagator_Kepler<Float> &prop, int nu , int c2){
+void QKXTM_Vector<Float>::copyPropagator(QKXTM_Propagator<Float> &prop, int nu , int c2){
   Float *pointer_src = NULL;
   Float *pointer_dst = NULL;
   
@@ -1126,7 +1126,7 @@ void QKXTM_Vector_Kepler<Float>::copyPropagator(QKXTM_Propagator_Kepler<Float> &
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::write(char *filename){
+void QKXTM_Vector<Float>::write(char *filename){
   FILE *fid;
   int error_in_header=0;
   LimeWriter *limewriter;
@@ -1317,17 +1317,17 @@ void QKXTM_Vector_Kepler<Float>::write(char *filename){
 */
 
 //-------------------------------//
-// class QKXTM_Propagator_Kepler //
+// class QKXTM_Propagator //
 //-------------------------------//
 /*
 template<typename Float>
-QKXTM_Propagator_Kepler<Float>::
-QKXTM_Propagator_Kepler(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){;}
+QKXTM_Propagator<Float>::
+QKXTM_Propagator(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT): 
+  QKXTM_Field<Float>(alloc_flag, classT){;}
 
 template <typename Float>
-void QKXTM_Propagator_Kepler<Float>::
-absorbVectorToHost(QKXTM_Vector_Kepler<Float> &vec, int nu, int c2){
+void QKXTM_Propagator<Float>::
+absorbVectorToHost(QKXTM_Vector<Float> &vec, int nu, int c2){
   Float *pointProp_host;
   Float *pointVec_dev;
   for(int mu = 0 ; mu < GK_nSpin ; mu++)
@@ -1344,7 +1344,7 @@ absorbVectorToHost(QKXTM_Vector_Kepler<Float> &vec, int nu, int c2){
 }
  
 template <typename Float>
-void QKXTM_Propagator_Kepler<Float>::absorbVectorToDevice(QKXTM_Vector_Kepler<Float> &vec, int nu, int c2){
+void QKXTM_Propagator<Float>::absorbVectorToDevice(QKXTM_Vector<Float> &vec, int nu, int c2){
   Float *pointProp_dev;
   Float *pointVec_dev;
   for(int mu = 0 ; mu < GK_nSpin ; mu++)
@@ -1362,7 +1362,7 @@ void QKXTM_Propagator_Kepler<Float>::absorbVectorToDevice(QKXTM_Vector_Kepler<Fl
 }
 
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_device(int sign){
+void QKXTM_Propagator<Float>::rotateToPhysicalBase_device(int sign){
   if( (sign != +1) && (sign != -1) ) errorQuda("The sign can be only +-1\n");
   run_rotateToPhysicalBase((void*) CC::d_elem, sign , sizeof(Float));
 }
@@ -1371,7 +1371,7 @@ void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_device(int sign){
 // QUDA standards. Eg, assigning vaules to complex variable:
 // var.real() = 1.0; is changed to var.real(1.0);
 template <typename Float>
-void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_host(int sign_int){
+void QKXTM_Propagator<Float>::rotateToPhysicalBase_host(int sign_int){
   if( (sign_int != +1) && (sign_int != -1) ) 
     errorQuda("The sign can be only +-1\n");
   
@@ -1445,7 +1445,7 @@ void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_host(int sign_int){
 
 // gpu collect ghost and send it to host
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::ghostToHost(){   
+void QKXTM_Propagator<Float>::ghostToHost(){   
   // direction x 
   if( GK_localL[0] < GK_totalL[0]){
     int position;
@@ -1650,7 +1650,7 @@ void QKXTM_Propagator_Kepler<Float>::ghostToHost(){
 }
 
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::cpuExchangeGhost(){
+void QKXTM_Propagator<Float>::cpuExchangeGhost(){
   if( comm_size() > 1 ){
     MsgHandle *mh_send_fwd[4];
     MsgHandle *mh_from_back[4];
@@ -1703,7 +1703,7 @@ void QKXTM_Propagator_Kepler<Float>::cpuExchangeGhost(){
 }
 
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::ghostToDevice(){ 
+void QKXTM_Propagator<Float>::ghostToDevice(){ 
   if(comm_size() > 1){
     Float *host = CC::h_ext_ghost;
     Float *device = CC::d_elem + GK_localVolume*GK_nSpin*GK_nColor*GK_nSpin*GK_nColor*2;
@@ -1713,26 +1713,26 @@ void QKXTM_Propagator_Kepler<Float>::ghostToDevice(){
 }
 
 template<typename Float>
-void  QKXTM_Propagator_Kepler<Float>::conjugate(){
+void  QKXTM_Propagator<Float>::conjugate(){
   run_conjugate_propagator((void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void  QKXTM_Propagator_Kepler<Float>::apply_gamma5(){
+void  QKXTM_Propagator<Float>::apply_gamma5(){
   run_apply_gamma5_propagator((void*)CC::d_elem,sizeof(Float));
 }
 */
 
 //--------------------------------//
-// class QKXTM_Contraction_Kepler //
+// class QKXTM_Contraction //
 //--------------------------------//
 
 /*
 #define N_MESONS 10
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
-	       QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractMesons(QKXTM_Propagator<Float> &prop1,
+	       QKXTM_Propagator<Float> &prop2, 
 	       char *filename_out, int isource){
   
   errorQuda("contractMesons: This version of the function is obsolete. Cannot guarantee correct results. Please call the overloaded-updated version of this function with the corresponding list of arguments.\n");
@@ -1804,9 +1804,9 @@ contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
 
 #define N_BARYONS 10
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
-		QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractBaryons(QKXTM_Propagator<Float> &prop1,
+		QKXTM_Propagator<Float> &prop2, 
 		char *filename_out, int isource){
   
   errorQuda("contractBaryons: This version of the function is obsolete. Cannot guarantee correct results. Please call the overloaded-updated version of this function with the corresponding list of arguments.\n");
@@ -1875,10 +1875,10 @@ contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
 }
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopBaryonsHDF5(void *twopBaryons, 
 		     char *filename, 
-		     qudaQKXTMinfo_Kepler info, 
+		     qudaQKXTMinfo info, 
 		     int isource){
 
   if(info.CorrSpace==MOMENTUM_SPACE)      
@@ -1892,10 +1892,10 @@ writeTwopBaryonsHDF5(void *twopBaryons,
 //-C.K. - New function to write the baryons two-point function in 
 // HDF5 format, position-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopBaryonsHDF5_PosSpace(void *twopBaryons, 
 			      char *filename, 
-			      qudaQKXTMinfo_Kepler info, 
+			      qudaQKXTMinfo info, 
 			      int isource){
 
   if(info.CorrSpace!=POSITION_SPACE) errorQuda("writeTwopBaryonsHDF5_PosSpace: Support for writing the Baryon two-point function only in position-space!\n");
@@ -2021,10 +2021,10 @@ writeTwopBaryonsHDF5_PosSpace(void *twopBaryons,
 //-C.K. - New function to write the baryons two-point function in 
 //HDF5 format, momentum-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopBaryonsHDF5_MomSpace(void *twopBaryons, 
 			      char *filename, 
-			      qudaQKXTMinfo_Kepler info, 
+			      qudaQKXTMinfo info, 
 			      int isource){
 
   if(info.CorrSpace!=MOMENTUM_SPACE) errorQuda("writeTwopBaryonsHDF5_MomSpace: Support for writing the Baryon two-point function only in momentum-space!\n");
@@ -2209,7 +2209,7 @@ writeTwopBaryonsHDF5_MomSpace(void *twopBaryons,
 //-C.K. - New function to copy the baryon two-point functions into write 
 // Buffers for writing in HDF5 format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 copyTwopBaryonsToHDF5_Buf(void *Twop_baryons_HDF5, 
 			  void *corrBaryons, 
 			  int isource, 
@@ -2261,7 +2261,7 @@ copyTwopBaryonsToHDF5_Buf(void *Twop_baryons_HDF5,
 
 //-C.K. New function to write the baryons two-point function in ASCII format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopBaryons_ASCII(void *corrBaryons, 
 		       char *filename_out, 
 		       int isource, 
@@ -2321,9 +2321,9 @@ writeTwopBaryons_ASCII(void *corrBaryons,
 
 //-C.K. Overloaded function to perform the baryon contractions without writing the data
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
-		QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractBaryons(QKXTM_Propagator<Float> &prop1,
+		QKXTM_Propagator<Float> &prop2, 
 		void *corrBaryons, int isource, 
 		CORR_SPACE CorrSpace){
   cudaTextureObject_t texProp1, texProp2;
@@ -2366,10 +2366,10 @@ contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
 
 //--------------------------------------------------------//
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopMesonsHDF5(void *twopMesons, 
 		    char *filename, 
-		    qudaQKXTMinfo_Kepler info, 
+		    qudaQKXTMinfo info, 
 		    int isource){
 
   if(info.CorrSpace==MOMENTUM_SPACE) 
@@ -2382,10 +2382,10 @@ writeTwopMesonsHDF5(void *twopMesons,
 
 //-C.K. - New function to write the mesons two-point function in HDF5 format, position-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopMesonsHDF5_PosSpace(void *twopMesons, 
 			     char *filename, 
-			     qudaQKXTMinfo_Kepler info, 
+			     qudaQKXTMinfo info, 
 			     int isource){
   
   if(info.CorrSpace!=POSITION_SPACE) errorQuda("writeTwopMesonsHDF5_PosSpace: Support for writing the Meson two-point function only in position-space!\n");
@@ -2510,10 +2510,10 @@ writeTwopMesonsHDF5_PosSpace(void *twopMesons,
 //-C.K. - New function to write the mesons two-point function in 
 // HDF5 format, momentum-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopMesonsHDF5_MomSpace(void *twopMesons, 
 			     char *filename, 
-			     qudaQKXTMinfo_Kepler info, 
+			     qudaQKXTMinfo info, 
 			     int isource){
 
   if(info.CorrSpace!=MOMENTUM_SPACE) errorQuda("writeTwopMesonsHDF5_MomSpace: Support for writing the Meson two-point function only in momentum-space!\n");
@@ -2694,7 +2694,7 @@ writeTwopMesonsHDF5_MomSpace(void *twopMesons,
 //-C.K. - New function to copy the meson two-point functions into write 
 //Buffers for writing in HDF5 format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 copyTwopMesonsToHDF5_Buf(void *Twop_mesons_HDF5, 
 			 void *corrMesons, 
 			 CORR_SPACE CorrSpace){
@@ -2731,7 +2731,7 @@ copyTwopMesonsToHDF5_Buf(void *Twop_mesons_HDF5,
 
 //-C.K. New function to write the mesons two-point function in ASCII format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::writeTwopMesons_ASCII(void *corrMesons, char *filename_out, int isource, CORR_SPACE CorrSpace){
+void QKXTM_Contraction<Float>::writeTwopMesons_ASCII(void *corrMesons, char *filename_out, int isource, CORR_SPACE CorrSpace){
 
   if(CorrSpace!=MOMENTUM_SPACE) errorQuda("writeTwopMesons_ASCII: Supports writing only in momentum-space!\n");
 
@@ -2775,9 +2775,9 @@ void QKXTM_Contraction_Kepler<Float>::writeTwopMesons_ASCII(void *corrMesons, ch
 //-C.K. Overloaded function to perform the meson contractions without 
 //writing the data
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
-	       QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractMesons(QKXTM_Propagator<Float> &prop1,
+	       QKXTM_Propagator<Float> &prop2, 
 	       void *corrMesons, 
 	       int isource, 
 	       CORR_SPACE CorrSpace){
@@ -2822,10 +2822,10 @@ contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
 //--------------------------------------------------------//
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-seqSourceFixSinkPart1(QKXTM_Vector_Kepler<Float> &vec, 
-		      QKXTM_Propagator3D_Kepler<Float> &prop1, 
-		      QKXTM_Propagator3D_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+seqSourceFixSinkPart1(QKXTM_Vector<Float> &vec, 
+		      QKXTM_Propagator3D<Float> &prop1, 
+		      QKXTM_Propagator3D<Float> &prop2, 
 		      int tsinkMtsource, int nu, int c2, 
 		      WHICHPROJECTOR PID, 
 		      WHICHPARTICLE testParticle){
@@ -2844,9 +2844,9 @@ seqSourceFixSinkPart1(QKXTM_Vector_Kepler<Float> &vec,
 }
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-seqSourceFixSinkPart2(QKXTM_Vector_Kepler<Float> &vec, 
-		      QKXTM_Propagator3D_Kepler<Float> &prop, 
+void QKXTM_Contraction<Float>::
+seqSourceFixSinkPart2(QKXTM_Vector<Float> &vec, 
+		      QKXTM_Propagator3D<Float> &prop, 
 		      int tsinkMtsource, int nu, int c2, 
 		      WHICHPROJECTOR PID, 
 		      WHICHPARTICLE testParticle){
@@ -2862,12 +2862,12 @@ seqSourceFixSinkPart2(QKXTM_Vector_Kepler<Float> &vec,
 }
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrpHDF5(void *Thrp_local_HDF5, 
 	      void *Thrp_noether_HDF5, 
 	      void **Thrp_oneD_HDF5, 
 	      char *filename, 
-	      qudaQKXTMinfo_Kepler info, 
+	      qudaQKXTMinfo info, 
 	      int isource, 
 	      WHICHPARTICLE NUCLEON){
   
@@ -2890,12 +2890,12 @@ writeThrpHDF5(void *Thrp_local_HDF5,
 
 //-C.K. - New function to write the three-point function in HDF5 format, position-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrpHDF5_PosSpace(void *Thrp_local_HDF5, 
 		       void *Thrp_noether_HDF5, 
 		       void **Thrp_oneD_HDF5, 
 		       char *filename, 
-		       qudaQKXTMinfo_Kepler info, 
+		       qudaQKXTMinfo info, 
 		       int isource, 
 		       WHICHPARTICLE NUCLEON){
   
@@ -3162,12 +3162,12 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 //-C.K. - New function to write the three-point function in HDF5 format, 
 // momentum-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrpHDF5_MomSpace(void *Thrp_local_HDF5, 
 		       void *Thrp_noether_HDF5, 
 		       void **Thrp_oneD_HDF5, 
 		       char *filename, 
-		       qudaQKXTMinfo_Kepler info, 
+		       qudaQKXTMinfo info, 
 		       int isource, 
 		       WHICHPARTICLE NUCLEON){
   
@@ -3536,7 +3536,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 //-C.K. - New function to copy the three-point data into write Buffers 
 // for writing in HDF5 format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 copyThrpToHDF5_Buf(void *Thrp_HDF5, 
 		   void *corrThp,  
 		   int mu, int uORd, 
@@ -3596,7 +3596,7 @@ copyThrpToHDF5_Buf(void *Thrp_HDF5,
 
 //-C.K. - New function to write the three-point function in ASCII format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrp_ASCII(void *corrThp_local, 
 		void *corrThp_noether,
 		void *corrThp_oneD, 
@@ -3763,10 +3763,10 @@ writeThrp_ASCII(void *corrThp_local,
 //-C.K. Overloaded function to perform the contractions without 
 // writing the data
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp,
-		QKXTM_Propagator_Kepler<Float> &prop, 
-		QKXTM_Gauge_Kepler<Float> &gauge, 
+void QKXTM_Contraction<Float>::
+contractFixSink(QKXTM_Propagator<Float> &seqProp,
+		QKXTM_Propagator<Float> &prop, 
+		QKXTM_Gauge<Float> &gauge, 
 		void *corrThp_local, void *corrThp_noether, 
 		void *corrThp_oneD, 
 		WHICHPROJECTOR typeProj , 
@@ -3874,10 +3874,10 @@ contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp,
 //---------------------//
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp,
-		QKXTM_Propagator_Kepler<Float> &prop, 
-		QKXTM_Gauge_Kepler<Float> &gauge, 
+void QKXTM_Contraction<Float>::
+contractFixSink(QKXTM_Propagator<Float> &seqProp,
+		QKXTM_Propagator<Float> &prop, 
+		QKXTM_Gauge<Float> &gauge, 
 		WHICHPROJECTOR typeProj , 
 		WHICHPARTICLE testParticle, 
 		int partflag , 
@@ -4167,21 +4167,21 @@ contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp,
 */
 
 //----------------------------------//
-// class QKXTM_ Propagator3D_Kepler //
+// class QKXTM_ Propagator3D //
 //----------------------------------//
 /*
 template<typename Float>
-QKXTM_Propagator3D_Kepler<Float>::
-QKXTM_Propagator3D_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Propagator3D<Float>::
+QKXTM_Propagator3D(ALLOCATION_FLAG alloc_flag, 
 			  CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){
+  QKXTM_Field<Float>(alloc_flag, classT){
   if(alloc_flag != BOTH)
     errorQuda("Propagator3D class is only implemented to allocate memory for both\n");
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::
-absorbTimeSliceFromHost(QKXTM_Propagator_Kepler<Float> &prop, 
+void QKXTM_Propagator3D<Float>::
+absorbTimeSliceFromHost(QKXTM_Propagator<Float> &prop, 
 			int timeslice){
   int V3 = GK_localVolume/GK_localL[3];
   
@@ -4208,8 +4208,8 @@ absorbTimeSliceFromHost(QKXTM_Propagator_Kepler<Float> &prop,
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::
-absorbTimeSlice(QKXTM_Propagator_Kepler<Float> &prop, int timeslice){
+void QKXTM_Propagator3D<Float>::
+absorbTimeSlice(QKXTM_Propagator<Float> &prop, int timeslice){
   int V3 = GK_localVolume/GK_localL[3];
   Float *pointer_src = NULL;
   Float *pointer_dst = NULL;
@@ -4232,8 +4232,8 @@ absorbTimeSlice(QKXTM_Propagator_Kepler<Float> &prop, int timeslice){
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::
-absorbVectorTimeSlice(QKXTM_Vector_Kepler<Float> &vec, 
+void QKXTM_Propagator3D<Float>::
+absorbVectorTimeSlice(QKXTM_Vector<Float> &vec, 
 		      int timeslice, int nu, int c2){
   int V3 = GK_localVolume/GK_localL[3];
   Float *pointer_src = NULL;
@@ -4251,7 +4251,7 @@ absorbVectorTimeSlice(QKXTM_Vector_Kepler<Float> &vec,
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::broadcast(int tsink){
+void QKXTM_Propagator3D<Float>::broadcast(int tsink){
   cudaMemcpy(CC::h_elem , CC::d_elem , CC::bytes_total_length , 
 	     cudaMemcpyDeviceToHost);
   checkCudaError();
@@ -4282,10 +4282,10 @@ void QKXTM_Propagator3D_Kepler<Float>::broadcast(int tsink){
 
 //-C.K. Constructor for the even-odd operator functions
 template<typename Float>
-QKXTM_Deflation_Kepler<Float>::
-QKXTM_Deflation_Kepler(int N_EigenVectors, bool isEven): 
+QKXTM_Deflation<Float>::
+QKXTM_Deflation(int N_EigenVectors, bool isEven): 
   h_elem(NULL), eigenValues(NULL){
-  if(GK_init_qudaQKXTM_Kepler_flag == false)
+  if(GK_init_qudaQKXTM_flag == false)
     errorQuda("You must initialize QKXTM library first\n");
   NeV=N_EigenVectors;
   if(NeV == 0){
@@ -4314,11 +4314,11 @@ QKXTM_Deflation_Kepler(int N_EigenVectors, bool isEven):
 
 //-C.K. Constructor for the full Operator functions
 template<typename Float>
-QKXTM_Deflation_Kepler<Float>::
-QKXTM_Deflation_Kepler(QudaInvertParam *param, 
+QKXTM_Deflation<Float>::
+QKXTM_Deflation(QudaInvertParam *param, 
 		       qudaQKXTM_arpackInfo arpackInfo): 
   h_elem(NULL), eigenValues(NULL), diracOp(NULL){
-  if(GK_init_qudaQKXTM_Kepler_flag == false)
+  if(GK_init_qudaQKXTM_flag == false)
     errorQuda("You must initialize QKXTM library first\n");
 
   PolyDeg = arpackInfo.PolyDeg;
@@ -4372,7 +4372,7 @@ QKXTM_Deflation_Kepler(QudaInvertParam *param,
 }
 
 template<typename Float>
-QKXTM_Deflation_Kepler<Float>::~QKXTM_Deflation_Kepler(){
+QKXTM_Deflation<Float>::~QKXTM_Deflation(){
   if(NeV == 0)return;
 
   free(h_elem);
@@ -4381,7 +4381,7 @@ QKXTM_Deflation_Kepler<Float>::~QKXTM_Deflation_Kepler(){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::printInfo(){
+void QKXTM_Deflation<Float>::printInfo(){
   printfQuda("\n======= DEFLATION INFO =======\n"); 
   if(isFullOp){
     printfQuda(" The EigenVectors are for the Full %smu operator\n", 
@@ -4403,7 +4403,7 @@ void QKXTM_Deflation_Kepler<Float>::printInfo(){
 //==================================================
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out, 
+void QKXTM_Deflation<Float>::ApplyMdagM(Float *vec_out, 
 					       Float *vec_in, 
 					       QudaInvertParam *param){
 
@@ -4416,8 +4416,8 @@ void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out,
     cudaColorSpinorField *in    = NULL;
     cudaColorSpinorField *out   = NULL;
     
-    QKXTM_Vector_Kepler<double> *Kvec = 
-      new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+    QKXTM_Vector<double> *Kvec = 
+      new QKXTM_Vector<double>(BOTH,VECTOR);
 
     ColorSpinorParam cpuParam((void*)vec_in,*param,GK_localL,opFlag);
     ColorSpinorParam cudaParam(cpuParam, *param);
@@ -4471,8 +4471,8 @@ void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out,
     cudaParam.create = QUDA_ZERO_FIELD_CREATE;
     out = new cudaColorSpinorField(cudaParam);
 
-    QKXTM_Vector_Kepler<double> *Kvec = 
-      new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+    QKXTM_Vector<double> *Kvec = 
+      new QKXTM_Vector<double>(BOTH,VECTOR);
 
     Kvec->packVector(vec_in);
     Kvec->loadVector();
@@ -4498,7 +4498,7 @@ void QKXTM_Deflation_Kepler<Float>::ApplyMdagM(Float *vec_out,
 //==================================================
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::MapEvenOddToFull(){
+void QKXTM_Deflation<Float>::MapEvenOddToFull(){
 
   if(!isFullOp){ warningQuda("MapEvenOddToFull: This function only works with the Full Operator\n");
     return;
@@ -4552,7 +4552,7 @@ void QKXTM_Deflation_Kepler<Float>::MapEvenOddToFull(){
 
 //-For a single vector
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::MapEvenOddToFull(int i){
+void QKXTM_Deflation<Float>::MapEvenOddToFull(int i){
 
   if(!isFullOp) errorQuda("MapEvenOddToFull: This function only works with the Full Operator\n");
 
@@ -4602,8 +4602,8 @@ void QKXTM_Deflation_Kepler<Float>::MapEvenOddToFull(int i){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-copyEigenVectorToQKXTM_Vector_Kepler(int eigenVector_id, Float *vec){
+void QKXTM_Deflation<Float>::
+copyEigenVectorToQKXTM_Vector(int eigenVector_id, Float *vec){
   if(NeV == 0)return;
   
   if(!isFullOp){
@@ -4691,8 +4691,8 @@ copyEigenVectorToQKXTM_Vector_Kepler(int eigenVector_id, Float *vec){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-copyEigenVectorFromQKXTM_Vector_Kepler(int eigenVector_id,Float *vec){
+void QKXTM_Deflation<Float>::
+copyEigenVectorFromQKXTM_Vector(int eigenVector_id,Float *vec){
   if(NeV == 0)return;
   
   if(!isFullOp){
@@ -4758,7 +4758,7 @@ copyEigenVectorFromQKXTM_Vector_Kepler(int eigenVector_id,Float *vec){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::copyToEigenVector(Float *vec, 
+void QKXTM_Deflation<Float>::copyToEigenVector(Float *vec, 
 						      Float *vals){
   memcpy(&(h_elem[0]), vec, bytes_total_length);
   memcpy(&(eigenValues[0]), vals, NeV*2*sizeof(Float));
@@ -4767,9 +4767,9 @@ void QKXTM_Deflation_Kepler<Float>::copyToEigenVector(Float *vec,
 
 //-C.K: This member function performs the operation vec_defl = U (\Lambda)^(-1) U^dag vec_in
 template <typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-deflateVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-	      QKXTM_Vector_Kepler<Float> &vec_in){
+void QKXTM_Deflation<Float>::
+deflateVector(QKXTM_Vector<Float> &vec_defl, 
+	      QKXTM_Vector<Float> &vec_in){
   if(NeV == 0){
     vec_defl.zero_device();
     return;
@@ -4938,7 +4938,7 @@ deflateVector(QKXTM_Vector_Kepler<Float> &vec_defl,
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
+void QKXTM_Deflation<Float>::
 writeEigenVectors_ASCII(char *prefix_path){
   if(NeV == 0)return;
   char filename[257];
@@ -4959,7 +4959,7 @@ writeEigenVectors_ASCII(char *prefix_path){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
+void QKXTM_Deflation<Float>::
 polynomialOperator(cudaColorSpinorField &out, 
 		   const cudaColorSpinorField &in){
   
@@ -5030,7 +5030,7 @@ polynomialOperator(cudaColorSpinorField &out,
 #include <arpackHeaders.h>
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::eigenSolver(){
+void QKXTM_Deflation<Float>::eigenSolver(){
 
   double t1,t2,t_ini,t_fin;
 
@@ -5416,7 +5416,7 @@ void QKXTM_Deflation_Kepler<Float>::eigenSolver(){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::rotateFromChiralToUKQCD(){
+void QKXTM_Deflation<Float>::rotateFromChiralToUKQCD(){
   if(NeV == 0) return;
   std::complex<Float> transMatrix[4][4];
   for(int mu = 0 ; mu < 4 ; mu++)
@@ -5458,7 +5458,7 @@ void QKXTM_Deflation_Kepler<Float>::rotateFromChiralToUKQCD(){
 }
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::multiply_by_phase(){
+void QKXTM_Deflation<Float>::multiply_by_phase(){
   if(NeV == 0)return;
   Float phaseRe, phaseIm;
   Float tmp0,tmp1;
@@ -5520,7 +5520,7 @@ void QKXTM_Deflation_Kepler<Float>::multiply_by_phase(){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::readEigenVectors(char *prefix_path){
+void QKXTM_Deflation<Float>::readEigenVectors(char *prefix_path){
   if(NeV == 0)return;
   LimeReader *limereader;
   FILE *fid;
@@ -5845,7 +5845,7 @@ void QKXTM_Deflation_Kepler<Float>::readEigenVectors(char *prefix_path){
 
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::readEigenValues(char *filename){
+void QKXTM_Deflation<Float>::readEigenValues(char *filename){
   if(NeV == 0)return;
   FILE *ptr;
   Float dummy;
@@ -5869,9 +5869,9 @@ void QKXTM_Deflation_Kepler<Float>::readEigenValues(char *filename){
 //-C.K: This member function performs the operation 
 // vec_defl = vec_in - (U U^dag) vec_in
 template <typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-projectVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-	      QKXTM_Vector_Kepler<Float> &vec_in, 
+void QKXTM_Deflation<Float>::
+projectVector(QKXTM_Vector<Float> &vec_defl, 
+	      QKXTM_Vector<Float> &vec_in, 
 	      int is){
   
   if(!isFullOp) errorQuda("projectVector: This function only works with the Full Operator\n");
@@ -6003,9 +6003,9 @@ projectVector(QKXTM_Vector_Kepler<Float> &vec_defl,
 //-C.K: This member function performs the operation 
 //vec_defl = vec_in - (U U^dag) vec_in
 template <typename Float>
-void QKXTM_Deflation_Kepler<Float>::
-projectVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-	      QKXTM_Vector_Kepler<Float> &vec_in, 
+void QKXTM_Deflation<Float>::
+projectVector(QKXTM_Vector<Float> &vec_defl, 
+	      QKXTM_Vector<Float> &vec_in, 
 	      int is, int NeV_defl){
   
   if(!isFullOp) errorQuda("projectVector: This function only works with the Full Operator\n");
@@ -6135,7 +6135,7 @@ projectVector(QKXTM_Vector_Kepler<Float> &vec_defl,
 //------------------------------------------------------------------//
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
+void QKXTM_Deflation<Float>::
 Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 			    void *gen_uloc,void *std_uloc,
 			    void **gen_oneD, 
@@ -6170,8 +6170,8 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   double *eigVec = (double*) malloc(bytes_total_length_per_NeV);
  memcpy(eigVec,&(h_elem[n*total_length_per_NeV]),bytes_total_length_per_NeV);
 
-  QKXTM_Vector_Kepler<double> *Kvec = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *Kvec = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
   
   ColorSpinorParam cpuParam((void*)eigVec,*param,GK_localL,pc_solve);
   ColorSpinorParam cudaParam(cpuParam, *param);

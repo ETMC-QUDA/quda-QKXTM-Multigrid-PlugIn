@@ -6011,17 +6011,17 @@ double qChargeCuda ()
 // These files are compiled with interface_quda.cpp. They 
 // contain class and function definitions needed by the 
 // QKXTM calculation functions. 
-#include <qudaQKXTM_Field_Kepler.cpp>
-#include <qudaQKXTM_Gauge_Kepler.cpp>
-#include <qudaQKXTM_Vector_Kepler.cpp>
-#include <qudaQKXTM_Propagator_Kepler.cpp>
-#include <qudaQKXTM_Contraction_Kepler.cpp>
+#include <qudaQKXTM_Field.cpp>
+#include <qudaQKXTM_Gauge.cpp>
+#include <qudaQKXTM_Vector.cpp>
+#include <qudaQKXTM_Propagator.cpp>
+#include <qudaQKXTM_Contraction.cpp>
 #ifdef HAVE_ARPACK
-#include <qudaQKXTM_Deflation_Kepler.cpp>
-#include <qudaQKXTM_Loops_Kepler.cpp>
+#include <qudaQKXTM_Deflation.cpp>
+#include <qudaQKXTM_Loops.cpp>
 #endif
 
-#include <qudaQKXTM_Kepler_utils.cpp>
+#include <qudaQKXTM_utils.cpp>
 
 ///////////////////////
 // QKXTM MG Routines //
@@ -6031,7 +6031,7 @@ double qChargeCuda ()
 void MG_bench(void **gaugeSmeared, void **gauge, 
 	      QudaGaugeParam *gauge_param, 
 	      QudaInvertParam *param,
-	      qudaQKXTMinfo_Kepler info){
+	      qudaQKXTMinfo info){
   
   bool flag_eo;
   double t1,t2,t3,t4,t5,t6;
@@ -6062,14 +6062,14 @@ void MG_bench(void **gaugeSmeared, void **gauge,
 			       GK_localL[3]*spinorSiteSize*sizeof(double));
   
   
-  QKXTM_Gauge_Kepler<double> *K_gaugeSmeared = 
-    new QKXTM_Gauge_Kepler<double>(BOTH,GAUGE);
+  QKXTM_Gauge<double> *K_gaugeSmeared = 
+    new QKXTM_Gauge<double>(BOTH,GAUGE);
 
-  QKXTM_Vector_Kepler<double> *K_vector = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_vector = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
 
-  QKXTM_Vector_Kepler<double> *K_guess = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_guess = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
 
     printfQuda("Memory allocation was successfull\n");
 
@@ -6320,7 +6320,7 @@ void MG_bench(void **gaugeSmeared, void **gauge,
 void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge, 
 			       QudaGaugeParam *gauge_param, 
 			       QudaInvertParam *param, 
-			       qudaQKXTMinfo_Kepler info, 
+			       qudaQKXTMinfo info, 
 			       char *filename_twop, 
 			       char *filename_threep, 
 			       WHICHPARTICLE NUCLEON){
@@ -6513,31 +6513,31 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
   }
 
   //QKXTM specific objects
-  QKXTM_Gauge_Kepler<float> *K_gaugeContractions = 
-    new QKXTM_Gauge_Kepler<float>(BOTH,GAUGE);
-  QKXTM_Gauge_Kepler<double> *K_gaugeSmeared = 
-    new QKXTM_Gauge_Kepler<double>(BOTH,GAUGE);
-  QKXTM_Vector_Kepler<double> *K_vector = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
-  QKXTM_Vector_Kepler<double> *K_guess = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
-  QKXTM_Vector_Kepler<float> *K_temp = 
-    new QKXTM_Vector_Kepler<float>(BOTH,VECTOR);
+  QKXTM_Gauge<float> *K_gaugeContractions = 
+    new QKXTM_Gauge<float>(BOTH,GAUGE);
+  QKXTM_Gauge<double> *K_gaugeSmeared = 
+    new QKXTM_Gauge<double>(BOTH,GAUGE);
+  QKXTM_Vector<double> *K_vector = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_guess = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
+  QKXTM_Vector<float> *K_temp = 
+    new QKXTM_Vector<float>(BOTH,VECTOR);
 
-  QKXTM_Propagator_Kepler<float> *K_prop_up = 
-    new QKXTM_Propagator_Kepler<float>(BOTH,PROPAGATOR);
-  QKXTM_Propagator_Kepler<float> *K_prop_down = 
-    new QKXTM_Propagator_Kepler<float>(BOTH,PROPAGATOR); 
-  QKXTM_Propagator_Kepler<float> *K_seqProp = 
-    new QKXTM_Propagator_Kepler<float>(BOTH,PROPAGATOR);
+  QKXTM_Propagator<float> *K_prop_up = 
+    new QKXTM_Propagator<float>(BOTH,PROPAGATOR);
+  QKXTM_Propagator<float> *K_prop_down = 
+    new QKXTM_Propagator<float>(BOTH,PROPAGATOR); 
+  QKXTM_Propagator<float> *K_seqProp = 
+    new QKXTM_Propagator<float>(BOTH,PROPAGATOR);
 
-  QKXTM_Propagator3D_Kepler<float> *K_prop3D_up = 
-    new QKXTM_Propagator3D_Kepler<float>(BOTH,PROPAGATOR3D);
-  QKXTM_Propagator3D_Kepler<float> *K_prop3D_down = 
-    new QKXTM_Propagator3D_Kepler<float>(BOTH,PROPAGATOR3D);
+  QKXTM_Propagator3D<float> *K_prop3D_up = 
+    new QKXTM_Propagator3D<float>(BOTH,PROPAGATOR3D);
+  QKXTM_Propagator3D<float> *K_prop3D_down = 
+    new QKXTM_Propagator3D<float>(BOTH,PROPAGATOR3D);
 
-  QKXTM_Contraction_Kepler<float> *K_contract = 
-    new QKXTM_Contraction_Kepler<float>();
+  QKXTM_Contraction<float> *K_contract = 
+    new QKXTM_Contraction<float>();
 
   printfQuda("QKXTM memory allocation was successfull\n");
 
@@ -7439,7 +7439,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				  QudaGaugeParam *gauge_param,
 				  qudaQKXTM_arpackInfo arpackInfo, 
 				  qudaQKXTM_loopInfo loopInfo, 
-				  qudaQKXTMinfo_Kepler info){
+				  qudaQKXTMinfo info){
 
   double t1,t2,t3,t4;
   char fname[256];
@@ -7957,8 +7957,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   int NeV_Full = arpackInfo.nEv;  
   
   //Create object to store and calculate eigenpairs
-  QKXTM_Deflation_Kepler<double> *deflation = 
-    new QKXTM_Deflation_Kepler<double>(param,arpackInfo);
+  QKXTM_Deflation<double> *deflation = 
+    new QKXTM_Deflation<double>(param,arpackInfo);
   deflation->printInfo();
   
 
@@ -8096,8 +8096,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   cudaGaugeField *cudaGauge = checkGauge(param);
   checkInvertParam(param);
 
-  QKXTM_Gauge_Kepler<double> *K_gauge = 
-    new QKXTM_Gauge_Kepler<double>(BOTH,GAUGE);
+  QKXTM_Gauge<double> *K_gauge = 
+    new QKXTM_Gauge<double>(BOTH,GAUGE);
   K_gauge->packGauge(gaugeToPlaquette);
   K_gauge->loadGauge();
   K_gauge->calculatePlaq();
@@ -8185,10 +8185,10 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   if(useTSM) x_LP = new cudaColorSpinorField(cudaParam);
   profileInvert.TPSTOP(QUDA_PROFILE_H2D);
 
-  QKXTM_Vector_Kepler<double> *K_vector = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
-  QKXTM_Vector_Kepler<double> *K_vecdef = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_vector = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_vecdef = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
 
   //Solver operators
   DiracM m(dirac), mSloppy(diracSloppy), mPre(diracPre);
@@ -8866,7 +8866,7 @@ void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette,
 				   QudaInvertParam *param, 
 				   QudaGaugeParam *gauge_param, 
 				   qudaQKXTM_loopInfo loopInfo, 
-				   qudaQKXTMinfo_Kepler info){
+				   qudaQKXTMinfo info){
   
   bool flag_eo;
   double t1,t2,t3,t4;
@@ -9240,8 +9240,8 @@ void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette,
   cudaGaugeField *cudaGauge = checkGauge(param);
   checkInvertParam(param);
 
-  QKXTM_Gauge_Kepler<double> *K_gauge = 
-    new QKXTM_Gauge_Kepler<double>(BOTH,GAUGE);
+  QKXTM_Gauge<double> *K_gauge = 
+    new QKXTM_Gauge<double>(BOTH,GAUGE);
   K_gauge->packGauge(gaugeToPlaquette);
   K_gauge->loadGauge();
   K_gauge->calculatePlaq();
@@ -9315,10 +9315,10 @@ void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette,
   if(useTSM) x_LP = new cudaColorSpinorField(cudaParam);
   profileInvert.TPSTOP(QUDA_PROFILE_H2D);
   
-  QKXTM_Vector_Kepler<double> *K_vector = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
-  QKXTM_Vector_Kepler<double> *K_guess = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_vector = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_guess = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
 
   //Solver operators
   DiracM m(dirac), mSloppy(diracSloppy), mPre(diracPre);

@@ -27,7 +27,7 @@
 // In a typical application, quda.h is the only QUDA header required.
 #include <quda.h>
 #include <contractQuda.h>
-#include <qudaQKXTM_Kepler.h>
+#include <qudaQKXTM.h>
 // Wilson, clover-improved Wilson, twisted mass, and domain wall are supported.
 
 //========================================================================//
@@ -531,7 +531,7 @@ int main(int argc, char **argv)
   }
 
   //-C.K. General QKXTM information
-  qudaQKXTMinfo_Kepler info;
+  qudaQKXTMinfo info;
   info.lL[0] = xdim;
   info.lL[1] = ydim;
   info.lL[2] = zdim;
@@ -694,8 +694,8 @@ int main(int argc, char **argv)
   // initialize the QUDA library
   initQuda(device);
   //Print remaining info to stdout
-  init_qudaQKXTM_Kepler(&info);
-  printf_qudaQKXTM_Kepler();
+  init_qudaQKXTM(&info);
+  printf_qudaQKXTM();
 
   // load the gauge field
   loadGaugeQuda((void*)gauge, &gauge_param);

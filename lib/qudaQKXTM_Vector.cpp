@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
@@ -46,7 +46,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -60,16 +60,16 @@ extern int GK_timeRank;
 extern int GK_timeSize;
 
 //---------------------------//
-// class QKXTM_Vector_Kepler //
+// class QKXTM_Vector //
 //---------------------------//
 
 template<typename Float>
-QKXTM_Vector_Kepler<Float>::QKXTM_Vector_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Vector<Float>::QKXTM_Vector(ALLOCATION_FLAG alloc_flag, 
 						CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){ ; }
+  QKXTM_Field<Float>(alloc_flag, classT){ ; }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::packVector(Float *vector){
+void QKXTM_Vector<Float>::packVector(Float *vector){
   for(int iv = 0 ; iv < GK_localVolume ; iv++)
     for(int mu = 0 ; mu < GK_nSpin ; mu++)  // always work with format colors inside spins
       for(int c1 = 0 ; c1 < GK_nColor ; c1++)
@@ -82,7 +82,7 @@ void QKXTM_Vector_Kepler<Float>::packVector(Float *vector){
  
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::unpackVector(){
+void QKXTM_Vector<Float>::unpackVector(){
 
   Float *vector_tmp = (Float*) malloc( CC::bytes_total_length );
   if(vector_tmp == NULL)
@@ -103,7 +103,7 @@ void QKXTM_Vector_Kepler<Float>::unpackVector(){
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::unpackVector(Float *vector){
+void QKXTM_Vector<Float>::unpackVector(Float *vector){
   
   for(int iv = 0 ; iv < GK_localVolume ; iv++)
     for(int mu = 0 ; mu < GK_nSpin ; mu++) // always work with format colors inside spins
@@ -117,14 +117,14 @@ void QKXTM_Vector_Kepler<Float>::unpackVector(Float *vector){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::loadVector(){
+void QKXTM_Vector<Float>::loadVector(){
   cudaMemcpy(CC::d_elem,CC::h_elem,CC::bytes_total_length, 
 	     cudaMemcpyHostToDevice );
   checkCudaError();
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::unloadVector(){
+void QKXTM_Vector<Float>::unloadVector(){
   cudaMemcpy(CC::h_elem, CC::d_elem, CC::bytes_total_length, 
 	     cudaMemcpyDeviceToHost);
   checkCudaError();
@@ -132,7 +132,7 @@ void QKXTM_Vector_Kepler<Float>::unloadVector(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::download(){
+void QKXTM_Vector<Float>::download(){
 
   cudaMemcpy(CC::h_elem, CC::d_elem, CC::bytes_total_length, 
 	     cudaMemcpyDeviceToHost);
@@ -157,19 +157,19 @@ void QKXTM_Vector_Kepler<Float>::download(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::castDoubleToFloat(QKXTM_Vector_Kepler<double> &vecIn){
+void QKXTM_Vector<Float>::castDoubleToFloat(QKXTM_Vector<double> &vecIn){
   if(typeid(Float) != typeid(float) )errorQuda("This method works only to convert double to single precision\n");
   run_castDoubleToFloat((void*)CC::d_elem, (void*)vecIn.D_elem());
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::castFloatToDouble(QKXTM_Vector_Kepler<float> &vecIn){
+void QKXTM_Vector<Float>::castFloatToDouble(QKXTM_Vector<float> &vecIn){
   if(typeid(Float) != typeid(double) )errorQuda("This method works only to convert single to double precision\n");
   run_castFloatToDouble((void*)CC::d_elem, (void*)vecIn.D_elem());
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::ghostToHost(){
+void QKXTM_Vector<Float>::ghostToHost(){
   // direction x 
   if( GK_localL[0] < GK_totalL[0]){
     int position;
@@ -319,7 +319,7 @@ void QKXTM_Vector_Kepler<Float>::ghostToHost(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::cpuExchangeGhost(){
+void QKXTM_Vector<Float>::cpuExchangeGhost(){
   if( comm_size() > 1 ){
     MsgHandle *mh_send_fwd[4];
     MsgHandle *mh_from_back[4];
@@ -372,7 +372,7 @@ void QKXTM_Vector_Kepler<Float>::cpuExchangeGhost(){
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::ghostToDevice(){ 
+void QKXTM_Vector<Float>::ghostToDevice(){ 
   if(comm_size() > 1){
     Float *host = CC::h_ext_ghost;
     Float *device = CC::d_elem + GK_localVolume*GK_nSpin*GK_nColor*2;
@@ -383,7 +383,7 @@ void QKXTM_Vector_Kepler<Float>::ghostToDevice(){
 
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::gaussianSmearing(QKXTM_Vector_Kepler<Float> &vecIn,QKXTM_Gauge_Kepler<Float> &gaugeAPE){
+void QKXTM_Vector<Float>::gaussianSmearing(QKXTM_Vector<Float> &vecIn,QKXTM_Gauge<Float> &gaugeAPE){
   gaugeAPE.ghostToHost();
   gaugeAPE.cpuExchangeGhost();
   gaugeAPE.ghostToDevice();
@@ -421,33 +421,33 @@ void QKXTM_Vector_Kepler<Float>::gaussianSmearing(QKXTM_Vector_Kepler<Float> &ve
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::uploadToCuda(ColorSpinorField *qudaVector, 
+void QKXTM_Vector<Float>::uploadToCuda(ColorSpinorField *qudaVector, 
 					      bool isEv){
   run_UploadToCuda((void*) CC::d_elem, *qudaVector, sizeof(Float), isEv);
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::downloadFromCuda(ColorSpinorField *qudaVector, bool isEv){
+void QKXTM_Vector<Float>::downloadFromCuda(ColorSpinorField *qudaVector, bool isEv){
   run_DownloadFromCuda((void*) CC::d_elem, *qudaVector, sizeof(Float), isEv);
 }
 
 template<typename Float>
-void  QKXTM_Vector_Kepler<Float>::scaleVector(double a){
+void  QKXTM_Vector<Float>::scaleVector(double a){
   run_ScaleVector(a,(void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void  QKXTM_Vector_Kepler<Float>::conjugate(){
+void  QKXTM_Vector<Float>::conjugate(){
   run_conjugate_vector((void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void  QKXTM_Vector_Kepler<Float>::apply_gamma5(){
+void  QKXTM_Vector<Float>::apply_gamma5(){
   run_apply_gamma5_vector((void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::norm2Host(){
+void QKXTM_Vector<Float>::norm2Host(){
   Float res = 0.;
   Float globalRes;
 
@@ -461,7 +461,7 @@ void QKXTM_Vector_Kepler<Float>::norm2Host(){
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::copyPropagator3D(QKXTM_Propagator3D_Kepler<Float> &prop, int timeslice, int nu , int c2){
+void QKXTM_Vector<Float>::copyPropagator3D(QKXTM_Propagator3D<Float> &prop, int timeslice, int nu , int c2){
   Float *pointer_src = NULL;
   Float *pointer_dst = NULL;
   int V3 = GK_localVolume/GK_localL[3];
@@ -488,7 +488,7 @@ void QKXTM_Vector_Kepler<Float>::copyPropagator3D(QKXTM_Propagator3D_Kepler<Floa
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::copyPropagator(QKXTM_Propagator_Kepler<Float> &prop, int nu , int c2){
+void QKXTM_Vector<Float>::copyPropagator(QKXTM_Propagator<Float> &prop, int nu , int c2){
   Float *pointer_src = NULL;
   Float *pointer_dst = NULL;
   
@@ -512,7 +512,7 @@ void QKXTM_Vector_Kepler<Float>::copyPropagator(QKXTM_Propagator_Kepler<Float> &
 }
 
 template<typename Float>
-void QKXTM_Vector_Kepler<Float>::write(char *filename){
+void QKXTM_Vector<Float>::write(char *filename){
   FILE *fid;
   int error_in_header=0;
   LimeWriter *limewriter;

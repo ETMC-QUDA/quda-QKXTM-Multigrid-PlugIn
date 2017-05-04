@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
@@ -46,7 +46,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -60,17 +60,17 @@ extern int GK_timeRank;
 extern int GK_timeSize;
 
 //-------------------------------//
-// class QKXTM_Propagator_Kepler //
+// class QKXTM_Propagator //
 //-------------------------------//
 
 template<typename Float>
-QKXTM_Propagator_Kepler<Float>::
-QKXTM_Propagator_Kepler(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){;}
+QKXTM_Propagator<Float>::
+QKXTM_Propagator(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT): 
+  QKXTM_Field<Float>(alloc_flag, classT){;}
 
 template <typename Float>
-void QKXTM_Propagator_Kepler<Float>::
-absorbVectorToHost(QKXTM_Vector_Kepler<Float> &vec, int nu, int c2){
+void QKXTM_Propagator<Float>::
+absorbVectorToHost(QKXTM_Vector<Float> &vec, int nu, int c2){
   Float *pointProp_host;
   Float *pointVec_dev;
   for(int mu = 0 ; mu < GK_nSpin ; mu++)
@@ -87,7 +87,7 @@ absorbVectorToHost(QKXTM_Vector_Kepler<Float> &vec, int nu, int c2){
 }
  
 template <typename Float>
-void QKXTM_Propagator_Kepler<Float>::absorbVectorToDevice(QKXTM_Vector_Kepler<Float> &vec, int nu, int c2){
+void QKXTM_Propagator<Float>::absorbVectorToDevice(QKXTM_Vector<Float> &vec, int nu, int c2){
   Float *pointProp_dev;
   Float *pointVec_dev;
   for(int mu = 0 ; mu < GK_nSpin ; mu++)
@@ -105,7 +105,7 @@ void QKXTM_Propagator_Kepler<Float>::absorbVectorToDevice(QKXTM_Vector_Kepler<Fl
 }
 
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_device(int sign){
+void QKXTM_Propagator<Float>::rotateToPhysicalBase_device(int sign){
   if( (sign != +1) && (sign != -1) ) errorQuda("The sign can be only +-1\n");
   run_rotateToPhysicalBase((void*) CC::d_elem, sign , sizeof(Float));
 }
@@ -114,7 +114,7 @@ void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_device(int sign){
 // QUDA standards. Eg, assigning vaules to complex variable:
 // var.real() = 1.0; is changed to var.real(1.0);
 template <typename Float>
-void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_host(int sign_int){
+void QKXTM_Propagator<Float>::rotateToPhysicalBase_host(int sign_int){
   if( (sign_int != +1) && (sign_int != -1) ) 
     errorQuda("The sign can be only +-1\n");
   
@@ -188,7 +188,7 @@ void QKXTM_Propagator_Kepler<Float>::rotateToPhysicalBase_host(int sign_int){
 
 // gpu collect ghost and send it to host
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::ghostToHost(){   
+void QKXTM_Propagator<Float>::ghostToHost(){   
   // direction x 
   if( GK_localL[0] < GK_totalL[0]){
     int position;
@@ -393,7 +393,7 @@ void QKXTM_Propagator_Kepler<Float>::ghostToHost(){
 }
 
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::cpuExchangeGhost(){
+void QKXTM_Propagator<Float>::cpuExchangeGhost(){
   if( comm_size() > 1 ){
     MsgHandle *mh_send_fwd[4];
     MsgHandle *mh_from_back[4];
@@ -446,7 +446,7 @@ void QKXTM_Propagator_Kepler<Float>::cpuExchangeGhost(){
 }
 
 template<typename Float>
-void QKXTM_Propagator_Kepler<Float>::ghostToDevice(){ 
+void QKXTM_Propagator<Float>::ghostToDevice(){ 
   if(comm_size() > 1){
     Float *host = CC::h_ext_ghost;
     Float *device = CC::d_elem + GK_localVolume*GK_nSpin*GK_nColor*GK_nSpin*GK_nColor*2;
@@ -456,31 +456,31 @@ void QKXTM_Propagator_Kepler<Float>::ghostToDevice(){
 }
 
 template<typename Float>
-void  QKXTM_Propagator_Kepler<Float>::conjugate(){
+void  QKXTM_Propagator<Float>::conjugate(){
   run_conjugate_propagator((void*)CC::d_elem,sizeof(Float));
 }
 
 template<typename Float>
-void  QKXTM_Propagator_Kepler<Float>::apply_gamma5(){
+void  QKXTM_Propagator<Float>::apply_gamma5(){
   run_apply_gamma5_propagator((void*)CC::d_elem,sizeof(Float));
 }
 
 //----------------------------------//
-// class QKXTM_ Propagator3D_Kepler //
+// class QKXTM_ Propagator3D //
 //----------------------------------//
 
 template<typename Float>
-QKXTM_Propagator3D_Kepler<Float>::
-QKXTM_Propagator3D_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Propagator3D<Float>::
+QKXTM_Propagator3D(ALLOCATION_FLAG alloc_flag, 
 			  CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){
+  QKXTM_Field<Float>(alloc_flag, classT){
   if(alloc_flag != BOTH)
     errorQuda("Propagator3D class is only implemented to allocate memory for both\n");
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::
-absorbTimeSliceFromHost(QKXTM_Propagator_Kepler<Float> &prop, 
+void QKXTM_Propagator3D<Float>::
+absorbTimeSliceFromHost(QKXTM_Propagator<Float> &prop, 
 			int timeslice){
   int V3 = GK_localVolume/GK_localL[3];
   
@@ -507,8 +507,8 @@ absorbTimeSliceFromHost(QKXTM_Propagator_Kepler<Float> &prop,
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::
-absorbTimeSlice(QKXTM_Propagator_Kepler<Float> &prop, int timeslice){
+void QKXTM_Propagator3D<Float>::
+absorbTimeSlice(QKXTM_Propagator<Float> &prop, int timeslice){
   int V3 = GK_localVolume/GK_localL[3];
   Float *pointer_src = NULL;
   Float *pointer_dst = NULL;
@@ -531,8 +531,8 @@ absorbTimeSlice(QKXTM_Propagator_Kepler<Float> &prop, int timeslice){
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::
-absorbVectorTimeSlice(QKXTM_Vector_Kepler<Float> &vec, 
+void QKXTM_Propagator3D<Float>::
+absorbVectorTimeSlice(QKXTM_Vector<Float> &vec, 
 		      int timeslice, int nu, int c2){
   int V3 = GK_localVolume/GK_localL[3];
   Float *pointer_src = NULL;
@@ -550,7 +550,7 @@ absorbVectorTimeSlice(QKXTM_Vector_Kepler<Float> &vec,
 }
 
 template<typename Float>
-void QKXTM_Propagator3D_Kepler<Float>::broadcast(int tsink){
+void QKXTM_Propagator3D<Float>::broadcast(int tsink){
   cudaMemcpy(CC::h_elem , CC::d_elem , CC::bytes_total_length , 
 	     cudaMemcpyDeviceToHost);
   checkCudaError();

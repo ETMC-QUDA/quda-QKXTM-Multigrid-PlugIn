@@ -8,7 +8,7 @@
 #include <enum_quda.h>
 #include <typeinfo>
 //DMH 
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM_utils.h>
 #include <dirac_quda.h>
 
 #ifndef _QUDAQKXTM_KEPLER_H
@@ -90,19 +90,19 @@ static char* qcd_getParam(char token[],char* params,int len)
 namespace quda {
   
   // forward declaration
-  template<typename Float>  class QKXTM_Field_Kepler;
-  template<typename Float>  class QKXTM_Gauge_Kepler;
-  template<typename Float>  class QKXTM_Vector_Kepler;
-  template<typename Float>  class QKXTM_Propagator_Kepler;
-  template<typename Float>  class QKXTM_Propagator3D_Kepler;
-  template<typename Float>  class QKXTM_Vector3D_Kepler;
+  template<typename Float>  class QKXTM_Field;
+  template<typename Float>  class QKXTM_Gauge;
+  template<typename Float>  class QKXTM_Vector;
+  template<typename Float>  class QKXTM_Propagator;
+  template<typename Float>  class QKXTM_Propagator3D;
+  template<typename Float>  class QKXTM_Vector3D;
   
   ////////////////////////
   // CLASS: QKXTM_Field //
   ////////////////////////
   
   template<typename Float>
-    class QKXTM_Field_Kepler {
+    class QKXTM_Field {
     // base class use only for inheritance not polymorphism
   protected:
     
@@ -132,8 +132,8 @@ namespace quda {
     void destroy_device();
 
   public:
-    QKXTM_Field_Kepler(ALLOCATION_FLAG alloc_flag,CLASS_ENUM classT);
-    virtual ~QKXTM_Field_Kepler();
+    QKXTM_Field(ALLOCATION_FLAG alloc_flag,CLASS_ENUM classT);
+    virtual ~QKXTM_Field();
     void zero_host();
     void zero_host_backup();
     void zero_device();
@@ -163,10 +163,10 @@ namespace quda {
   ////////////////////////
   
   template<typename Float>
-    class QKXTM_Gauge_Kepler : public QKXTM_Field_Kepler<Float> {
+    class QKXTM_Gauge : public QKXTM_Field<Float> {
   public:
-    QKXTM_Gauge_Kepler(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
-    ~QKXTM_Gauge_Kepler(){;}
+    QKXTM_Gauge(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
+    ~QKXTM_Gauge(){;}
     
     void packGauge(void **gauge);
     void packGaugeToBackup(void **gauge);
@@ -186,10 +186,10 @@ namespace quda {
   /////////////////////////
   
   template<typename Float>
-    class QKXTM_Vector_Kepler : public QKXTM_Field_Kepler<Float> {
+    class QKXTM_Vector : public QKXTM_Field<Float> {
   public:
-    QKXTM_Vector_Kepler(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
-    ~QKXTM_Vector_Kepler(){;}
+    QKXTM_Vector(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
+    ~QKXTM_Vector(){;}
     
     void packVector(Float *vector);
     void unpackVector();
@@ -203,16 +203,16 @@ namespace quda {
     void download(); // take the vector from device to host
     void uploadToCuda( ColorSpinorField *cudaVector, bool isEv = false);
     void downloadFromCuda(ColorSpinorField *cudaVector, bool isEv = false);
-    void gaussianSmearing(QKXTM_Vector_Kepler<Float> &vecIn,
-			  QKXTM_Gauge_Kepler<Float> &gaugeAPE);
+    void gaussianSmearing(QKXTM_Vector<Float> &vecIn,
+			  QKXTM_Gauge<Float> &gaugeAPE);
     void scaleVector(double a);
-    void castDoubleToFloat(QKXTM_Vector_Kepler<double> &vecIn);
-    void castFloatToDouble(QKXTM_Vector_Kepler<float> &vecIn);
+    void castDoubleToFloat(QKXTM_Vector<double> &vecIn);
+    void castFloatToDouble(QKXTM_Vector<float> &vecIn);
     void norm2Host();
     void norm2Device();
-    void copyPropagator3D(QKXTM_Propagator3D_Kepler<Float> &prop, 
+    void copyPropagator3D(QKXTM_Propagator3D<Float> &prop, 
 			  int timeslice, int nu , int c2);
-    void copyPropagator(QKXTM_Propagator_Kepler<Float> &prop, 
+    void copyPropagator(QKXTM_Propagator<Float> &prop, 
 			int nu , int c2);
     void write(char* filename);
     void conjugate();
@@ -224,10 +224,10 @@ namespace quda {
   ///////////////////////////
   
   template<typename Float>
-    class QKXTM_Vector3D_Kepler : public QKXTM_Field_Kepler<Float> {
+    class QKXTM_Vector3D : public QKXTM_Field<Float> {
   public:
-    QKXTM_Vector3D_Kepler();
-    ~QKXTM_Vector3D_Kepler(){;}
+    QKXTM_Vector3D();
+    ~QKXTM_Vector3D(){;}
   };
   
   /////////////////////////////
@@ -235,11 +235,11 @@ namespace quda {
   /////////////////////////////
   
   template<typename Float>
-    class QKXTM_Propagator_Kepler : public QKXTM_Field_Kepler<Float> {
+    class QKXTM_Propagator : public QKXTM_Field<Float> {
     
   public:
-    QKXTM_Propagator_Kepler(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
-    ~QKXTM_Propagator_Kepler(){;}
+    QKXTM_Propagator(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
+    ~QKXTM_Propagator(){;}
     
     void ghostToHost();
     void cpuExchangeGhost();
@@ -248,9 +248,9 @@ namespace quda {
     void conjugate();
     void apply_gamma5();
     
-    void absorbVectorToHost(QKXTM_Vector_Kepler<Float> &vec, 
+    void absorbVectorToHost(QKXTM_Vector<Float> &vec, 
 			    int nu, int c2);
-    void absorbVectorToDevice(QKXTM_Vector_Kepler<Float> &vec, 
+    void absorbVectorToDevice(QKXTM_Vector<Float> &vec, 
 			      int nu, int c2);
     void rotateToPhysicalBase_host(int sign);
     void rotateToPhysicalBase_device(int sign);
@@ -261,17 +261,17 @@ namespace quda {
   /////////////////////////////// 
   
   template<typename Float>
-    class QKXTM_Propagator3D_Kepler : public QKXTM_Field_Kepler<Float> {
+    class QKXTM_Propagator3D : public QKXTM_Field<Float> {
     
   public:
-    QKXTM_Propagator3D_Kepler(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
-    ~QKXTM_Propagator3D_Kepler(){;}
+    QKXTM_Propagator3D(ALLOCATION_FLAG alloc_flag, CLASS_ENUM classT);
+    ~QKXTM_Propagator3D(){;}
     
-    void absorbTimeSliceFromHost(QKXTM_Propagator_Kepler<Float> &prop, 
+    void absorbTimeSliceFromHost(QKXTM_Propagator<Float> &prop, 
 				 int timeslice);
-    void absorbTimeSlice(QKXTM_Propagator_Kepler<Float> &prop, 
+    void absorbTimeSlice(QKXTM_Propagator<Float> &prop, 
 			 int timeslice);
-    void absorbVectorTimeSlice(QKXTM_Vector_Kepler<Float> &vec, 
+    void absorbVectorTimeSlice(QKXTM_Vector<Float> &vec, 
 			       int timeslice, int nu, int c2);
     void broadcast(int tsink);
   };
@@ -281,21 +281,21 @@ namespace quda {
   ////////////////////////////// 
 
   template<typename Float>
-    class QKXTM_Contraction_Kepler {
+    class QKXTM_Contraction {
   public:
-   QKXTM_Contraction_Kepler(){;}
-   ~QKXTM_Contraction_Kepler(){;}
-   void contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
-		       QKXTM_Propagator_Kepler<Float> &prop2, 
+   QKXTM_Contraction(){;}
+   ~QKXTM_Contraction(){;}
+   void contractMesons(QKXTM_Propagator<Float> &prop1,
+		       QKXTM_Propagator<Float> &prop2, 
 		       char *filename_out, int isource);
-   void contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
-			QKXTM_Propagator_Kepler<Float> &prop2, 
+   void contractBaryons(QKXTM_Propagator<Float> &prop1,
+			QKXTM_Propagator<Float> &prop2, 
 			char *filename_out, int isource);
-   void contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
-		       QKXTM_Propagator_Kepler<Float> &prop2, 
+   void contractMesons(QKXTM_Propagator<Float> &prop1,
+		       QKXTM_Propagator<Float> &prop2, 
 		       void *corrMesons , int isource, CORR_SPACE CorrSpace);
-   void contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
-			QKXTM_Propagator_Kepler<Float> &prop2, 
+   void contractBaryons(QKXTM_Propagator<Float> &prop1,
+			QKXTM_Propagator<Float> &prop2, 
 			void *corrBaryons, int isource,CORR_SPACE CorrSpace);
    
    void writeTwopBaryons_ASCII(void *corrBaryons, char *filename_out, 
@@ -309,46 +309,46 @@ namespace quda {
 				  CORR_SPACE CorrSpace, bool HighMomForm);
    
    void writeTwopBaryonsHDF5(void *twopBaryons, char *filename, 
-			     qudaQKXTMinfo_Kepler info, int isource);
+			     qudaQKXTMinfo info, int isource);
    void writeTwopMesonsHDF5 (void *twopMesons , char *filename, 
-			     qudaQKXTMinfo_Kepler info, int isource);
+			     qudaQKXTMinfo info, int isource);
    
    void writeTwopBaryonsHDF5_MomSpace(void *twopBaryons, char *filename, 
-				      qudaQKXTMinfo_Kepler info,int isource);
+				      qudaQKXTMinfo info,int isource);
    void writeTwopBaryonsHDF5_PosSpace(void *twopBaryons, char *filename, 
-				      qudaQKXTMinfo_Kepler info,int isource);
+				      qudaQKXTMinfo info,int isource);
    void writeTwopMesonsHDF5_MomSpace (void *twopMesons , char *filename, 
-				      qudaQKXTMinfo_Kepler info,int isource);
+				      qudaQKXTMinfo info,int isource);
    void writeTwopMesonsHDF5_PosSpace (void *twopMesons , char *filename, 
-				      qudaQKXTMinfo_Kepler info,int isource);
+				      qudaQKXTMinfo info,int isource);
 
    void writeTwopBaryonsHDF5_MomSpace_HighMomForm(void *twopBaryons, char *filename,
-                                                  qudaQKXTMinfo_Kepler info, int isource);
+                                                  qudaQKXTMinfo info, int isource);
    void writeTwopMesonsHDF5_MomSpace_HighMomForm (void *twopMesons , char *filename,
-                                                  qudaQKXTMinfo_Kepler info, int isource);
+                                                  qudaQKXTMinfo info, int isource);
 
-   void seqSourceFixSinkPart1(QKXTM_Vector_Kepler<Float> &vec, 
-			      QKXTM_Propagator3D_Kepler<Float> &prop1, 
-			      QKXTM_Propagator3D_Kepler<Float> &prop2, 
+   void seqSourceFixSinkPart1(QKXTM_Vector<Float> &vec, 
+			      QKXTM_Propagator3D<Float> &prop1, 
+			      QKXTM_Propagator3D<Float> &prop2, 
 			      int timeslice,int nu,int c2, 
 			      WHICHPROJECTOR typeProj, 
 			      WHICHPARTICLE testParticle);
-   void seqSourceFixSinkPart2(QKXTM_Vector_Kepler<Float> &vec, 
-			      QKXTM_Propagator3D_Kepler<Float> &prop, 
+   void seqSourceFixSinkPart2(QKXTM_Vector<Float> &vec, 
+			      QKXTM_Propagator3D<Float> &prop, 
 			      int timeslice,int nu,int c2, 
 			      WHICHPROJECTOR typeProj, 
 			      WHICHPARTICLE testParticle);
    
-   void contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp, 
-			QKXTM_Propagator_Kepler<Float> &prop, 
-			QKXTM_Gauge_Kepler<Float> &gauge, 
+   void contractFixSink(QKXTM_Propagator<Float> &seqProp, 
+			QKXTM_Propagator<Float> &prop, 
+			QKXTM_Gauge<Float> &gauge, 
 			WHICHPROJECTOR typeProj,
 			WHICHPARTICLE testParticle, 
 			int partFlag, char *filename_out, int isource, 
 			int tsinkMtsource);
-   void contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp, 
-			QKXTM_Propagator_Kepler<Float> &prop,
-			QKXTM_Gauge_Kepler<Float> &gauge, 
+   void contractFixSink(QKXTM_Propagator<Float> &seqProp, 
+			QKXTM_Propagator<Float> &prop,
+			QKXTM_Gauge<Float> &gauge, 
 			void *corrThp_local, void *corrThp_noether, 
 			void *corrThp_oneD, 
 			WHICHPROJECTOR typeProj, 
@@ -364,22 +364,22 @@ namespace quda {
 			   THRP_TYPE type, CORR_SPACE CorrSpace, bool HighMomForm);
    void writeThrpHDF5(void *Thrp_local_HDF5, void *Thrp_noether_HDF5, 
 		      void **Thrp_oneD_HDF5, char *filename, 
-		      qudaQKXTMinfo_Kepler info, int isource, 
+		      qudaQKXTMinfo info, int isource, 
 		      WHICHPARTICLE NUCLEON);
    void writeThrpHDF5_MomSpace(void *Thrp_local_HDF5, 
 			       void *Thrp_noether_HDF5, 
 			       void **Thrp_oneD_HDF5, char *filename, 
-			       qudaQKXTMinfo_Kepler info, int isource, 
+			       qudaQKXTMinfo info, int isource, 
 			       WHICHPARTICLE NUCLEON);
    void writeThrpHDF5_PosSpace(void *Thrp_local_HDF5, 
 			       void *Thrp_noether_HDF5, 
 			       void **Thrp_oneD_HDF5, char *filename, 
-			       qudaQKXTMinfo_Kepler info, int isource, 
+			       qudaQKXTMinfo info, int isource, 
 			       WHICHPARTICLE NUCLEON);
    void writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_local_HDF5,
                                            void *Thrp_noether_HDF5,
                                            void **Thrp_oneD_HDF5, char *filename,
-                                           qudaQKXTMinfo_Kepler info, int isource,
+                                           qudaQKXTMinfo info, int isource,
                                            WHICHPARTICLE NUCLEON);
   };
 
@@ -389,7 +389,7 @@ namespace quda {
   //////////////////////////// 
 
   template<typename Float>
-    class QKXTM_Deflation_Kepler{
+    class QKXTM_Deflation{
 
   private:
     int field_length;
@@ -428,10 +428,10 @@ namespace quda {
     QudaInvertParam *invert_param;
     
   public:
-    QKXTM_Deflation_Kepler(int,bool);
-    QKXTM_Deflation_Kepler(QudaInvertParam*,qudaQKXTM_arpackInfo);
+    QKXTM_Deflation(int,bool);
+    QKXTM_Deflation(QudaInvertParam*,qudaQKXTM_arpackInfo);
     
-    ~QKXTM_Deflation_Kepler();
+    ~QKXTM_Deflation();
     
     void zero();
     Float* H_elem() const { return h_elem; }
@@ -447,15 +447,15 @@ namespace quda {
     void readEigenVectors(char *filename);
     void writeEigenVectors_ASCII(char *filename);
     void readEigenValues(char *filename);
-    void deflateVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-		       QKXTM_Vector_Kepler<Float> &vec_in);
+    void deflateVector(QKXTM_Vector<Float> &vec_defl, 
+		       QKXTM_Vector<Float> &vec_in);
     void ApplyMdagM(Float *vec_out, Float *vec_in, QudaInvertParam *param);
     void MapEvenOddToFull();
     void MapEvenOddToFull(int i);
     void G5innerProduct();
-    void copyEigenVectorToQKXTM_Vector_Kepler(int eigenVector_id, 
+    void copyEigenVectorToQKXTM_Vector(int eigenVector_id, 
 					      Float *vec);
-    void copyEigenVectorFromQKXTM_Vector_Kepler(int eigenVector_id,
+    void copyEigenVectorFromQKXTM_Vector(int eigenVector_id,
 						Float *vec);
     void rotateFromChiralToUKQCD();
     void multiply_by_phase();
@@ -467,10 +467,10 @@ namespace quda {
 				     void *gen_uloc, void *std_uloc, 
 				     void **gen_oneD, void **std_oneD, 
 				     void **gen_csvC, void **std_csvC);
-    void projectVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-		       QKXTM_Vector_Kepler<Float> &vec_in, int is);
-    void projectVector(QKXTM_Vector_Kepler<Float> &vec_defl, 
-		       QKXTM_Vector_Kepler<Float> &vec_in, 
+    void projectVector(QKXTM_Vector<Float> &vec_defl, 
+		       QKXTM_Vector<Float> &vec_in, int is);
+    void projectVector(QKXTM_Vector<Float> &vec_defl, 
+		       QKXTM_Vector<Float> &vec_in, 
 		       int is, int NeV_defl);
     void copyToEigenVector(Float *vec, Float *vals);
   };
@@ -486,7 +486,7 @@ namespace quda {
 void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       QudaGaugeParam *gauge_param,
 			       QudaInvertParam *param,
-			       quda::qudaQKXTMinfo_Kepler info,
+			       quda::qudaQKXTMinfo info,
 			       char *filename_twop, char *filename_threep,
 			       quda::WHICHPARTICLE NUCLEON);
 
@@ -494,7 +494,7 @@ void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, QudaInvertParam *param,
 				   QudaGaugeParam *gauge_param, 
 				   quda::qudaQKXTM_loopInfo loopInfo, 
-				   quda::qudaQKXTMinfo_Kepler info);
+				   quda::qudaQKXTMinfo info);
 
 /////////////////////////////
 // MG with Exact Deflation //
@@ -507,7 +507,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				  QudaGaugeParam *gauge_param, 
 				  quda::qudaQKXTM_arpackInfo arpackInfo,
 				  quda::qudaQKXTM_loopInfo loopInfo, 
-				  quda::qudaQKXTMinfo_Kepler info);
+				  quda::qudaQKXTMinfo info);
 
 /////////////////////////
 // Low Mode Projection //
@@ -518,7 +518,7 @@ void calcLowModeProjection(void **gaugeToPlaquette,
 			   QudaInvertParam *param,
 			   QudaGaugeParam *gauge_param,
 			   quda::qudaQKXTM_arpackInfo arpackInfo,
-			   quda::qudaQKXTMinfo_Kepler info);
+			   quda::qudaQKXTMinfo info);
   
 #endif
 // HAVE_ARPACK

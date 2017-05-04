@@ -72,7 +72,7 @@ namespace quda {
     double mu;
     double csw;
     double inv_tol;
-  } qudaQKXTMinfo_Kepler;
+  } qudaQKXTMinfo;
   
   
 #ifdef HAVE_ARPACK  
@@ -135,8 +135,8 @@ namespace quda {
   // Functions //
   ///////////////
   
-  void init_qudaQKXTM_Kepler(qudaQKXTMinfo_Kepler *info);
-  void printf_qudaQKXTM_Kepler();
+  void init_qudaQKXTM(qudaQKXTMinfo *info);
+  void printf_qudaQKXTM();
   void run_calculatePlaq_kernel(cudaTextureObject_t gaugeTexPlaq, 
 				int precision);
   void run_GaussianSmearing(void* out, cudaTextureObject_t vecTex, 

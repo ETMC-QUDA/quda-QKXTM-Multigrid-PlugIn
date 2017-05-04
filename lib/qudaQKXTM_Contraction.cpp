@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
@@ -46,7 +46,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -60,14 +60,14 @@ extern int GK_timeRank;
 extern int GK_timeSize;
 
 //--------------------------------//
-// class QKXTM_Contraction_Kepler //
+// class QKXTM_Contraction //
 //--------------------------------//
 
 #define N_MESONS 10
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
-	       QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractMesons(QKXTM_Propagator<Float> &prop1,
+	       QKXTM_Propagator<Float> &prop2, 
 	       char *filename_out, int isource){
   
   errorQuda("contractMesons: This version of the function is obsolete. Cannot guarantee correct results. Please call the overloaded-updated version of this function with the corresponding list of arguments.\n");
@@ -139,9 +139,9 @@ contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
 
 #define N_BARYONS 10
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
-		QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractBaryons(QKXTM_Propagator<Float> &prop1,
+		QKXTM_Propagator<Float> &prop2, 
 		char *filename_out, int isource){
   
   errorQuda("contractBaryons: This version of the function is obsolete. Cannot guarantee correct results. Please call the overloaded-updated version of this function with the corresponding list of arguments.\n");
@@ -212,7 +212,7 @@ contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
 //---------------------------------------//
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::writeTwopBaryonsHDF5(void *twopBaryons, char *filename, qudaQKXTMinfo_Kepler info, int isource){
+void QKXTM_Contraction<Float>::writeTwopBaryonsHDF5(void *twopBaryons, char *filename, qudaQKXTMinfo info, int isource){
 
   if(info.CorrSpace==MOMENTUM_SPACE){
     if(info.HighMomForm){
@@ -230,10 +230,10 @@ void QKXTM_Contraction_Kepler<Float>::writeTwopBaryonsHDF5(void *twopBaryons, ch
 //-C.K. - New function to write the baryons two-point function in 
 // HDF5 format, position-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopBaryonsHDF5_PosSpace(void *twopBaryons, 
 			      char *filename, 
-			      qudaQKXTMinfo_Kepler info, 
+			      qudaQKXTMinfo info, 
 			      int isource){
 
   if(info.CorrSpace!=POSITION_SPACE) errorQuda("writeTwopBaryonsHDF5_PosSpace: Support for writing the Baryon two-point function only in position-space!\n");
@@ -359,10 +359,10 @@ writeTwopBaryonsHDF5_PosSpace(void *twopBaryons,
 //-C.K. - New function to write the baryons two-point function in 
 //HDF5 format, momentum-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopBaryonsHDF5_MomSpace(void *twopBaryons, 
 			      char *filename, 
-			      qudaQKXTMinfo_Kepler info, 
+			      qudaQKXTMinfo info, 
 			      int isource){
 
   if(info.CorrSpace!=MOMENTUM_SPACE || info.HighMomForm) errorQuda("writeTwopBaryonsHDF5_MomSpace: Supports writing the Baryon two-point function only in momentum-space and for NOT High-Momenta Form!\n");
@@ -547,7 +547,7 @@ writeTwopBaryonsHDF5_MomSpace(void *twopBaryons,
 
 //-C.K. - New function to write the baryons two-point function in HDF5 format, momentum-space, High-Momenta Form
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::writeTwopBaryonsHDF5_MomSpace_HighMomForm(void *twopBaryons, char *filename, qudaQKXTMinfo_Kepler info, int isource){
+void QKXTM_Contraction<Float>::writeTwopBaryonsHDF5_MomSpace_HighMomForm(void *twopBaryons, char *filename, qudaQKXTMinfo info, int isource){
 
   if(info.CorrSpace!=MOMENTUM_SPACE || !info.HighMomForm) errorQuda("writeTwopBaryonsHDF5_MomSpace_HighMomForm: Supports writing the Baryon two-point function only in momentum-space and for HighMomForm!\n");
 
@@ -769,7 +769,7 @@ void QKXTM_Contraction_Kepler<Float>::writeTwopBaryonsHDF5_MomSpace_HighMomForm(
 //-C.K. - New function to copy the baryon two-point functions into write 
 // Buffers for writing in HDF5 format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 copyTwopBaryonsToHDF5_Buf(void *Twop_baryons_HDF5, 
 			  void *corrBaryons, 
 			  int isource, 
@@ -845,7 +845,7 @@ copyTwopBaryonsToHDF5_Buf(void *Twop_baryons_HDF5,
 
 //-C.K. New function to write the baryons two-point function in ASCII format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopBaryons_ASCII(void *corrBaryons, 
 		       char *filename_out, 
 		       int isource, 
@@ -905,9 +905,9 @@ writeTwopBaryons_ASCII(void *corrBaryons,
 
 //-C.K. Overloaded function to perform the baryon contractions without writing the data
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
-		QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractBaryons(QKXTM_Propagator<Float> &prop1,
+		QKXTM_Propagator<Float> &prop2, 
 		void *corrBaryons, int isource, 
 		CORR_SPACE CorrSpace){
   cudaTextureObject_t texProp1, texProp2;
@@ -950,10 +950,10 @@ contractBaryons(QKXTM_Propagator_Kepler<Float> &prop1,
 
 //--------------------------------------------------------//
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopMesonsHDF5(void *twopMesons, 
 		    char *filename, 
-		    qudaQKXTMinfo_Kepler info, 
+		    qudaQKXTMinfo info, 
 		    int isource){
 
   if(info.CorrSpace==MOMENTUM_SPACE){
@@ -971,10 +971,10 @@ writeTwopMesonsHDF5(void *twopMesons,
 
 //-C.K. - New function to write the mesons two-point function in HDF5 format, position-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopMesonsHDF5_PosSpace(void *twopMesons, 
 			     char *filename, 
-			     qudaQKXTMinfo_Kepler info, 
+			     qudaQKXTMinfo info, 
 			     int isource){
   
   if(info.CorrSpace!=POSITION_SPACE) errorQuda("writeTwopMesonsHDF5_PosSpace: Support for writing the Meson two-point function only in position-space!\n");
@@ -1099,10 +1099,10 @@ writeTwopMesonsHDF5_PosSpace(void *twopMesons,
 //-C.K. - New function to write the mesons two-point function in 
 // HDF5 format, momentum-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeTwopMesonsHDF5_MomSpace(void *twopMesons, 
 			     char *filename, 
-			     qudaQKXTMinfo_Kepler info, 
+			     qudaQKXTMinfo info, 
 			     int isource){
 
   if(info.CorrSpace!=MOMENTUM_SPACE || info.HighMomForm) errorQuda("writeTwopMesonsHDF5_MomSpace: Supports writing the Meson two-point function only in momentum-space and for NOT High-Momenta Form!\n");
@@ -1283,7 +1283,7 @@ writeTwopMesonsHDF5_MomSpace(void *twopMesons,
 
 //-C.K. - New function to write the mesons two-point function in HDF5 format, momentum-space, High-Momenta Form
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::writeTwopMesonsHDF5_MomSpace_HighMomForm(void *twopMesons, char *filename, qudaQKXTMinfo_Kepler info, int isource){
+void QKXTM_Contraction<Float>::writeTwopMesonsHDF5_MomSpace_HighMomForm(void *twopMesons, char *filename, qudaQKXTMinfo info, int isource){
 
   if(info.CorrSpace!=MOMENTUM_SPACE || !info.HighMomForm) errorQuda("writeTwopMesonsHDF5_MomSpace_HighMomForm: Supports writing the Meson two-point function only in momentum-space and for HighMomForm!\n");
 
@@ -1502,7 +1502,7 @@ void QKXTM_Contraction_Kepler<Float>::writeTwopMesonsHDF5_MomSpace_HighMomForm(v
 //-C.K. - New function to copy the meson two-point functions into write 
 //Buffers for writing in HDF5 format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 copyTwopMesonsToHDF5_Buf(void *Twop_mesons_HDF5, 
 			 void *corrMesons, 
 			 CORR_SPACE CorrSpace, bool HighMomForm){
@@ -1560,7 +1560,7 @@ copyTwopMesonsToHDF5_Buf(void *Twop_mesons_HDF5,
 
 //-C.K. New function to write the mesons two-point function in ASCII format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::writeTwopMesons_ASCII(void *corrMesons, char *filename_out, int isource, CORR_SPACE CorrSpace){
+void QKXTM_Contraction<Float>::writeTwopMesons_ASCII(void *corrMesons, char *filename_out, int isource, CORR_SPACE CorrSpace){
 
   if(CorrSpace!=MOMENTUM_SPACE) errorQuda("writeTwopMesons_ASCII: Supports writing only in momentum-space!\n");
 
@@ -1604,9 +1604,9 @@ void QKXTM_Contraction_Kepler<Float>::writeTwopMesons_ASCII(void *corrMesons, ch
 //-C.K. Overloaded function to perform the meson contractions without 
 //writing the data
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
-	       QKXTM_Propagator_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+contractMesons(QKXTM_Propagator<Float> &prop1,
+	       QKXTM_Propagator<Float> &prop2, 
 	       void *corrMesons, 
 	       int isource, 
 	       CORR_SPACE CorrSpace){
@@ -1651,10 +1651,10 @@ contractMesons(QKXTM_Propagator_Kepler<Float> &prop1,
 //--------------------------------------------------------//
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-seqSourceFixSinkPart1(QKXTM_Vector_Kepler<Float> &vec, 
-		      QKXTM_Propagator3D_Kepler<Float> &prop1, 
-		      QKXTM_Propagator3D_Kepler<Float> &prop2, 
+void QKXTM_Contraction<Float>::
+seqSourceFixSinkPart1(QKXTM_Vector<Float> &vec, 
+		      QKXTM_Propagator3D<Float> &prop1, 
+		      QKXTM_Propagator3D<Float> &prop2, 
 		      int tsinkMtsource, int nu, int c2, 
 		      WHICHPROJECTOR PID, 
 		      WHICHPARTICLE testParticle){
@@ -1673,9 +1673,9 @@ seqSourceFixSinkPart1(QKXTM_Vector_Kepler<Float> &vec,
 }
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-seqSourceFixSinkPart2(QKXTM_Vector_Kepler<Float> &vec, 
-		      QKXTM_Propagator3D_Kepler<Float> &prop, 
+void QKXTM_Contraction<Float>::
+seqSourceFixSinkPart2(QKXTM_Vector<Float> &vec, 
+		      QKXTM_Propagator3D<Float> &prop, 
 		      int tsinkMtsource, int nu, int c2, 
 		      WHICHPROJECTOR PID, 
 		      WHICHPARTICLE testParticle){
@@ -1691,12 +1691,12 @@ seqSourceFixSinkPart2(QKXTM_Vector_Kepler<Float> &vec,
 }
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrpHDF5(void *Thrp_local_HDF5, 
 	      void *Thrp_noether_HDF5, 
 	      void **Thrp_oneD_HDF5, 
 	      char *filename, 
-	      qudaQKXTMinfo_Kepler info, 
+	      qudaQKXTMinfo info, 
 	      int isource, 
 	      WHICHPARTICLE NUCLEON){
 
@@ -1716,12 +1716,12 @@ writeThrpHDF5(void *Thrp_local_HDF5,
 
 //-C.K. - New function to write the three-point function in HDF5 format, position-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrpHDF5_PosSpace(void *Thrp_local_HDF5, 
 		       void *Thrp_noether_HDF5, 
 		       void **Thrp_oneD_HDF5, 
 		       char *filename, 
-		       qudaQKXTMinfo_Kepler info, 
+		       qudaQKXTMinfo info, 
 		       int isource, 
 		       WHICHPARTICLE NUCLEON){
   
@@ -1988,12 +1988,12 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 //-C.K. - New function to write the three-point function in HDF5 format, 
 // momentum-space
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrpHDF5_MomSpace(void *Thrp_local_HDF5, 
 		       void *Thrp_noether_HDF5, 
 		       void **Thrp_oneD_HDF5, 
 		       char *filename, 
-		       qudaQKXTMinfo_Kepler info, 
+		       qudaQKXTMinfo info, 
 		       int isource, 
 		       WHICHPARTICLE NUCLEON){
   
@@ -2360,7 +2360,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 
 //-C.K. - New function to write the three-point function in HDF5 format, momentum-space, in High-Momenta Form
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_local_HDF5, void *Thrp_noether_HDF5, void **Thrp_oneD_HDF5, char *filename, qudaQKXTMinfo_Kepler info, int isource, WHICHPARTICLE NUCLEON){
+void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_local_HDF5, void *Thrp_noether_HDF5, void **Thrp_oneD_HDF5, char *filename, qudaQKXTMinfo info, int isource, WHICHPARTICLE NUCLEON){
 
   if(info.CorrSpace!=MOMENTUM_SPACE && !info.HighMomForm) errorQuda("writeThrpHDF5_MomSpace: Support for writing the three-point function only in momentum-space for high # of momenta!\n");
 
@@ -2749,7 +2749,7 @@ void QKXTM_Contraction_Kepler<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *T
 //-C.K. - New function to copy the three-point data into write Buffers 
 // for writing in HDF5 format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 copyThrpToHDF5_Buf(void *Thrp_HDF5, 
 		   void *corrThp,  
 		   int mu, int uORd, 
@@ -2838,7 +2838,7 @@ copyThrpToHDF5_Buf(void *Thrp_HDF5,
 
 //-C.K. - New function to write the three-point function in ASCII format
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
+void QKXTM_Contraction<Float>::
 writeThrp_ASCII(void *corrThp_local, 
 		void *corrThp_noether,
 		void *corrThp_oneD, 
@@ -3005,10 +3005,10 @@ writeThrp_ASCII(void *corrThp_local,
 //-C.K. Overloaded function to perform the contractions without 
 // writing the data
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp,
-		QKXTM_Propagator_Kepler<Float> &prop, 
-		QKXTM_Gauge_Kepler<Float> &gauge, 
+void QKXTM_Contraction<Float>::
+contractFixSink(QKXTM_Propagator<Float> &seqProp,
+		QKXTM_Propagator<Float> &prop, 
+		QKXTM_Gauge<Float> &gauge, 
 		void *corrThp_local, void *corrThp_noether, 
 		void *corrThp_oneD, 
 		WHICHPROJECTOR typeProj , 
@@ -3116,10 +3116,10 @@ contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp,
 //---------------------//
 
 template<typename Float>
-void QKXTM_Contraction_Kepler<Float>::
-contractFixSink(QKXTM_Propagator_Kepler<Float> &seqProp,
-		QKXTM_Propagator_Kepler<Float> &prop, 
-		QKXTM_Gauge_Kepler<Float> &gauge, 
+void QKXTM_Contraction<Float>::
+contractFixSink(QKXTM_Propagator<Float> &seqProp,
+		QKXTM_Propagator<Float> &prop, 
+		QKXTM_Gauge<Float> &gauge, 
 		WHICHPROJECTOR typeProj , 
 		WHICHPARTICLE testParticle, 
 		int partflag , 

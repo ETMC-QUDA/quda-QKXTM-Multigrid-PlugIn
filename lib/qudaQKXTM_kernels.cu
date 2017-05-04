@@ -1,4 +1,4 @@
-#include <qudaQKXTM_Kepler.h>
+#include <qudaQKXTM.h>
 #include <errno.h>
 #include <mpi.h>  
 #include <limits>
@@ -69,7 +69,7 @@ int GK_nProc[QUDAQKXTM_DIM];
 int GK_plusGhost[QUDAQKXTM_DIM];
 int GK_minusGhost[QUDAQKXTM_DIM];
 int GK_surface3D[QUDAQKXTM_DIM];
-bool GK_init_qudaQKXTM_Kepler_flag = false;
+bool GK_init_qudaQKXTM_flag = false;
 int GK_Nsources;
 int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 int GK_Nmoms;
@@ -113,9 +113,9 @@ static void createMomenta(int Q_sq){
   GK_Nmoms=counter;
 }
 
-void quda::init_qudaQKXTM_Kepler(qudaQKXTMinfo_Kepler *info){
+void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
 
-  if(GK_init_qudaQKXTM_Kepler_flag == false){
+  if(GK_init_qudaQKXTM_flag == false){
     GK_nColor = 3;
     GK_nSpin = 4;
     GK_nDim = QUDAQKXTM_DIM;
@@ -285,17 +285,17 @@ void quda::init_qudaQKXTM_Kepler(qudaQKXTMinfo_Kepler *info){
     free(ranks);
     free(ranksTime);
 
-    GK_init_qudaQKXTM_Kepler_flag = true;
-    printfQuda("qudaQKXTM_Kepler has been initialized\n");
+    GK_init_qudaQKXTM_flag = true;
+    printfQuda("qudaQKXTM has been initialized\n");
   }
   else
     return;
 
 }
 
-void quda::printf_qudaQKXTM_Kepler(){
+void quda::printf_qudaQKXTM(){
 
-  if(GK_init_qudaQKXTM_Kepler_flag == false) errorQuda("You must initialize init_qudaQKXTM_Kepler first");
+  if(GK_init_qudaQKXTM_flag == false) errorQuda("You must initialize init_qudaQKXTM first");
   printfQuda("Number of colors is %d\n",GK_nColor);
   printfQuda("Number of spins is %d\n",GK_nSpin);
   printfQuda("Number of dimensions is %d\n",GK_nDim);
@@ -420,14 +420,14 @@ __device__ inline Float2 get_Operator(Float2 gamma[4][4], int flag,
 #include <gammas_tm_base.h>
 }
 
-#include <core_def_Kepler.h>
+#include <core_def.h>
 
 __global__ void calculatePlaq_kernel_double(cudaTextureObject_t gaugeTexPlaq,
 					    double *partial_plaq){
 #define FLOAT2 double2
 #define FLOAT double
 #define READGAUGE_FLOAT READGAUGE_double
-#include <plaquette_core_Kepler.h>
+#include <plaquette_core.h>
 #undef FLOAT2
 #undef FLOAT
 #undef READGAUGE_FLOAT
@@ -438,7 +438,7 @@ __global__ void calculatePlaq_kernel_float(cudaTextureObject_t gaugeTexPlaq,
 #define FLOAT2 float2
 #define FLOAT float
 #define READGAUGE_FLOAT READGAUGE_float
-#include <plaquette_core_Kepler.h>
+#include <plaquette_core.h>
 #undef READGAUGE_FLOAT
 #undef FLOAT2
 #undef FLOAT
@@ -450,7 +450,7 @@ __global__ void gaussianSmearing_kernel_float(float2* out,
 #define FLOAT2 float2
 #define READGAUGE_FLOAT READGAUGE_float
 #define READVECTOR_FLOAT READVECTOR_float
-#include <Gauss_core_Kepler.h>
+#include <Gauss_core.h>
 #undef READGAUGE_FLOAT
 #undef READVECTOR_FLOAT
 #undef FLOAT2
@@ -462,7 +462,7 @@ __global__ void gaussianSmearing_kernel_double(double2* out,
 #define FLOAT2 double2
 #define READGAUGE_FLOAT READGAUGE_double
 #define READVECTOR_FLOAT READVECTOR_double
-#include <Gauss_core_Kepler.h>
+#include <Gauss_core.h>
 #undef READGAUGE_FLOAT
 #undef READVECTOR_FLOAT
 #undef FLOAT2
@@ -475,7 +475,7 @@ __global__ void contractMesons_kernel_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <contractMesons_core_Kepler.h>
+#include <contractMesons_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -488,7 +488,7 @@ __global__ void contractMesons_kernel_PosSpace_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <contractMesons_core_Kepler_PosSpace.h>
+#include <contractMesons_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -501,7 +501,7 @@ __global__ void contractMesons_kernel_double(double2* block,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <contractMesons_core_Kepler.h>
+#include <contractMesons_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -514,7 +514,7 @@ __global__ void contractBaryons_kernel_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <contractBaryons_core_Kepler.h>
+#include <contractBaryons_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -527,7 +527,7 @@ __global__ void contractBaryons_kernel_PosSpace_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <contractBaryons_core_Kepler_PosSpace.h>
+#include <contractBaryons_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -539,7 +539,7 @@ __global__ void contractBaryons_kernel_double(double2* block, cudaTextureObject_
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <contractBaryons_core_Kepler.h>
+#include <contractBaryons_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -555,7 +555,7 @@ __global__ void seqSourceFixSinkPart1_kernel_float(float2* out, int timeslice,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <seqSourceFixSinkPart1_core_Kepler.h>
+#include <seqSourceFixSinkPart1_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -570,7 +570,7 @@ __global__ void seqSourceFixSinkPart2_kernel_float(float2* out,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <seqSourceFixSinkPart2_core_Kepler.h>
+#include <seqSourceFixSinkPart2_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -586,7 +586,7 @@ __global__ void seqSourceFixSinkPart1_kernel_double(double2* out,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <seqSourceFixSinkPart1_core_Kepler.h>
+#include <seqSourceFixSinkPart1_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -601,7 +601,7 @@ __global__ void seqSourceFixSinkPart2_kernel_double(double2* out,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <seqSourceFixSinkPart2_core_Kepler.h>
+#include <seqSourceFixSinkPart2_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -617,7 +617,7 @@ __global__ void fixSinkContractions_local_kernel_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <fixSinkContractions_local_core_Kepler.h>
+#include <fixSinkContractions_local_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -632,7 +632,7 @@ __global__ void fixSinkContractions_local_kernel_PosSpace_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <fixSinkContractions_local_core_Kepler_PosSpace.h>
+#include <fixSinkContractions_local_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -647,7 +647,7 @@ __global__ void fixSinkContractions_local_kernel_double(double2* block,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <fixSinkContractions_local_core_Kepler.h>
+#include <fixSinkContractions_local_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -662,7 +662,7 @@ __global__ void fixSinkContractions_local_kernel_PosSpace_double(double2* block,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <fixSinkContractions_local_core_Kepler_PosSpace.h>
+#include <fixSinkContractions_local_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -680,7 +680,7 @@ __global__ void fixSinkContractions_noether_kernel_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <fixSinkContractions_noether_core_Kepler.h>
+#include <fixSinkContractions_noether_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -696,7 +696,7 @@ __global__ void fixSinkContractions_noether_kernel_PosSpace_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <fixSinkContractions_noether_core_Kepler_PosSpace.h>
+#include <fixSinkContractions_noether_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -712,7 +712,7 @@ __global__ void fixSinkContractions_noether_kernel_double(double2* block,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <fixSinkContractions_noether_core_Kepler.h>
+#include <fixSinkContractions_noether_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -728,7 +728,7 @@ __global__ void fixSinkContractions_noether_kernel_PosSpace_double(double2* bloc
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <fixSinkContractions_noether_core_Kepler_PosSpace.h>
+#include <fixSinkContractions_noether_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -747,7 +747,7 @@ __global__ void fixSinkContractions_oneD_kernel_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <fixSinkContractions_oneD_core_Kepler.h>
+#include <fixSinkContractions_oneD_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -764,7 +764,7 @@ __global__ void fixSinkContractions_oneD_kernel_PosSpace_float(float2* block,
 #define FLOAT2 float2
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
-#include <fixSinkContractions_oneD_core_Kepler_PosSpace.h>
+#include <fixSinkContractions_oneD_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -781,7 +781,7 @@ __global__ void fixSinkContractions_oneD_kernel_double(double2* block,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <fixSinkContractions_oneD_core_Kepler.h>
+#include <fixSinkContractions_oneD_core.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -798,7 +798,7 @@ __global__ void fixSinkContractions_oneD_kernel_PosSpace_double(double2* block,
 #define FLOAT2 double2
 #define FLOAT double
 #define FETCH_FLOAT2 fetch_double2
-#include <fixSinkContractions_oneD_core_Kepler_PosSpace.h>
+#include <fixSinkContractions_oneD_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -808,50 +808,50 @@ __global__ void fixSinkContractions_oneD_kernel_PosSpace_double(double2* block,
 
 template<typename Float, typename Float2>
 __global__ void scaleVector_kernel(Float a, Float2* inOut){
-#include <scaleVector_core_Kepler.h>
+#include <scaleVector_core.h>
 }
 
 template<typename Float2> 
 __global__ void uploadToCuda_kernel(Float2 *in, double2 *outEven, double2 *outOdd){
-#include <uploadToCuda_core_Kepler.h>
+#include <uploadToCuda_core.h>
 }
 
 template<typename Float2> 
 __global__ void downloadFromCuda_kernel(Float2 *out, double2 *inEven, double2 *inOdd){
-#include <downloadFromCuda_core_Kepler.h>
+#include <downloadFromCuda_core.h>
 }
 
 template<typename Float2>
 __global__ void rotateToPhysicalBase_kernel(Float2 *inOut, int sign){
-#include <rotateToPhysicalBase_core_Kepler.h>
+#include <rotateToPhysicalBase_core.h>
 }
 
 __global__ void castDoubleToFloat_kernel(float2 *out, double2 *in){
-#include <castDoubleToFloat_core_Kepler.h>
+#include <castDoubleToFloat_core.h>
 }
 
 __global__ void castFloatToDouble_kernel(double2 *out, float2 *in){
-#include <castFloatToDouble_core_Kepler.h>
+#include <castFloatToDouble_core.h>
 }
 
 template<typename Float2>
 __global__ void conjugate_vector_kernel(Float2 *inOut){
-#include <conjugate_vector_core_Kepler.h>
+#include <conjugate_vector_core.h>
 }
 
 template<typename Float2>
 __global__ void apply_gamma5_vector_kernel(Float2 *inOut){
-#include <apply_gamma5_vector_core_Kepler.h>
+#include <apply_gamma5_vector_core.h>
 }
 
 template<typename Float2>
 __global__ void conjugate_propagator_kernel(Float2 *inOut){
-#include <conjugate_propagator_core_Kepler.h>
+#include <conjugate_propagator_core.h>
 }
 
 template<typename Float2>
 __global__ void apply_gamma5_propagator_kernel(Float2 *inOut){
-#include <apply_gamma5_propagator_core_Kepler.h>
+#include <apply_gamma5_propagator_core.h>
 }
 
 template<typename Float>

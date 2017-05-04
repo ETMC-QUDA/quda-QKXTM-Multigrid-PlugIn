@@ -49,7 +49,7 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/pgauge_det_trace.cu ${QKXTM_QUDA_HOME}/lib/clover_outer_product.cu
   ${QKXTM_QUDA_HOME}/lib/clover_sigma_outer_product.cu ${QKXTM_QUDA_HOME}/lib/momentum.cu ${QKXTM_QUDA_HOME}/lib/qcharge_quda.cu
   ${QKXTM_QUDA_HOME}/lib/quda_memcpy.cpp ${QKXTM_QUDA_HOME}/lib/version.cpp
-  qudaQKXTM_Kepler_kernels.cu qudaQKXTM_interface.cpp )
+  qudaQKXTM_kernels.cu qudaQKXTM_interface.cpp )
 
 ## split source into cu and cpp files
 FOREACH(item ${QUDA_OBJS})
@@ -80,7 +80,7 @@ mark_as_advanced(QUDA_GITDIR)
 include_directories(${QKXTM_QUDA_HOME}/lib/dslash_core)
 include_directories(${QKXTM_QUDA_HOME}/lib/)
 #QKXTM: Begin DMH
-include_directories(code_pieces_Kepler)
+include_directories(code_pieces)
 include_directories(SYSTEM ${QUDA_QKXTM_GSLHOME}/include)
 include_directories(SYSTEM ${QUDA_QKXTM_HDF5HOME}/src)
 include_directories(SYSTEM ${QUDA_QKXTM_LIMEHOME}/include)

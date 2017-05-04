@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
@@ -46,7 +46,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -59,12 +59,12 @@ extern int GK_localSize;
 extern int GK_timeRank;
 extern int GK_timeSize;
 
-#define CC QKXTM_Field_Kepler<Float>
+#define CC QKXTM_Field<Float>
 #define DEVICE_MEMORY_REPORT
 #define CMPLX_FLOAT std::complex<Float>
 
 //--------------------------//
-// class QKXTM_Field_Kepler //
+// class QKXTM_Field //
 //--------------------------//
 
 // This is is a class which allocates memory on either the
@@ -78,13 +78,13 @@ extern int GK_timeSize;
 // Propagtor3D: as above, but with sinks only at one timeslice.
 
 template<typename Float>
-QKXTM_Field_Kepler<Float>::QKXTM_Field_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Field<Float>::QKXTM_Field(ALLOCATION_FLAG alloc_flag, 
 					      CLASS_ENUM classT):
   h_elem(NULL) , d_elem(NULL) , h_ext_ghost(NULL) , h_elem_backup(NULL) , 
   isAllocHost(false) , isAllocDevice(false), isAllocHostBackup(false)
 {
-  if(GK_init_qudaQKXTM_Kepler_flag == false) 
-    errorQuda("You must initialize init_qudaQKXTM_Kepler first");
+  if(GK_init_qudaQKXTM_flag == false) 
+    errorQuda("You must initialize init_qudaQKXTM first");
 
   switch(classT){
   case FIELD:
@@ -144,14 +144,14 @@ QKXTM_Field_Kepler<Float>::QKXTM_Field_Kepler(ALLOCATION_FLAG alloc_flag,
 
 //Destructor
 template<typename Float>
-QKXTM_Field_Kepler<Float>::~QKXTM_Field_Kepler(){
+QKXTM_Field<Float>::~QKXTM_Field(){
   if(h_elem != NULL) destroy_host();
   if(h_elem_backup != NULL) destroy_host_backup();
   if(d_elem != NULL) destroy_device();
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::create_host(){
+void QKXTM_Field<Float>::create_host(){
   h_elem = (Float*) malloc(bytes_total_plus_ghost_length);
   h_ext_ghost = (Float*) malloc(bytes_ghost_length);
   if(h_elem == NULL || 
@@ -161,7 +161,7 @@ void QKXTM_Field_Kepler<Float>::create_host(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::create_host_backup(){
+void QKXTM_Field<Float>::create_host_backup(){
   h_elem_backup = (Float*) malloc(bytes_total_plus_ghost_length);
   if(h_elem_backup == NULL) errorQuda("Error with allocation host memory");
   isAllocHostBackup = true;
@@ -169,7 +169,7 @@ void QKXTM_Field_Kepler<Float>::create_host_backup(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::create_device(){
+void QKXTM_Field<Float>::create_device(){
   cudaMalloc((void**)&d_elem,bytes_total_plus_ghost_length);
   checkCudaError();
 #ifdef DEVICE_MEMORY_REPORT
@@ -182,7 +182,7 @@ void QKXTM_Field_Kepler<Float>::create_device(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroy_host(){
+void QKXTM_Field<Float>::destroy_host(){
   free(h_elem);
   free(h_ext_ghost);
   h_elem=NULL;
@@ -190,13 +190,13 @@ void QKXTM_Field_Kepler<Float>::destroy_host(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroy_host_backup(){
+void QKXTM_Field<Float>::destroy_host_backup(){
   free(h_elem_backup);
   h_elem=NULL;
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroy_device(){
+void QKXTM_Field<Float>::destroy_device(){
   cudaFree(d_elem);
   checkCudaError();
   d_elem = NULL;
@@ -207,22 +207,22 @@ void QKXTM_Field_Kepler<Float>::destroy_device(){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::zero_host(){
+void QKXTM_Field<Float>::zero_host(){
   memset(h_elem,0,bytes_total_plus_ghost_length);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::zero_host_backup(){
+void QKXTM_Field<Float>::zero_host_backup(){
   memset(h_elem_backup,0,bytes_total_plus_ghost_length);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::zero_device(){
+void QKXTM_Field<Float>::zero_device(){
   cudaMemset(d_elem,0,bytes_total_plus_ghost_length);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::createTexObject(cudaTextureObject_t *tex){
+void QKXTM_Field<Float>::createTexObject(cudaTextureObject_t *tex){
   cudaChannelFormatDesc desc;
   memset(&desc, 0, sizeof(cudaChannelFormatDesc));
   int precision = CC::Precision();
@@ -258,12 +258,12 @@ void QKXTM_Field_Kepler<Float>::createTexObject(cudaTextureObject_t *tex){
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::destroyTexObject(cudaTextureObject_t tex){
+void QKXTM_Field<Float>::destroyTexObject(cudaTextureObject_t tex){
   cudaDestroyTextureObject(tex);
 }
 
 template<typename Float>
-void QKXTM_Field_Kepler<Float>::printInfo(){
+void QKXTM_Field<Float>::printInfo(){
   printfQuda("This object has precision %d\n",Precision());
   printfQuda("This object needs %f Mb\n",
 	     bytes_total_plus_ghost_length/(1024.*1024.));

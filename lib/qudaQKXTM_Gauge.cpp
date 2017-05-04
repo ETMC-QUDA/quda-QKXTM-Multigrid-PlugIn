@@ -4,8 +4,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
@@ -46,7 +46,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -61,16 +61,16 @@ extern int GK_timeSize;
 
 
 //--------------------------//
-// class QKXTM_Gauge_Kepler //
+// class QKXTM_Gauge //
 //--------------------------//
 
 template<typename Float>
-QKXTM_Gauge_Kepler<Float>::QKXTM_Gauge_Kepler(ALLOCATION_FLAG alloc_flag, 
+QKXTM_Gauge<Float>::QKXTM_Gauge(ALLOCATION_FLAG alloc_flag, 
 					      CLASS_ENUM classT): 
-  QKXTM_Field_Kepler<Float>(alloc_flag, classT){ ; }
+  QKXTM_Field<Float>(alloc_flag, classT){ ; }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::packGauge(void **gauge){
+void QKXTM_Gauge<Float>::packGauge(void **gauge){
 
   double **p_gauge = (double**) gauge;
   
@@ -89,7 +89,7 @@ void QKXTM_Gauge_Kepler<Float>::packGauge(void **gauge){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::packGaugeToBackup(void **gauge){
+void QKXTM_Gauge<Float>::packGaugeToBackup(void **gauge){
   double **p_gauge = (double**) gauge;
   if(CC::h_elem_backup != NULL){
     for(int dir = 0 ; dir < GK_nDim ; dir++)
@@ -113,21 +113,21 @@ void QKXTM_Gauge_Kepler<Float>::packGaugeToBackup(void **gauge){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::justDownloadGauge(){
+void QKXTM_Gauge<Float>::justDownloadGauge(){
   cudaMemcpy(CC::h_elem,CC::d_elem,CC::bytes_total_length, 
 	     cudaMemcpyDeviceToHost);
   checkCudaError();
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::loadGauge(){
+void QKXTM_Gauge<Float>::loadGauge(){
   cudaMemcpy(CC::d_elem,CC::h_elem,CC::bytes_total_length, 
 	     cudaMemcpyHostToDevice );
   checkCudaError();
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::loadGaugeFromBackup(){
+void QKXTM_Gauge<Float>::loadGaugeFromBackup(){
   if(CC::h_elem_backup != NULL){
     cudaMemcpy(CC::d_elem,CC::h_elem_backup, CC::bytes_total_length, 
 	       cudaMemcpyHostToDevice );
@@ -140,7 +140,7 @@ void QKXTM_Gauge_Kepler<Float>::loadGaugeFromBackup(){
 
 // gpu collect ghost and send it to host
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::ghostToHost(){   
+void QKXTM_Gauge<Float>::ghostToHost(){   
 
   // direction x 
   if( GK_localL[0] < GK_totalL[0]){
@@ -310,7 +310,7 @@ void QKXTM_Gauge_Kepler<Float>::ghostToHost(){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::cpuExchangeGhost(){
+void QKXTM_Gauge<Float>::cpuExchangeGhost(){
   if( comm_size() > 1 ){
     MsgHandle *mh_send_fwd[4];
     MsgHandle *mh_from_back[4];
@@ -363,7 +363,7 @@ void QKXTM_Gauge_Kepler<Float>::cpuExchangeGhost(){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::ghostToDevice(){
+void QKXTM_Gauge<Float>::ghostToDevice(){
   if(comm_size() > 1){
     Float *host = CC::h_ext_ghost;
     Float *device = CC::d_elem+GK_localVolume*GK_nColor*GK_nColor*GK_nDim*2;
@@ -373,7 +373,7 @@ void QKXTM_Gauge_Kepler<Float>::ghostToDevice(){
 }
 
 template<typename Float>
-void QKXTM_Gauge_Kepler<Float>::calculatePlaq(){
+void QKXTM_Gauge<Float>::calculatePlaq(){
   cudaTextureObject_t tex;
 
   ghostToHost();

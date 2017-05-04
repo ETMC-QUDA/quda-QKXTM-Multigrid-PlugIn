@@ -5,8 +5,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <dirac_quda.h>
 #include <errno.h>
 #include <mpi.h>
@@ -48,7 +48,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -69,19 +69,19 @@ extern int GK_timeSize;
 //Though only some template forward declarations
 //are needed presently, future development may require the
 //others, and are therefore placed here for convenience
-// template  class QKXTM_Field_Kepler<double>;
-// template  class QKXTM_Gauge_Kepler<double>;
-// template  class QKXTM_Vector_Kepler<double>;
-// template  class QKXTM_Propagator_Kepler<double>;
-// template  class QKXTM_Propagator3D_Kepler<double>;
-// template  class QKXTM_Vector3D_Kepler<double>;
+// template  class QKXTM_Field<double>;
+// template  class QKXTM_Gauge<double>;
+// template  class QKXTM_Vector<double>;
+// template  class QKXTM_Propagator<double>;
+// template  class QKXTM_Propagator3D<double>;
+// template  class QKXTM_Vector3D<double>;
 
-// template  class QKXTM_Field_Kepler<float>;
-// template  class QKXTM_Gauge_Kepler<float>;
-// template  class QKXTM_Vector_Kepler<float>;
-// template  class QKXTM_Propagator_Kepler<float>;
-// template  class QKXTM_Propagator3D_Kepler<float>;
-// template  class QKXTM_Vector3D_Kepler<float>;
+// template  class QKXTM_Field<float>;
+// template  class QKXTM_Gauge<float>;
+// template  class QKXTM_Vector<float>;
+// template  class QKXTM_Propagator<float>;
+// template  class QKXTM_Propagator3D<float>;
+// template  class QKXTM_Vector3D<float>;
 
 static bool exists_file (const char* name) {
   return ( access( name, F_OK ) != -1 );
@@ -91,16 +91,16 @@ static bool exists_file (const char* name) {
 //passed as 4 (mu) pointers to pointers for each 
 //spacetime dimension.
 void testPlaquette(void **gauge){
-  QKXTM_Gauge_Kepler<float> *gauge_object = 
-    new QKXTM_Gauge_Kepler<float>(BOTH,GAUGE);
+  QKXTM_Gauge<float> *gauge_object = 
+    new QKXTM_Gauge<float>(BOTH,GAUGE);
   gauge_object->printInfo();
   gauge_object->packGauge(gauge);
   gauge_object->loadGauge();
   gauge_object->calculatePlaq();
   delete gauge_object;
 
-  QKXTM_Gauge_Kepler<double> *gauge_object_2 = 
-    new QKXTM_Gauge_Kepler<double>(BOTH,GAUGE);
+  QKXTM_Gauge<double> *gauge_object_2 = 
+    new QKXTM_Gauge<double>(BOTH,GAUGE);
   gauge_object_2->printInfo();
   gauge_object_2->packGauge(gauge);
   gauge_object_2->loadGauge();
@@ -114,17 +114,17 @@ void testPlaquette(void **gauge){
 //spacetime dimension. Output is printed to 
 //stdout.
 void testGaussSmearing(void **gauge){
-  QKXTM_Gauge_Kepler<double> *gauge_object = 
-    new QKXTM_Gauge_Kepler<double>(BOTH,GAUGE);
+  QKXTM_Gauge<double> *gauge_object = 
+    new QKXTM_Gauge<double>(BOTH,GAUGE);
   gauge_object->printInfo();
   gauge_object->packGauge(gauge);
   gauge_object->loadGauge();
   gauge_object->calculatePlaq();
 
-  QKXTM_Vector_Kepler<double> *vecIn = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
-  QKXTM_Vector_Kepler<double> *vecOut = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *vecIn = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *vecOut = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
 
   void *input_vector = malloc(GK_localVolume*4*3*2*sizeof(double));
   *((double*) input_vector) = 1.;
@@ -415,7 +415,7 @@ void getStochasticRandomSource(void *spinorIn, gsl_rng *rNum){
 */
 
 
-/* Moved to qudaQKXTM_Loops_Kepler.cpp 
+/* Moved to qudaQKXTM_Loops.cpp 
 //-C.K. This is a new function to print all the loops in ASCII format
 template<typename Float>
 void writeLoops_ASCII(Float *writeBuf, const char *Pref, 
@@ -494,7 +494,7 @@ void writeLoops_ASCII(Float *writeBuf, const char *Pref,
 }
 */
 
-/* Moved to qudaQKXTM_Loops_Kepler.cpp
+/* Moved to qudaQKXTM_Loops.cpp
 //-C.K: Copy the HDF5 dataset chunk into writeBuf
 template<typename Float>
 void getLoopWriteBuf(Float *writeBuf, Float *loopBuf, int iPrint, int Nmoms, int imom, bool oneD){
@@ -521,7 +521,7 @@ void getLoopWriteBuf(Float *writeBuf, Float *loopBuf, int iPrint, int Nmoms, int
 }
 */
 
-/* Moved to qudaQKXTM_Loops_Kepler.cpp
+/* Moved to qudaQKXTM_Loops.cpp
 //-C.K: Funtion to write the loops in HDF5 format
 template<typename Float>
 void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc, 

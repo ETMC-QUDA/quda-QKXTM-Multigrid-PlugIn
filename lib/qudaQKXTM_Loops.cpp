@@ -5,8 +5,8 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <qudaQKXTM_Kepler.h>
-#include <qudaQKXTM_Kepler_utils.h>
+#include <qudaQKXTM.h>
+#include <qudaQKXTM_utils.h>
 #include <dirac_quda.h>
 #include <errno.h>
 #include <mpi.h>
@@ -48,7 +48,7 @@ extern int GK_nProc[QUDAQKXTM_DIM];
 extern int GK_plusGhost[QUDAQKXTM_DIM];
 extern int GK_minusGhost[QUDAQKXTM_DIM];
 extern int GK_surface3D[QUDAQKXTM_DIM];
-extern bool GK_init_qudaQKXTM_Kepler_flag;
+extern bool GK_init_qudaQKXTM_flag;
 extern int GK_Nsources;
 extern int GK_sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
 extern int GK_Nmoms;
@@ -71,7 +71,7 @@ extern int GK_timeSize;
 //------------------------------------------------------------------//
 
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::
+void QKXTM_Deflation<Float>::
 Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 			    void *gen_uloc,void *std_uloc,
 			    void **gen_oneD, 
@@ -106,8 +106,8 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   double *eigVec = (double*) malloc(bytes_total_length_per_NeV);
   memcpy(eigVec,&(h_elem[n*total_length_per_NeV]),bytes_total_length_per_NeV);
 
-  QKXTM_Vector_Kepler<double> *Kvec = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *Kvec = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
   
   ColorSpinorParam cpuParam((void*)eigVec,*param,GK_localL,pc_solve);
   ColorSpinorParam cudaParam(cpuParam, *param);

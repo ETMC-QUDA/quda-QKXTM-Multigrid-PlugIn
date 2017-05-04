@@ -11,8 +11,8 @@
 #include <qudaQKXTM_utils.h>
 #include <dirac_quda.h>
 
-#ifndef _QUDAQKXTM_KEPLER_H
-#define _QUDAQKXTM_KEPLER_H
+#ifndef _QUDAQKXTM__H
+#define _QUDAQKXTM__H
 
 // function for writing
 extern "C"{
@@ -524,4 +524,4 @@ void calcLowModeProjection(void **gaugeToPlaquette,
 // HAVE_ARPACK
 
 #endif
-//_QUDAQKXTM_KEPLER_H
+//_QUDAQKXTM__H

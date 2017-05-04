@@ -10,8 +10,8 @@
 //DMH 
 #include <dirac_quda.h>
 
-#ifndef _QUDAQKXTM_KEPLER_UTILS_H
-#define _QUDAQKXTM_KEPLER_UTILS_H
+#ifndef _QUDAQKXTM__UTILS_H
+#define _QUDAQKXTM__UTILS_H
 
 
 #define QUDAQKXTM_DIM 4

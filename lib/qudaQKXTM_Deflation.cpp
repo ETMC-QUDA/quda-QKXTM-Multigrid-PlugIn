@@ -386,7 +386,7 @@ void QKXTM_Deflation<Float>::MapEvenOddToFull(int i){
 
 /*
 template<typename Float>
-void QKXTM_Deflation_Kepler<Float>::G5innerProduct(){
+void QKXTM_Deflation<Float>::G5innerProduct(){
 
   size_t bytes = bytes_total_length_per_NeV;
   int size = total_length_per_NeV;
@@ -401,10 +401,10 @@ void QKXTM_Deflation_Kepler<Float>::G5innerProduct(){
   fptr = fopen(fname,"wa");
   Complex Result(0.0,0.0);
 
-  QKXTM_Vector_Kepler<double> *K_G5eVec = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
-  QKXTM_Vector_Kepler<double> *K_eVec = 
-    new QKXTM_Vector_Kepler<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_G5eVec = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
+  QKXTM_Vector<double> *K_eVec = 
+    new QKXTM_Vector<double>(BOTH,VECTOR);
 
   ColorSpinorField *eVec = NULL;
   ColorSpinorField *G5eVec = NULL;
@@ -419,12 +419,12 @@ void QKXTM_Deflation_Kepler<Float>::G5innerProduct(){
 
     printfQuda("Start Vector %d\n",i);
 
-    copyEigenVectorToQKXTM_Vector_Kepler(i, (double*)K_eVec);
+    copyEigenVectorToQKXTM_Vector(i, (double*)K_eVec);
     printfQuda("Flag 1\n");
     //eVec->loadVector();
     printfQuda("Flag 2\n");
 
-    copyEigenVectorToQKXTM_Vector_Kepler(i, (double*)K_G5eVec);
+    copyEigenVectorToQKXTM_Vector(i, (double*)K_G5eVec);
     printfQuda("Flag 3\n");
     //G5eVec->loadVector();
     printfQuda("Flag 4\n");

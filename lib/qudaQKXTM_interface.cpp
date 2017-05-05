@@ -7369,7 +7369,7 @@ void calcLowModeProjection(void **gaugeToPlaquette,
 			   QudaInvertParam *param, 
 			   QudaGaugeParam *gauge_param,
 			   qudaQKXTM_arpackInfo arpackInfo, 
-			   qudaQKXTMinfo_Kepler info){
+			   qudaQKXTMinfo info){
   
   double t1,t2,t3,t4;
   char fname[256];
@@ -7406,8 +7406,8 @@ void calcLowModeProjection(void **gaugeToPlaquette,
   int NeV_Full = arpackInfo.nEv;  
   
   //Create object to store and calculate eigenpairs
-  QKXTM_Deflation_Kepler<double> *deflation = 
-    new QKXTM_Deflation_Kepler<double>(param,arpackInfo);
+  QKXTM_Deflation<double> *deflation = 
+    new QKXTM_Deflation<double>(param,arpackInfo);
   deflation->printInfo();
   
   //- Calculate the eigenVectors

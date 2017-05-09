@@ -122,6 +122,8 @@ namespace quda {
     int TSM_NprintLP;
     long int TSM_maxiter;
     double TSM_tol;
+    int k_probing; // if its value <=0 then probing is switched off
+    bool spinColorDil; // enables spin color dilution
   }qudaQKXTM_loopInfo;
 
   enum ALLOCATION_FLAG{NONE,HOST,DEVICE,BOTH,BOTH_EXTRA};

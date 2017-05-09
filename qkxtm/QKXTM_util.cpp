@@ -1616,10 +1616,11 @@ int TSM_NdumpHP = 0;
 int TSM_NdumpLP = 0;
 long int TSM_maxiter = 0;
 double TSM_tol = 0;
+
+
 #ifdef HAVE_ARPACK
 //- Loop params with ARPACK enabled
 char filename_dSteps[512]="none";
-
 
 //-C.K. ARPACK Parameters
 char pathEigenVectorsUp[257] = "ev_u.0000";
@@ -1639,9 +1640,10 @@ char arpack_logfile[512] = "arpack.log";
 double amin = 3.0e-4;
 double amax = 3.5;
 bool isFullOp = false;
-
 #endif
 
+int k_probing = 0; // default is without probing
+bool spinColorDil = false;
 //===========//
 
 QudaReconstructType link_recon = QUDA_RECONSTRUCT_NO;
@@ -1867,6 +1869,9 @@ void usage(char** argv )
   printf("    --UseFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
   printf("    --defl_steps                              # File to deflation steps (default none)\n");
 
+  printf("    --k_probing                                 # This parameters is for the Hierarchical probing where neighbors distance D=2**k (default 0: No probing)\n");
+  printf("    --spinColorDil <true/false>                 # Whether we want spin color dilution (default false)\n");
+  
 #endif
   //--------//
 
@@ -3442,6 +3447,35 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
 #endif
+
+  if( strcmp(argv[i], "--k_probing") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+    k_probing =  atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--spinColorDil") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+
+    if (strcmp(argv[i+1], "true") == 0){
+      spinColorDil = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      spinColorDil = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid spinColorDil type\n");	
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
  
   //-----------------------------------------------------------
 

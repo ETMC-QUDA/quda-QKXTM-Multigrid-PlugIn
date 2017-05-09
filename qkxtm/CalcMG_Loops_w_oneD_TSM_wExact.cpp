@@ -131,6 +131,9 @@ extern double amax;
 extern bool isEven;
 extern bool isFullOp;
 
+// K.H probing parameters
+extern int k_probing;
+extern bool spinColorDil;
 
 namespace quda {
   extern void setTransferGPU(bool);
@@ -552,6 +555,8 @@ int main(int argc, char **argv)
   loopInfo.Ndump = Ndump;
   loopInfo.traj = traj;
   loopInfo.Qsq = Q_sq;
+  loopInfo.k_probing = k_probing;
+  loopInfo.spinColorDil = spinColorDil;
   strcpy(loopInfo.loop_fname,loop_fname);
 
   if( strcmp(loop_file_format,"ASCII")==0 || 

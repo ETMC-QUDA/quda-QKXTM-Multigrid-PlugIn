@@ -1,7 +1,7 @@
-ETMC-QUDA production code base                        24th February 2017
+ETMC-QUDA production code base                        30th May 2017
 ------------------------------------------------------------------------
 
-This library is an extension to QUDA mainline: 19th March 2017
+This library is an extension to QUDA mainline: 30th May 2017
 
 The current QUDA branch to be pointed to is:
 feature/multigrid
@@ -20,11 +20,6 @@ Dependencies:
 
 In order to compile this code, one must also have  the following installed:
 
-   QUDA specific
-   REQUIRED:
-   magma 1.7.0
-   
-   ETMC-QUDA specific
    REQUIRED:
    hdf5
    lime
@@ -40,11 +35,10 @@ is needed only for those routines involving deflation.
 Compilation:
 
 One must have the CONTRACT boolean ON in order to ensure that the covariant
-derivative functions in QUDA are compiled. MAGMA, and MULTIGRID booleans also
-must be switched ON. One must manually give the explicit path to magma.h in 
-the file blas_magma.cu.
-One must pass to the plug-in the mainline QUDA source code directory and 
-it will recompile all the kernels as specified by your plug-in CMake configuration.
+derivative functions in QUDA are compiled. The MULTIGRID boolean 
+must be switched ON. One must pass to the plug-in the mainline QUDA source
+code directory and it will recompile all the kernels as specified by your 
+plug-in CMake configuration. 
 This lightweight version of quda-QKXTM-Multigrid is volatile in that 
 succesful compilatin and execution of the code is depenedent on the stability
 of the QUDA mainline source code against which you compile.
@@ -52,12 +46,7 @@ of the QUDA mainline source code against which you compile.
 For safe results, please use quda-QKXTM-Multigrid which has been thoroughly 
 tested. For more recent QUDA builds, use this plug-in with caution.
 
-This plug-in can be compiled against: https://github.com/lattice/quda/tree/feature/multigrid
-with the following additions,
-One must add to quda.h two extra preconditioner pointers:
-https://github.com/ETMC-QUDA/quda-QKXTM-Multigrid/blob/master/include/quda.h#L226
-
-LATEST SUCCESSFUL COMPILATION: 28 March 2017
+LATEST SUCCESSFUL COMPILATION: 30 May 2017
 
 If you have compilation issues, please @cpviolator
 
@@ -92,6 +81,30 @@ compiled, rather included in qudaQKXTM_interface.cpp as,
 
 ... [begin QKXTM calculation functions]
 
+The Loop routines need only a single flavour operator. The 2pt and 3pt
+functions require both UP and DOWN flavour types. QUDA does not yey support
+multiple MG preconditioners, but this can be fixed with three minor additions: 
+
+First, one must add to quda/include/quda.h two extra preconditioner pointers:
+
+void preconditioner; -> void preconditioner;
+     		        void preconditionerUP;
+			void preconditionerDN;
+
+Then, adjust the quda/lib/check_params.h file:
+
+P(preconditioner, 0); -> P(preconditioner, 0);
+		         P(preconditionerUP, 0);
+  			 P(preconditionerDN, 0);
+
+and finally the quda/lib/quda_fortran.F90 file:
+
+integer(8) :: preconditioner -> integer(8) :: preconditioner
+	      		        integer(8) :: preconditionerUP
+				integer(8) :: preconditionerDN
+
+This will allow for sucessful compilation of the 2 flavour routines, set 
+by the CMake Flag QKXTM_2FLAVMG.
 
 Known Issues:
 

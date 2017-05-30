@@ -1561,6 +1561,71 @@ int device = -1;
 int device = 0;
 #endif
 
+QudaReconstructType link_recon = QUDA_RECONSTRUCT_NO;
+QudaReconstructType link_recon_sloppy = QUDA_RECONSTRUCT_INVALID;
+QudaReconstructType link_recon_precondition = QUDA_RECONSTRUCT_INVALID;
+QudaPrecision prec = QUDA_SINGLE_PRECISION;
+QudaPrecision  prec_sloppy = QUDA_INVALID_PRECISION;
+QudaPrecision  prec_precondition = QUDA_INVALID_PRECISION;
+int xdim = 24;
+int ydim = 24;
+int zdim = 24;
+int tdim = 24;
+int Lsdim = 16;
+QudaDagType dagger = QUDA_DAG_NO;
+int gridsize_from_cmdline[4] = {1,1,1,1};
+QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
+char latfile[256] = "";
+int Nsrc = 1;
+int Msrc = 1;
+int niter = 100;
+int gcrNkrylov = 10;
+int pipeline = 0;
+int solution_accumulator_pipeline = 0;
+int test_type = 0;
+int nvec[QUDA_MAX_MG_LEVEL] = { };
+char vec_infile[256] = "";
+char vec_outfile[256] = "";
+QudaInverterType inv_type;
+QudaInverterType precon_type = QUDA_INVALID_INVERTER;
+int multishift = 0;
+bool verify_results = true;
+double mass = 0.1;
+double mu = 0.1;
+double anisotropy = 1.0;
+double clover_coeff = 0.1;
+bool compute_clover = false;
+double tol = 1e-7;
+double tol_hq = 0.1;
+QudaTwistFlavorType twist_flavor = QUDA_TWIST_SINGLET;
+bool kernel_pack_t = false;
+QudaMassNormalization normalization = QUDA_KAPPA_NORMALIZATION;
+QudaMatPCType matpc_type = QUDA_MATPC_EVEN_EVEN;
+QudaSolveType solve_type = QUDA_DIRECT_PC_SOLVE;
+
+int mg_levels = 2;
+
+int nu_pre = 2;
+int nu_post = 2;
+double mu_factor[QUDA_MAX_MG_LEVEL] = { };
+QudaVerbosity mg_verbosity[QUDA_MAX_MG_LEVEL] = { };
+QudaInverterType setup_inv[QUDA_MAX_MG_LEVEL] = { };
+int num_setup_iter[QUDA_MAX_MG_LEVEL] = { };//
+double setup_tol = 5e-6;
+QudaSetupType setup_type = QUDA_NULL_VECTOR_SETUP;//
+bool pre_orthonormalize = false;//
+bool post_orthonormalize = true;//
+double omega = 0.85;
+QudaInverterType smoother_type = QUDA_MR_INVERTER;
+QudaInverterType coarsest_solver = QUDA_GCR_INVERTER;//
+double coarsest_tol = 0; // if 0, then we use tolhq //
+int coarsest_maxiter = 1000;//
+bool generate_nullspace = true;
+bool generate_all_levels = true;
+
+int geo_block_size[QUDA_MAX_MG_LEVEL][QUDA_MAX_DIM] = { };
+
+static int dim_partitioned[4] = {0,0,0,0};
 
 /////////////////////
 // QKXTM additions //
@@ -1646,70 +1711,7 @@ int k_probing = 0; // default is without probing
 bool spinColorDil = false;
 //===========//
 
-QudaReconstructType link_recon = QUDA_RECONSTRUCT_NO;
-QudaReconstructType link_recon_sloppy = QUDA_RECONSTRUCT_INVALID;
-QudaReconstructType link_recon_precondition = QUDA_RECONSTRUCT_INVALID;
-QudaPrecision prec = QUDA_SINGLE_PRECISION;
-QudaPrecision  prec_sloppy = QUDA_INVALID_PRECISION;
-QudaPrecision  prec_precondition = QUDA_INVALID_PRECISION;
-int xdim = 24;
-int ydim = 24;
-int zdim = 24;
-int tdim = 24;
-int Lsdim = 16;
-QudaDagType dagger = QUDA_DAG_NO;
-int gridsize_from_cmdline[4] = {1,1,1,1};
-QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
-char latfile[256] = "";
-int Nsrc = 1;
-int Msrc = 1;
-bool tune = true;
-int niter = 100;
-int test_type = 0;
-int nvec[QUDA_MAX_MG_LEVEL] = { };
-char vec_infile[256] = "";
-char vec_outfile[256] = "";
-QudaInverterType inv_type;
-QudaInverterType precon_type = QUDA_INVALID_INVERTER;
-int multishift = 0;
-bool verify_results = true;
-double mass = 0.1;
-double mu = 0.085;
-//QKXTM: DMH Experimental MG additions
-double delta_muPR = 1.0;
-double delta_kappaPR = 1.0;
-double delta_cswPR = 1.0;
-double delta_muCG = 1.0;
-double delta_kappaCG = 1.0;
-double delta_cswCG = 1.0;
 
-double anisotropy = 1.0;
-double clover_coeff = 0.1;
-bool compute_clover = false;
-double tol = 1e-7;
-double tol_hq = 0.;
-QudaTwistFlavorType twist_flavor = QUDA_TWIST_SINGLET;
-bool kernel_pack_t = false;
-QudaMassNormalization normalization = QUDA_KAPPA_NORMALIZATION;
-QudaMatPCType matpc_type = QUDA_MATPC_EVEN_EVEN;
-QudaSolveType solve_type = QUDA_DIRECT_PC_SOLVE;
-
-int mg_levels = 2;
-
-int nu_pre = 2;
-int nu_post = 2;
-double mu_factor[QUDA_MAX_MG_LEVEL] = { };
-QudaVerbosity mg_verbosity[QUDA_MAX_MG_LEVEL] = { };
-QudaInverterType setup_inv[QUDA_MAX_MG_LEVEL] = { };
-double setup_tol = 5e-6;
-double omega = 0.85;
-QudaInverterType smoother_type = QUDA_MR_INVERTER;
-bool generate_nullspace = true;
-bool generate_all_levels = true;
-
-int geo_block_size[QUDA_MAX_MG_LEVEL][QUDA_MAX_DIM] = { };
-
-static int dim_partitioned[4] = {0,0,0,0};
 
 int dimPartitioned(int dim)
 {
@@ -1751,6 +1753,9 @@ void usage(char** argv )
          "                                                  /asqtad/domain-wall/domain-wall-4d/mobius\n");
   printf("    --flavor <type>                           # Set the twisted mass flavor type (singlet (default), deg-doublet, nondeg-doublet)\n");
   printf("    --niter <n>                               # The number of iterations to perform (default 10)\n");
+  printf("    --ngcrkrylov <n>                          # The number of inner iterations to use for GCR, BiCGstab-l (default 10)\n");
+  printf("    --pipeline <n>                            # The pipeline length for fused operations in GCR, BiCGstab-l (default 0, no pipelining)\n");
+  printf("    --solution-pipeline <n>                   # The pipeline length for fused solution accumulation (default 0, no pipelining)\n");
   printf("    --inv-type <cg/bicgstab/gcr>              # The type of solver to use (default cg)\n");
   printf("    --precon-type <mr/ (unspecified)>         # The type of solver to use (default none (=unspecified)).\n"
 	 "                                                  For multigrid this sets the smoother type.\n");
@@ -1765,7 +1770,6 @@ void usage(char** argv )
   printf("    --solve-type                              # The type of solve to do (direct, direct-pc, normop, normop-pc, normerr, normerr-pc) \n");
   printf("    --tol  <resid_tol>                        # Set L2 residual tolerance\n");
   printf("    --tolhq  <resid_hq_tol>                   # Set heavy-quark residual tolerance\n");
-  printf("    --tune <true/false>                       # Whether to autotune or not (default true)\n");     
   printf("    --test                                    # Test method (different for each test)\n");
   printf("    --verify <true/false>                     # Verify the GPU results using CPU results (default true)\n");
   printf("    --mg-nvec <level nvec>                    # Number of null-space vectors to define the multigrid transfer operator on a given level\n");
@@ -1774,17 +1778,24 @@ void usage(char** argv )
   printf("    --mg-nu-pre  <1-20>                       # The number of pre-smoother applications to do at each multigrid level (default 2)\n");
   printf("    --mg-nu-post <1-20>                       # The number of post-smoother applications to do at each multigrid level (default 2)\n");
   printf("    --mg-setup-inv <level inv>                # The inverter to use for the setup of multigrid (default bicgstab)\n");
+  printf("    --mg-setup-iters <level iter>             # The number of setup iterations to use for the multigrid (default 1)\n");
   printf("    --mg-setup-tol                            # The tolerance to use for the setup of multigrid (default 5e-6)\n");
+  printf("    --mg-setup-type <null/test>               # The type of setup to use for the multigrid (default null)\n");
+  printf("    --mg-pre-orth <true/false>                # If orthonormalize the vector before inverting in the setup of multigrid (default false)\n");
+  printf("    --mg-post-orth <true/false>               # If orthonormalize the vector after inverting in the setup of multigrid (default true)\n");
   printf("    --mg-omega                                # The over/under relaxation factor for the smoother of multigrid (default 0.85)\n");
   printf("    --mg-smoother                             # The smoother to use for multigrid (default mr)\n");
+  printf("    --mg-coarsest-solver                      # The solver to use in the coarsest level of multigrid (default gcr)\n");
+  printf("    --mg-coarsest-tol                         # The solver tolerance to use in the coarsest level of multigrid (default tolhq)\n");
+  printf("    --mg-coarsest-maxiter                     # The solver maxiter to use in the coarsest level of multigrid (default 1000)\n");
   printf("    --mg-block-size <level x y z t>           # Set the geometric block size for the each multigrid level's transfer operator(default 4 4 4 4)\n");
   printf("    --mg-mu-factor <level factor >            # Set the multiplicative factor for the twisted mass mu parameter on each level (default 1)\n");
   printf("    --mg-generate-nullspace <true/false>      # Generate the null-space vector dynamically (default true)\n");
   printf("    --mg-generate-all-levels <true/talse>     # true=generate nul space on all levels, false=generate on level 0 "
 	 "                                                  and create other levels from that (default true)\n");
   printf("    --mg-load-vec file                        # Load the vectors \"file\" for the multigrid_test (requires QIO)\n");
-  printf("    --mg-verbosity <level verb>               # The verbosity to use on each level of the multigrid (default silent)\n");
   printf("    --mg-save-vec file                        # Save the generated null-space vectors \"file\" from the multigrid_test (requires QIO)\n");
+  printf("    --mg-verbosity <level verb>               # The verbosity to use on each level of the multigrid (default silent)\n");
   printf("    --nsrc <n>                                # How many spinors to apply the dslash to simultaneusly (experimental for staggered only)\n");
   printf("    --msrc <n>                                # Used for testing non-square block blas routines where nsrc defines the other dimension\n");
 
@@ -1792,20 +1803,14 @@ void usage(char** argv )
   // QKXTM additions //
   /////////////////////
 
-  //QKXTM: DMH Experimental MG additions
-  printf("    --delta-kappaPR                           # Multiplicative kappa factor for P,R (default 1.0)\n");
-  printf("    --delta-muPR                              # Multiplicative mu factor for P,R (default 1.0)\n");
-  printf("    --delta-cswPR                             # Multiplicative Csw factor for P,R (default 1.0)\n");
-  printf("    --delta-kappaCG                           # Multiplicative kappa factor for coarse grid (default 1.0)\n");
-  printf("    --delta-muCG                              # Multiplicative mu factor for coarse grid (default 1.0)\n");
-  printf("    --delta-cswCG                             # Multiplicative Csw factor for coarse grid (default 1.0)\n");
-
   //-C.K. Generic INPUT
   printf("    --traj                                    # Trajectory of the configuration\n");
   printf("    --kappa                                   # Kappa value for a specific enseble (default 0.161231)\n");
   printf("    --csw                                     # Clover csw coefficient (default 1.57551)\n");
   printf("    --load-gauge-smeared                      # Load smeared gauge field \"file\" (in LIME format)\n");
   printf("    --verbosity-level                         # Verbosity level (verbose/summarize/silent, default: summarize)\n");
+
+
 
   //-C.K. Correlation function INPUT
   printf("    --x_source                                # Source position in x direction (default 0)\n");
@@ -1869,7 +1874,7 @@ void usage(char** argv )
   printf("    --UseFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
   printf("    --defl_steps                              # File to deflation steps (default none)\n");
 
-  printf("    --k_probing                                 # This parameters is for the Hierarchical probing where neighbors distance D=2**k (default 0: No probing)\n");
+  printf("    --k-probing                                 # This parameters is for the Hierarchical probing where neighbors distance D=2**k (default 0: No probing)\n");
   printf("    --spinColorDil <true/false>                 # Whether we want spin color dilution (default false)\n");
   
 #endif
@@ -2160,25 +2165,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-
-  if( strcmp(argv[i], "--tune") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }	    
-
-    if (strcmp(argv[i+1], "true") == 0){
-      tune = true;
-    }else if (strcmp(argv[i+1], "false") == 0){
-      tune = false;
-    }else{
-      fprintf(stderr, "ERROR: invalid tuning type\n");	
-      exit(1);
-    }
-
-    i++;
-    ret = 0;
-    goto out;
-  }
 
   if( strcmp(argv[i], "--multishift") == 0){
     if (i+1 >= argc){
@@ -2575,12 +2561,86 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
+  if( strcmp(argv[i], "--mg-setup-iters") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    num_setup_iter[level] = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
   if( strcmp(argv[i], "--mg-setup-tol") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
 
     setup_tol = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-setup-type") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+
+    if( strcmp(argv[i+1], "test") == 0)
+      setup_type = QUDA_TEST_VECTOR_SETUP;
+    else if( strcmp(argv[i+1], "null")==0)
+      setup_type = QUDA_NULL_VECTOR_SETUP;
+    else {
+      fprintf(stderr, "ERROR: invalid setup type\n");
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-pre-orth") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+
+    if (strcmp(argv[i+1], "true") == 0){
+      pre_orthonormalize = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      pre_orthonormalize = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid pre orthogonalize type\n");
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-post-orth") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+
+    if (strcmp(argv[i+1], "true") == 0){
+      post_orthonormalize = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      post_orthonormalize = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid post orthogonalize type\n");
+      exit(1);
+    }
+
     i++;
     ret = 0;
     goto out;
@@ -2619,6 +2679,36 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }
     smoother_type = get_solver_type(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-coarsest-solver") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    coarsest_solver = get_solver_type(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-coarsest-tol") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    coarsest_tol = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-coarsest-maxiter") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    coarsest_maxiter = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -2771,70 +2861,51 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-  /////////////////////
-  // QKXTM additions //
-  /////////////////////
-
-  //QKXTM: DMH Experimental MG additions
-  if( strcmp(argv[i], "--delta-muPR") == 0){
+  if( strcmp(argv[i], "--ngcrkrylov") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    delta_muPR = atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--delta-kappaPR") == 0){
-    if (i+1 >= argc){
+    gcrNkrylov = atoi(argv[i+1]);
+    if (gcrNkrylov < 1 || gcrNkrylov > 1e6){
+      printf("ERROR: invalid number of gcrkrylov iterations (%d)\n", gcrNkrylov);
       usage(argv);
     }
-    delta_kappaPR = atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--delta-cswPR") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }
-    delta_cswPR = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
   }
   
-  if( strcmp(argv[i], "--delta-muCG") == 0){
+  if( strcmp(argv[i], "--pipeline") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    delta_muCG = atof(argv[i+1]);
+    pipeline = atoi(argv[i+1]);
+    if (pipeline < 0 || pipeline > 8){
+      printf("ERROR: invalid pipeline length (%d)\n", pipeline);
+      usage(argv);
+    }
     i++;
     ret = 0;
     goto out;
   }
 
-  if( strcmp(argv[i], "--delta-kappaCG") == 0){
+  if( strcmp(argv[i], "--solution-pipeline") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    delta_kappaCG = atof(argv[i+1]);
+    solution_accumulator_pipeline = atoi(argv[i+1]);
+    if (solution_accumulator_pipeline < 0 || solution_accumulator_pipeline > 16){
+      printf("ERROR: invalid solution pipeline length (%d)\n", solution_accumulator_pipeline);
+      usage(argv);
+    }
     i++;
     ret = 0;
     goto out;
   }
 
-  if( strcmp(argv[i], "--delta-cswCG") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }
-    delta_cswCG = atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
+  /////////////////////
+  // QKXTM additions //
+  /////////////////////
 
   //-C.K. Generic INPUT
   if( strcmp(argv[i], "--traj") == 0){
@@ -3448,7 +3519,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
 #endif
 
-  if( strcmp(argv[i], "--k_probing") == 0){
+  if( strcmp(argv[i], "--k-probing") == 0){
     if (i+1 >= argc){
       usage(argv);
     }	    

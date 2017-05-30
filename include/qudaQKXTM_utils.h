@@ -74,7 +74,6 @@ namespace quda {
     double inv_tol;
   } qudaQKXTMinfo;
   
-  
 #ifdef HAVE_ARPACK  
   enum WHICHSPECTRUM{SR,LR,SM,LM,SI,LI};
   
@@ -93,7 +92,7 @@ namespace quda {
     bool isFullOp;
     int modeArpack;
   }qudaQKXTM_arpackInfo;
-#endif  
+#endif
 
   typedef struct{
     int Nstoch;
@@ -107,7 +106,7 @@ namespace quda {
     int traj;
     int Nprint;
     int Nmoms;
-    int Qsq;
+    int Qsq = 0;
     FILE_WRITE_FORMAT FileFormat;
     // = {"Scalar", "dOp", "Loops", "LoopsCv", "LpsDw", "LpsDwCv"}
     char *loop_type[6];
@@ -124,8 +123,8 @@ namespace quda {
     double TSM_tol;
     int k_probing; // if its value <=0 then probing is switched off
     bool spinColorDil; // enables spin color dilution
-  }qudaQKXTM_loopInfo;
-
+  } qudaQKXTM_loopInfo;
+  
   enum ALLOCATION_FLAG{NONE,HOST,DEVICE,BOTH,BOTH_EXTRA};
   enum CLASS_ENUM{FIELD,GAUGE,VECTOR,PROPAGATOR,PROPAGATOR3D,VECTOR3D};
   enum WHICHPARTICLE{PROTON,NEUTRON};

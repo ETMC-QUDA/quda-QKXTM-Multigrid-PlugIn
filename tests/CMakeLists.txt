@@ -57,9 +57,11 @@ endif(QKXTM_ARPACK)
 LIST(APPEND TEST_LIBS ${QKXTM_GSL_LIB})
 LIST(APPEND TEST_LIBS ${QKXTM_HDF5_LIB})
 LIST(APPEND TEST_LIBS ${QKXTM_LIME_LIB})
-LIST(APPEND TEST_LIBS ${QKXTM_OPENBLAS_LIB})
-#define tests
+if(QKXTM_OPENBLAS)
+  LIST(APPEND TEST_LIBS ${QKXTM_OPENBLAS_LIB})
+endif()
 
+#define tests
 
 if(QUDA_DIRAC_WILSON OR QUDA_DIRAC_CLOVER OR QUDA_DIRAC_TWISTED_MASS OR QUDA_DIRAC_TWISTED_CLOVER OR QUDA_DIRAC_DOMAIN_WALL)
   cuda_add_executable(dslash_test ${QKXTM_QUDA_HOME}/tests/dslash_test.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
@@ -79,9 +81,9 @@ if(QUDA_DIRAC_WILSON OR QUDA_DIRAC_CLOVER OR QUDA_DIRAC_TWISTED_MASS OR QUDA_DIR
 
 endif()
 
-cuda_add_executable(deflation_test ${QKXTM_QUDA_HOME}/tests/deflation_test.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-target_link_libraries(deflation_test ${TEST_LIBS})
-QUDA_CHECKBUILDTEST(deflation_test QUDA_BUILD_ALL_TESTS)
+#cuda_add_executable(deflation_test ${QKXTM_QUDA_HOME}/tests/deflation_test.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+#target_link_libraries(deflation_test ${TEST_LIBS})
+#QUDA_CHECKBUILDTEST(deflation_test QUDA_BUILD_ALL_TESTS)
 
 if(QUDA_DIRAC_STAGGERED)
   cuda_add_executable(staggered_dslash_test ${QKXTM_QUDA_HOME}/tests/staggered_dslash_test.cpp ${QKXTM_QUDA_HOME}/tests/staggered_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)

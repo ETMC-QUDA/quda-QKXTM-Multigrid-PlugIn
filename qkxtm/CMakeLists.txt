@@ -10,12 +10,12 @@ include_directories(${QKXTM_QUDA_HOME}/tests)
 include_directories(${QKXTM_HDF5HOME}/include)
 include_directories(${QKXTM_LIMEHOME}/include)
 include_directories(SYSTEM ${QKXTM_GSLHOME}/include)
-#if(QKXTM_ARPACK)
-include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
-include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
-include_directories(SYSTEM ${QKXTM_ARPACKHOME}/SRC)
-include_directories(SYSTEM ${QKXTM_ARPACKHOME}/UTIL)
-#endif(QKXTM_ARPACK)  
+if(QKXTM_ARPACK)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/SRC)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/UTIL)
+endif(QKXTM_ARPACK)  
 
 #build a common library for all test utilities
 set(QKXTM_COMMON ${QKXTM_QUDA_HOME}/tests/gtest-all.cc ${QKXTM_QUDA_HOME}/tests/misc.cpp QKXTM_util.cpp)
@@ -46,31 +46,34 @@ endif()
 if(QKXTM_ARPACK)
   LIST(APPEND QKXTM_LIBS ${QKXTM_PARPACK_LIB})
   LIST(APPEND QKXTM_LIBS ${QKXTM_ARPACK_LIB})
-endif(QKXTM_ARPACK)
+endif()
 
 LIST(APPEND QKXTM_LIBS ${QKXTM_GSL_LIB})
 LIST(APPEND QKXTM_LIBS ${QKXTM_HDF5_LIB})
 LIST(APPEND QKXTM_LIBS ${QKXTM_LIME_LIB})
-LIST(APPEND QKXTM_LIBS ${QKXTM_OPENBLAS_LIB})
-
+if(QKXTM_OPENBLAS)
+  LIST(APPEND QKXTM_LIBS ${QKXTM_OPENBLAS_LIB})
+endif()
 
 #define QKXTM executables
 
-#CalcMG_2pt3pt_EvenOdd
-# This function will calculate hadronic correlation functions using a 
-# handful of randomly separated, gaussian smeared point sources, constructed 
-# with a smeared gauge field. Even/Odd preconditioning is employed, as well
-# as QUDA's MG solver routines.
-cuda_add_executable(CalcMG_2pt3pt_EvenOdd CalcMG_2pt3pt_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
+if(QKXTM_2FLAVMG)
+  #CalcMG_2pt3pt_EvenOdd
+  # This function will calculate hadronic correlation functions using a 
+  # handful of randomly separated, gaussian smeared point sources, 
+  #constructed with a smeared gauge field. Even/Odd preconditioning is 
+  # employed, as well as QUDA's MG solver routines.
+  cuda_add_executable(CalcMG_2pt3pt_EvenOdd CalcMG_2pt3pt_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+  target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
+endif()  
 
-#CalcMG_Loops_w_oneD_TSM_EvenOdd
+#CalcMG_Loops_w_oneD_TSM_EvenOdd (DEPRECATED)
 # This function will calculate the All-to-All propagator with a covariant 
 # derivate, and correlation functions thereof. It employs undiluted 
-# stochastic sources, Even/Odd preconditioning, functionality for using the 
-# Trunacted Solver Method, as well as QUDA's MG solver routines.
-cuda_add_executable(CalcMG_Loops_w_oneD_TSM_EvenOdd CalcMG_Loops_w_oneD_TSM_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-target_link_libraries(CalcMG_Loops_w_oneD_TSM_EvenOdd ${QKXTM_LIBS})
+# stochastic sources, Even/Odd preconditioning, functionality for using 
+# the Trunacted Solver Method, as well as QUDA's MG solver routines.
+#cuda_add_executable(CalcMG_Loops_w_oneD_TSM_EvenOdd CalcMG_Loops_w_oneD_TSM_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+#target_link_libraries(CalcMG_Loops_w_oneD_TSM_EvenOdd ${QKXTM_LIBS})
 
 #MG_Bench
 # This function will invert a single flavour, Gaussian smeared source
@@ -80,21 +83,22 @@ target_link_libraries(MG_Bench ${QKXTM_LIBS})
 
 if(QKXTM_ARPACK)
 
-  #CalcMG_Loops_w_oneD_TSM_wExact
-  # This function will calculate the All-to-All propagator with a covariant 
-  # derivate, and correlation functions thereof. It calculates the eigenvectors
-  # of the full operator and the corresponding correlations from that part.
-  # It then projects out that exact part and employs undiluted 
-  # stochastic sources, Even/Odd preconditioning, functionality for using the 
-  # Trunacted Solver Method, as well as QUDA's MG solver routines for the 
-  # remainder.
-  cuda_add_executable(CalcMG_Loops_w_oneD_TSM_wExact CalcMG_Loops_w_oneD_TSM_wExact.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-  target_link_libraries(CalcMG_Loops_w_oneD_TSM_wExact ${QKXTM_LIBS})
+#CalcMG_Loops_w_oneD_TSM_wExact
+# This function will calculate the All-to-All propagator with a covariant 
+# derivate, and correlation functions thereof. It calculates the 
+# eigenvectors of the full operator and the corresponding correlations 
+#from that part. It then projects out that exact part and employs 
+# undiluted stochastic sources, Even/Odd preconditioning, functionality 
+# for using the Trunacted Solver Method, as well as QUDA's MG solver 
+# routines for the remainder.
+cuda_add_executable(CalcMG_Loops_w_oneD_TSM_wExact CalcMG_Loops_w_oneD_TSM_wExact.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+target_link_libraries(CalcMG_Loops_w_oneD_TSM_wExact ${QKXTM_LIBS})
 
-  #CalcLowModeProjection
-  # Ths function will calculate the low modes of the massles M^{dagger}M 
-  # dirac operator, and then sum the low modes to obtain the
-  # Pontryagin Index.
-  cuda_add_executable(CalcLowModeProjection CalcLowModeProjection.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-  target_link_libraries(CalcLowModeProjection ${QKXTM_LIBS})
-endif(QKXTM_ARPACK)
+#CalcLowModeProjection
+# Ths function will calculate the low modes of the massles M^{dagger}M 
+# dirac operator, and then sum the low modes to obtain the
+# Pontryagin Index.
+cuda_add_executable(CalcLowModeProjection CalcLowModeProjection.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+target_link_libraries(CalcLowModeProjection ${QKXTM_LIBS})
+
+endif()

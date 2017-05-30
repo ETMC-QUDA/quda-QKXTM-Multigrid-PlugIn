@@ -200,6 +200,7 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 
   cudaDeviceSynchronize();
 
+  /*
   // ONE-DERIVATIVE Generalized one-end trick
   for(int mu=0; mu<4; mu++){
     cov->M(tmp4,tmp3,mu);
@@ -273,6 +274,8 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   }
 
   //------------------------------------------------
+  delete cov;
+  */
 
   delete Kvec;
   delete x1;
@@ -280,7 +283,7 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   delete tmp2;
   free(eigVec);
 
-  delete cov;
+
   cudaFreeHost(h_ctrn);
   cudaFree(ctrnS);
   cudaFree(ctrnC);
@@ -379,7 +382,9 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
     cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnRes_vv, incy);
   }  
   cudaDeviceSynchronize();
-  
+
+  //QKXTM: DMH Leave out the derivatives for now.
+  /* 
   ////////////////// DERIVATIVES //////////////////////////////
   CovD *cov = new CovD(gaugePrecise, profileCovDev);
 
@@ -470,8 +475,9 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
       //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
       //	((Float *) cnC_vv[mu])[ix] -= ((Float*)h_ctrn)[ix];
     }
-  
+
   delete cov;
+  */
   cudaFreeHost(h_ctrn);
   cudaFree(ctrnS);
   cudaFree(ctrnC);

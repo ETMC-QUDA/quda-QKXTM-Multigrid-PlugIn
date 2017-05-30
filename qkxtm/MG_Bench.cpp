@@ -20,12 +20,13 @@
 #include <mpi.h>
 #endif
 
-#include <gauge_qio.h>
+#include <qio_field.h>
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
 // In a typical application, quda.h is the only QUDA header required.
 #include <quda.h>
+#include <contractQuda.h> 
 #include <qudaQKXTM.h>
 // Wilson, clover-improved Wilson, twisted mass, and domain wall are supported.
 
@@ -37,7 +38,6 @@
 // QUDA Parameters //
 //-----------------//
 extern QudaDslashType dslash_type;
-extern bool tune;
 extern int device;
 extern int xdim;
 extern int ydim;
@@ -51,17 +51,19 @@ extern QudaPrecision  prec_sloppy;
 extern QudaPrecision  prec_precondition;
 extern QudaReconstructType link_recon_sloppy;
 extern QudaReconstructType link_recon_precondition;
-extern double mass;
+extern double mass; 
 extern double mu;
 extern double anisotropy;
 extern double tol; // tolerance for inverter
 extern double tol_hq; // heavy-quark tolerance for inverter
 extern char latfile[];
+extern int Nsrc; // number of spinors to apply to simultaneously
 extern int niter;
+extern int gcrNkrylov; // number of inner iterations for GCR, or l for BiCGstab-l
+extern int pipeline; // length of pipeline for fused operations in GCR or BiCGstab-l
 extern int nvec[];
 extern int mg_levels;
 
-extern QudaMassNormalization normalization; // mass normalization of Dirac operators
 extern bool generate_nullspace;
 extern bool generate_all_levels;
 extern int nu_pre;
@@ -72,7 +74,16 @@ extern double mu_factor[QUDA_MAX_MG_LEVEL];
 extern QudaVerbosity mg_verbosity[QUDA_MAX_MG_LEVEL];
 
 extern QudaInverterType setup_inv[QUDA_MAX_MG_LEVEL];
+extern int num_setup_iter[QUDA_MAX_MG_LEVEL];
+extern double setup_tol;
+extern QudaSetupType setup_type;
+extern bool pre_orthonormalize;
+extern bool post_orthonormalize;
+extern double omega;
 extern QudaInverterType smoother_type;
+extern QudaInverterType coarsest_solver;
+extern double coarsest_tol;
+extern int coarsest_maxiter;
 
 extern QudaMatPCType matpc_type;
 extern QudaSolveType solve_type;
@@ -86,7 +97,8 @@ extern void usage(char** );
 
 extern double clover_coeff;
 extern bool compute_clover;
-
+extern QudaMassNormalization normalization; // mass normalization of Dirac operators
+extern bool verify_results;
 
 //------------------//
 // QKXTM Parameters //
@@ -182,7 +194,7 @@ void setGaugeParam(QudaGaugeParam &gauge_param) {
   gauge_param.anisotropy = anisotropy;
   gauge_param.type = QUDA_WILSON_LINKS;
   gauge_param.gauge_order = QUDA_QDP_GAUGE_ORDER;
-  gauge_param.t_boundary = QUDA_PERIODIC_T;
+  gauge_param.t_boundary = QUDA_ANTI_PERIODIC_T;
   
   gauge_param.cpu_prec = cpu_prec;
 
@@ -211,10 +223,154 @@ void setGaugeParam(QudaGaugeParam &gauge_param) {
 #endif
 }
 
+void setMultigridParam(QudaMultigridParam &mg_param) {
+  QudaInvertParam &inv_param = *mg_param.invert_param;
+
+  inv_param.kappa = kappa;
+  inv_param.mass = mass;
+
+  inv_param.Ls = 1;
+
+  inv_param.sp_pad = 0;
+  inv_param.cl_pad = 0;
+
+  inv_param.cpu_prec = cpu_prec;
+  inv_param.cuda_prec = cuda_prec;
+  inv_param.cuda_prec_sloppy = cuda_prec_sloppy;
+  inv_param.cuda_prec_precondition = cuda_prec_precondition;
+  inv_param.preserve_source = QUDA_PRESERVE_SOURCE_NO;
+  inv_param.gamma_basis = QUDA_DEGRAND_ROSSI_GAMMA_BASIS;
+  inv_param.dirac_order = QUDA_DIRAC_ORDER;
+
+  if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 
+      dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
+    inv_param.clover_cpu_prec = cpu_prec;
+    inv_param.clover_cuda_prec = cuda_prec;
+    inv_param.clover_cuda_prec_sloppy = cuda_prec_sloppy;
+    inv_param.clover_cuda_prec_precondition = cuda_prec_precondition;
+    inv_param.clover_order = QUDA_PACKED_CLOVER_ORDER;
+    inv_param.clover_coeff = csw*inv_param.kappa;
+  }
+
+  inv_param.input_location = QUDA_CPU_FIELD_LOCATION;
+  inv_param.output_location = QUDA_CPU_FIELD_LOCATION;
+
+  inv_param.dslash_type = dslash_type;
+
+  if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
+      dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
+    inv_param.mu = mu;
+    inv_param.twist_flavor = twist_flavor;
+    inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
+      2 : 1;
+    
+    if (twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) {
+      printfQuda("Twisted-mass doublet non supported (yet)\n");
+      exit(0);
+    }
+  }
+  
+  inv_param.dagger = QUDA_DAG_NO;
+  inv_param.mass_normalization = normalization;
+
+  // do we want to use an even-odd preconditioned solve or not
+  if(isEven) inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
+  else inv_param.matpc_type = QUDA_MATPC_ODD_ODD;
+
+  inv_param.solution_type = QUDA_MAT_SOLUTION;
+
+  inv_param.solve_type = QUDA_DIRECT_SOLVE;
+
+  mg_param.invert_param = &inv_param;
+  mg_param.n_level = mg_levels;
+  for (int i=0; i<mg_param.n_level; i++) {
+    for (int j=0; j<QUDA_MAX_DIM; j++) {
+	// if not defined use 4
+      mg_param.geo_block_size[i][j] = geo_block_size[i][j] ? 
+	geo_block_size[i][j] : 4;      
+    }
+    mg_param.verbosity[i] = mg_verbosity[i];
+    mg_param.setup_inv_type[i] = setup_inv[i];
+    mg_param.num_setup_iter[i] = num_setup_iter[i];
+    mg_param.setup_tol[i] = setup_tol;
+    mg_param.spin_block_size[i] = 1;
+    mg_param.n_vec[i] = nvec[i] == 0 ? 24 : nvec[i]; // default to 24 vectors if not set
+    mg_param.nu_pre[i] = nu_pre;
+    mg_param.nu_post[i] = nu_post;
+    mg_param.mu_factor[i] = mu_factor[i];
+    
+    mg_param.cycle_type[i] = QUDA_MG_CYCLE_RECURSIVE;
+    
+    mg_param.smoother[i] = smoother_type;
+
+    // set the smoother / bottom solver tolerance 
+    // (for MR smoothing this will be ignored)
+    // repurpose heavy-quark tolerance for now
+
+    mg_param.smoother_tol[i] = tol_hq;
+
+    mg_param.global_reduction[i] = QUDA_BOOLEAN_YES;
+
+    // set to QUDA_DIRECT_SOLVE for no even/odd 
+    // preconditioning on the smoother
+    // set to QUDA_DIRECT_PC_SOLVE for to enable even/odd 
+    // preconditioning on the smoother
+    mg_param.smoother_solve_type[i] = QUDA_DIRECT_PC_SOLVE; // EVEN-ODD
+
+    // set to QUDA_MAT_SOLUTION to inject a full field into coarse grid
+    // set to QUDA_MATPC_SOLUTION to inject single parity field into 
+    // coarse grid
+
+    // if we are using an outer even-odd preconditioned solve, then we
+    // use single parity injection into the coarse grid
+    mg_param.coarse_grid_solution_type[i] = solve_type == QUDA_DIRECT_PC_SOLVE ? QUDA_MATPC_SOLUTION : QUDA_MAT_SOLUTION;
+
+    mg_param.omega[i] = omega; // over/under relaxation factor
+
+    mg_param.location[i] = QUDA_CUDA_FIELD_LOCATION;
+  }
+
+  // only coarsen the spin on the first restriction
+  mg_param.spin_block_size[0] = 2;
+
+  mg_param.setup_type = setup_type;
+  mg_param.pre_orthonormalize = pre_orthonormalize ? QUDA_BOOLEAN_YES :  QUDA_BOOLEAN_NO;
+  mg_param.post_orthonormalize = post_orthonormalize ? QUDA_BOOLEAN_YES :  QUDA_BOOLEAN_NO;
+
+  // coarsest grid solver
+  // coarsest grid solver
+  mg_param.smoother[mg_levels-1] = coarsest_solver;
+  mg_param.smoother_tol[mg_levels-1] = coarsest_tol == 0 ? tol_hq : coarsest_tol;
+  mg_param.nu_pre[mg_levels-1] = coarsest_maxiter;
+  mg_param.nu_post[mg_levels-1] = 0;
+
+  mg_param.compute_null_vector = generate_nullspace ? 
+    QUDA_COMPUTE_NULL_VECTOR_YES : QUDA_COMPUTE_NULL_VECTOR_NO;
+  mg_param.generate_all_levels = generate_all_levels ? 
+    QUDA_BOOLEAN_YES :  QUDA_BOOLEAN_NO;
+
+  mg_param.run_verify = verify_results ? QUDA_BOOLEAN_YES : QUDA_BOOLEAN_NO;
+
+  // set file i/o parameters
+  strcpy(mg_param.vec_infile, vec_infile);
+  strcpy(mg_param.vec_outfile, vec_outfile);
+
+  // these need to be set for now but are actually ignored by the MG setup
+  // needed to make it pass the initialization test
+  inv_param.inv_type = QUDA_GCR_INVERTER;
+  inv_param.tol = 1e-10;
+  inv_param.maxiter = 1000;
+  inv_param.reliable_delta = 1e-10;
+  inv_param.gcrNkrylov = 10;
+
+  inv_param.verbosity = QUDA_SUMMARIZE;
+  inv_param.verbosity_precondition = QUDA_SUMMARIZE;
+}
+
 void setInvertParam(QudaInvertParam &inv_param) {
 
   inv_param.kappa = kappa;
-  inv_param.mass = 0.5/kappa - 4.0;
+  inv_param.mass = mass;
 
   inv_param.Ls = 1;
 
@@ -243,8 +399,6 @@ void setInvertParam(QudaInvertParam &inv_param) {
   inv_param.input_location = QUDA_CPU_FIELD_LOCATION;
   inv_param.output_location = QUDA_CPU_FIELD_LOCATION;
 
-  inv_param.tune = tune ? QUDA_TUNE_YES : QUDA_TUNE_NO;
-
   inv_param.dslash_type = dslash_type;
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
@@ -253,34 +407,34 @@ void setInvertParam(QudaInvertParam &inv_param) {
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
-    
+
     if (twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) {
       printfQuda("Twisted-mass doublet non supported (yet)\n");
       exit(0);
     }
   }
-  
+
   inv_param.dagger = QUDA_DAG_NO;
   inv_param.mass_normalization = normalization;
-  inv_param.solver_normalization = QUDA_DEFAULT_NORMALIZATION;
 
   // do we want full solution or single-parity solution
   inv_param.solution_type = QUDA_MAT_SOLUTION;
 
-  inv_param.solve_type = solve_type;
-  inv_param.matpc_type = matpc_type;
+  // do we want to use an even-odd preconditioned solve or not
+  if(isEven) inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
+  else inv_param.matpc_type = QUDA_MATPC_ODD_ODD;
+  
+  inv_param.solve_type = solve_type;  
   
   inv_param.inv_type = QUDA_GCR_INVERTER;
 
   inv_param.verbosity = QUDA_VERBOSE;
-  inv_param.verbosity_precondition = QUDA_VERBOSE;
-
+  inv_param.verbosity_precondition = mg_verbosity[0];
 
   inv_param.inv_type_precondition = QUDA_MG_INVERTER;
-  inv_param.Nsteps = 20;
-  inv_param.gcrNkrylov = 10;
+  inv_param.pipeline = pipeline;
+  inv_param.gcrNkrylov = gcrNkrylov;
   inv_param.tol = tol;
-  inv_param.tol_restart = 1e-3;
 
   // require both L2 relative and heavy quark residual to determine 
   // convergence
@@ -301,7 +455,7 @@ void setInvertParam(QudaInvertParam &inv_param) {
   inv_param.schwarz_type = QUDA_ADDITIVE_SCHWARZ;
   inv_param.precondition_cycle = 1;
   inv_param.tol_precondition = 1e-1;
-  inv_param.maxiter_precondition = 10;
+  inv_param.maxiter_precondition = 1;
   inv_param.omega = 1.0;
 
 
@@ -312,153 +466,15 @@ void setInvertParam(QudaInvertParam &inv_param) {
   else if(strcmp(verbosity_level,"silent")==0) 
     inv_param.verbosity = QUDA_SILENT;
   else{
-    warningQuda("Unknown verbosity level %s. Proceeding with QUDA_SUMMARIZE verbosity level\n",verbosity_level);
-    inv_param.verbosity = QUDA_SUMMARIZE;
+    warningQuda("Unknown verbosity level %s. Proceeding with QUDA_VERBOSE verbosity level\n",verbosity_level);
+    inv_param.verbosity = QUDA_VERBOSE;
   }
 }
 
 
-void setMultigridParam(QudaMultigridParam &mg_param) {
-  QudaInvertParam &inv_param = *mg_param.invert_param;
-
-  inv_param.kappa = kappa;
-  inv_param.mass = 0.5/kappa - 4.0;
-
-  inv_param.Ls = 1;
-
-  inv_param.sp_pad = 0;
-  inv_param.cl_pad = 0;
-
-  inv_param.cpu_prec = cpu_prec;
-  inv_param.cuda_prec = cuda_prec;
-  inv_param.cuda_prec_sloppy = cuda_prec_sloppy;
-  inv_param.cuda_prec_precondition = cuda_prec_precondition;
-  inv_param.preserve_source = QUDA_PRESERVE_SOURCE_NO;
-  inv_param.gamma_basis = QUDA_DEGRAND_ROSSI_GAMMA_BASIS;
-  inv_param.dirac_order = QUDA_DIRAC_ORDER;
-
-  if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 
-      dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.clover_cpu_prec = cpu_prec;
-    inv_param.clover_cuda_prec = cuda_prec;
-    inv_param.clover_cuda_prec_sloppy = cuda_prec_sloppy;
-    inv_param.clover_cuda_prec_precondition = cuda_prec_precondition;
-    inv_param.clover_order = QUDA_PACKED_CLOVER_ORDER;
-    inv_param.clover_coeff = csw*inv_param.kappa;
-  }
-
-  inv_param.input_location = QUDA_CPU_FIELD_LOCATION;
-  inv_param.output_location = QUDA_CPU_FIELD_LOCATION;
-
-  inv_param.tune = tune ? QUDA_TUNE_YES : QUDA_TUNE_NO;
-
-  inv_param.dslash_type = dslash_type;
-
-  if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
-      dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.mu = mu;
-
-
-    inv_param.twist_flavor = twist_flavor;
-    inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
-      2 : 1;
-
-    if (twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) {
-      printfQuda("Twisted-mass doublet non supported (yet)\n");
-      exit(0);
-    }
-  }
-
-  inv_param.dagger = QUDA_DAG_NO;
-  inv_param.mass_normalization = normalization;
-  inv_param.solver_normalization = QUDA_DEFAULT_NORMALIZATION;
-
-  inv_param.matpc_type = matpc_type;
-  inv_param.solution_type = QUDA_MAT_SOLUTION;
-
-  inv_param.solve_type = QUDA_DIRECT_SOLVE;
-
-  mg_param.invert_param = &inv_param;
-  mg_param.n_level = mg_levels;
-  for (int i=0; i<mg_param.n_level; i++) {
-    for (int j=0; j<QUDA_MAX_DIM; j++) {
-      // if not defined use 4
-      mg_param.geo_block_size[i][j] = geo_block_size[i][j] ? 
-	geo_block_size[i][j] : 4;
-    }
-    mg_param.verbosity[i] = QUDA_VERBOSE;
-    mg_param.setup_inv_type[i] = setup_inv[i];
-    mg_param.spin_block_size[i] = 1;
-    mg_param.n_vec[i] = nvec[i] == 0 ? 24 : nvec[i]; 
-    mg_param.nu_pre[i] = nu_pre;
-    mg_param.nu_post[i] = nu_post;
-    mg_param.mu_factor[i] = mu_factor[i];
-
-    mg_param.cycle_type[i] = QUDA_MG_CYCLE_RECURSIVE;
-
-    mg_param.smoother[i] = smoother_type;
-
-    // set the smoother / bottom solver tolerance 
-    // (for MR smoothing this will be ignored)
-    // repurpose heavy-quark tolerance for now
-
-    mg_param.smoother_tol[i] = tol_hq;
-    mg_param.global_reduction[i] = QUDA_BOOLEAN_YES;
-
-    // set to QUDA_DIRECT_SOLVE for no even/odd 
-    // preconditioning on the smoother
-    // set to QUDA_DIRECT_PC_SOLVE for to enable even/odd 
-    // preconditioning on the smoother
-    mg_param.smoother_solve_type[i] = QUDA_DIRECT_PC_SOLVE; // EVEN-ODD
-
-    // set to QUDA_MAT_SOLUTION to inject a full field into coarse grid
-    // set to QUDA_MATPC_SOLUTION to inject single parity field into 
-    // coarse grid
-
-    // if we are using an outer even-odd preconditioned solve, then we
-    // use single parity injection into the coarse grid
-    mg_param.coarse_grid_solution_type[i] = solve_type == QUDA_DIRECT_PC_SOLVE ? QUDA_MATPC_SOLUTION : QUDA_MAT_SOLUTION;
-
-    mg_param.omega[i] = 0.85; // over/under relaxation factor
-
-    mg_param.location[i] = QUDA_CUDA_FIELD_LOCATION;
-  }
-
-  // only coarsen the spin on the first restriction
-  mg_param.spin_block_size[0] = 2;
-
-  // coarse grid solver is GCR
-  mg_param.smoother[mg_levels-1] = QUDA_GCR_INVERTER;
-
-  //QKXTM: DMH tmLQCD code
-  //mg_param.compute_null_vector = QUDA_COMPUTE_NULL_VECTOR_YES;;
-  //mg_param.generate_all_levels = QUDA_BOOLEAN_YES;
-  
-  //QKXTM: DMH develop code
-  mg_param.compute_null_vector = generate_nullspace ? 
-    QUDA_COMPUTE_NULL_VECTOR_YES : QUDA_COMPUTE_NULL_VECTOR_NO;
-  mg_param.generate_all_levels = generate_all_levels ? 
-    QUDA_BOOLEAN_YES :  QUDA_BOOLEAN_NO;
-
-  mg_param.run_verify = QUDA_BOOLEAN_NO;
-
-  // set file i/o parameters
-  strcpy(mg_param.vec_infile, vec_infile);
-  strcpy(mg_param.vec_outfile, vec_outfile);
-
-  // these need to tbe set for now but are actually ignored by the MG setup
-  // needed to make it pass the initialization test
-  inv_param.inv_type = QUDA_GCR_INVERTER;
-  inv_param.tol = tol;
-  inv_param.maxiter = niter;
-  inv_param.reliable_delta = 1e-10;
-  inv_param.gcrNkrylov = 10;
-  //inv_param.max_res_increase = 4;
-
-  inv_param.verbosity = QUDA_SUMMARIZE;
-  inv_param.verbosity_precondition = QUDA_SUMMARIZE;
-}
-
+//=======================================================================//
+//== C O N T A I N E R   A N D   Q U D A   I N I T I A L I S A T I O N  =//
+//=======================================================================//
 
 int main(int argc, char **argv)
 {
@@ -466,6 +482,7 @@ int main(int argc, char **argv)
   for(int i =0; i<QUDA_MAX_MG_LEVEL; i++) {
     mg_verbosity[i] = QUDA_SILENT;
     setup_inv[i] = QUDA_BICGSTAB_INVERTER;
+    num_setup_iter[i] = 1;
     mu_factor[i] = 1.;
   }
 
@@ -490,7 +507,8 @@ int main(int argc, char **argv)
 
   display_test_info();
 
-  //QKXTM: DMH qkxtm specfic inputs
+  //QKXTM: qkxtm specific inputs
+  //--------------------------------------------------------------------
   quda::qudaQKXTMinfo info;  
   info.nsmearGauss = nsmearGauss;
   info.alphaGauss = alphaGauss;
@@ -503,8 +521,7 @@ int main(int argc, char **argv)
   // *** QUDA parameters begin here.
 
   if (dslash_type != QUDA_TWISTED_MASS_DSLASH && 
-      dslash_type != QUDA_TWISTED_CLOVER_DSLASH && 
-      dslash_type != QUDA_CLOVER_WILSON_DSLASH){
+      dslash_type != QUDA_TWISTED_CLOVER_DSLASH){
     printfQuda("This test is only for twisted mass or twisted clover operator\n");
     exit(-1);
   }
@@ -515,7 +532,6 @@ int main(int argc, char **argv)
   QudaInvertParam mg_inv_param = newQudaInvertParam();
   QudaMultigridParam mg_param = newQudaMultigridParam();
   mg_param.invert_param = &mg_inv_param;
-
   setMultigridParam(mg_param);
 
   QudaInvertParam inv_param = newQudaInvertParam();
@@ -528,7 +544,7 @@ int main(int argc, char **argv)
   size_t sSize = (inv_param.cpu_prec == QUDA_DOUBLE_PRECISION) ? sizeof(double) : sizeof(float);
 
   //-Read the gauge field in lime format
-  void *gauge[4], *clover_inv=0, *clover=0;
+  void *gauge[4];
   void *gauge_APE[4];
 
   for (int dir = 0; dir < 4; dir++) {
@@ -556,48 +572,40 @@ int main(int argc, char **argv)
   // load the gauge field
   loadGaugeQuda((void*)gauge, &gauge_param);
 
-  for(int i = 0 ; i < 4 ; i++){
-    free(gauge[i]);
-  }
-
-  printfQuda("Before clover term\n");
-  // load the clover term, if desired
-  // this line ensure that if we need to construct the clover inverse (in either the smoother or the solver) we do so
+  // this line ensures that if we need to construct the clover inverse 
+  // (in either the smoother or the solver) we do so
   if (mg_param.smoother_solve_type[0] == QUDA_DIRECT_PC_SOLVE || 
-                           solve_type == QUDA_DIRECT_PC_SOLVE) 
-    inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
-
+      solve_type == QUDA_DIRECT_PC_SOLVE) inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
+  
+  printfQuda("Constructing clover field\n");
   if (dslash_type == QUDA_TWISTED_CLOVER_DSLASH) 
     loadCloverQuda(NULL, NULL, &inv_param);
-
+  printfQuda("Clover field done\n");
+  
   // restore actual solve_type we want to do
   inv_param.solve_type = solve_type; 
 
-  // setup the multigrid solver for UP flavour
-  //mg_param.invert_param->twist_flavor = QUDA_TWIST_PLUS;
+  // setup the multigrid solver
   void *mg_preconditioner = newMultigridQuda(&mg_param);
   inv_param.preconditioner = mg_preconditioner;
-
-  // setup the multigrid solver for DN flavour
-  //mg_param.invert_param->twist_flavor = QUDA_TWIST_MINUS;
-  //void *mg_preconditionerDN = newMultigridQuda(&mg_param);
-  //inv_param.preconditionerDN = mg_preconditionerDN;  
-  //mg_param.invert_param->twist_flavor = twist_flavor;
 
   printfQuda("\n\n");
   printfQuda("**************************\n");  
   printfQuda("* Begin MG bench routine *\n"); 
   printfQuda("**************************\n\n");  
-  //MG_bench(gauge_APE, gauge, &gauge_param, &inv_param, info);
 
-  // free the multigrid solver(s)
+  MG_bench(gauge_APE, gauge, &gauge_param, &inv_param, info);
+
+  // free the multigrid solver
   destroyMultigridQuda(mg_preconditioner);
-  //destroyMultigridQuda(mg_preconditionerUP);
-  //destroyMultigridQuda(mg_preconditionerDN);
   
   freeGaugeQuda();
-  if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 
-      dslash_type == QUDA_TWISTED_CLOVER_DSLASH) freeCloverQuda();
+  if (dslash_type == QUDA_TWISTED_CLOVER_DSLASH) freeCloverQuda();
+
+  for(int i = 0 ; i < 4 ; i++){
+    free(gauge_APE[i]);
+    free(gauge[i]);
+  }
 
   // finalize the QUDA library
   endQuda();

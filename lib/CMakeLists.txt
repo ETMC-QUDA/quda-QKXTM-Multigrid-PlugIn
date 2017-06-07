@@ -104,7 +104,7 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ds.cu
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_sd.cu
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ss.cu
-  ${QKXTM_QUDA_HOME}/libcopy_color_spinor_mg_hs.cu 
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_hs.cu 
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_sh.cu
   ${QKXTM_QUDA_HOME}/lib/copy_gauge_double.cu
   ${QKXTM_QUDA_HOME}/lib/copy_gauge_single.cu

@@ -2242,6 +2242,9 @@ multigrid_solver::multigrid_solver(QudaMultigridParam &mg_param, TimeProfile &pr
 
   mg = new MG(*mgParam, profile);
   mgParam->updateInvertParam(*param);
+
+  // cache is written out even if a long benchmarking job gets interrupted
+  saveTuneCache();
   profile.TPSTOP(QUDA_PROFILE_INIT);
 }
 
@@ -2263,16 +2266,25 @@ void destroyMultigridQuda(void *mg) {
 }
 
 void updateMultigridQuda(void *mg_, QudaMultigridParam *mg_param) {
+
+  profileInvert.TPSTART(QUDA_PROFILE_TOTAL);
   multigrid_solver *mg = static_cast<multigrid_solver*>(mg_);
+  checkMultigridParam(mg_param);
 
   QudaInvertParam *param = mg_param->invert_param;
-  checkGauge(param);
-  checkMultigridParam(mg_param);
+  checkInvertParam(param);
+
+  // for reporting level 1 is the fine level but internally use level 0 for indexing
+  // sprintf(mg->prefix,"MG level 1 (%s): ", param.location == QUDA_CUDA_FIELD_LOCATION ? "GPU" : "CPU" );
+  // setOutputPrefix(prefix);
+  setOutputPrefix("MG level 1 (GPU)"); //fix me
+
+  printfQuda("Updating operator on level 1 of %d levels\n", mg->mgParam->Nlevel);
 
   bool outer_pc_solve = (param->solve_type == QUDA_DIRECT_PC_SOLVE) ||
     (param->solve_type == QUDA_NORMOP_PC_SOLVE);
 
-  // free the previous dirac oprators
+  // free the previous dirac operators
   if (mg->m) delete mg->m;
   if (mg->mSmooth) delete mg->mSmooth;
   if (mg->mSmoothSloppy) delete mg->mSmoothSloppy;
@@ -2307,13 +2319,22 @@ void updateMultigridQuda(void *mg_, QudaMultigridParam *mg_param) {
   mg->mgParam->matSmooth = mg->mSmooth;
   mg->mgParam->matSmoothSloppy = mg->mSmoothSloppy;
 
-  // recreate the smoothers on the fine level
-  mg->mg->destroySmoother();
-  mg->mg->createSmoother();
-
-  //mgParam = new MGParam(mg_param, B, *m, *mSmooth, *mSmoothSloppy);
-  //mg = new MG(*mgParam, profile);
   mg->mgParam->updateInvertParam(*param);
+  if(mg->mgParam->mg_global.invert_param != param)
+    mg->mgParam->mg_global.invert_param = param;
+
+  openMagma();
+
+  mg->mg->updateCoarseOperator();
+
+  closeMagma();
+
+  printfQuda("update completed\n");
+  setOutputPrefix("");
+
+  // cache is written out even if a long benchmarking job gets interrupted
+  saveTuneCache();
+  profileInvert.TPSTOP(QUDA_PROFILE_TOTAL);
 }
 
 deflated_solver::deflated_solver(QudaEigParam &eig_param, TimeProfile &profile)
@@ -6458,9 +6479,6 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	     X[0]*X[1]*X[2]*X[3]*
 	     spinorSiteSize*sizeof(double));
 
-      //Ensure mu is positive:
-      if(param->mu < 0) param->mu *= -1.0;
-
       for(int i = 0 ; i < 4 ; i++)
 	my_src[i] = (info.sourcePosition[isource][i] - 
 		     comm_coords(default_topo)[i] * X[i]);
@@ -6475,15 +6493,18 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	   my_src[1]*X[0]*24 + 
 	   my_src[0]*24 + 
 	   isc*2 ) = 1.0;
+
+      //Set MG Preconditioner to UP
+      //Ensure mu is positive:
+      if(param->mu < 0) param->mu *= -1.0;
+      param->preconditioner = param->preconditionerUP;
+
       
       K_vector->packVector((double*) input_vector);
       K_vector->loadVector();
       K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
       K_guess->uploadToCuda(b,flag_eo);
       dirac.prepare(in,out,*x,*b,param->solution_type);
-
-      //Set MG Preconditioner to UP
-      param->preconditioner = param->preconditionerUP;
 
       SolverParam solverParamU(*param);
       Solver *solveU = Solver::create(solverParamU, m, mSloppy, 
@@ -6523,9 +6544,6 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	     X[0]*X[1]*X[2]*X[3]*
 	     spinorSiteSize*sizeof(double));
 
-      //Ensure mu is negative:
-      if(param->mu > 0) param->mu *= -1.0;
-
       for(int i = 0 ; i < 4 ; i++)
 	my_src[i] = (info.sourcePosition[isource][i] - 
 		     comm_coords(default_topo)[i] * X[i]);
@@ -6540,15 +6558,17 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	   my_src[1]*X[0]*24 + 
 	   my_src[0]*24 + 
 	   isc*2 ) = 1.0;
+
+      //Set MG Preconditioner to DN
+      //Ensure mu is negative:
+      if(param->mu > 0) param->mu *= -1.0;
+      param->preconditioner = param->preconditionerDN;
       
       K_vector->packVector((double*) input_vector);
       K_vector->loadVector();
       K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
       K_guess->uploadToCuda(b,flag_eo);
       dirac.prepare(in,out,*x,*b,param->solution_type);
-
-      //Set MG Preconditioner to DN
-      param->preconditioner = param->preconditionerDN;
 
       SolverParam solverParamD(*param);
       Solver *solveD = Solver::create(solverParamD, m, mSloppy, 
@@ -6679,6 +6699,11 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	      t3 = MPI_Wtime();
 	      K_temp->zero_device();
 	      if(NUCLEON == PROTON){
+		//Ensure mu is negative:
+		if(param->mu > 0) param->mu *= -1.0;
+		//Set MG Preconditioner to DN
+		param->preconditioner = param->preconditionerDN;
+		
 		if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		  K_contract->seqSourceFixSinkPart1(*K_temp,
 						    *K_prop3D_up, 
@@ -6687,6 +6712,10 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 						    PID, NUCLEON);
 	      }
 	      else if(NUCLEON == NEUTRON){
+		//Ensure mu is positive:
+		if(param->mu < 0) param->mu *= -1.0;
+		//Set MG Preconditioner to UP
+		param->preconditioner = param->preconditionerUP;
 		if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		  K_contract->seqSourceFixSinkPart1(*K_temp,
 						    *K_prop3D_down, 
@@ -6702,18 +6731,6 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	      K_vector->scaleVector(1e+10);
 	      //
 	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-	      if(NUCLEON == PROTON){
-		//Ensure mu is negative:
-		if(param->mu > 0) param->mu *= -1.0;
-		//Set MG Preconditioner to DN
-		param->preconditioner = param->preconditionerDN;
-	      }
-	      else{
-		//Ensure mu is positive:
-		if(param->mu < 0) param->mu *= -1.0;
-		//Set MG Preconditioner to UP
-		param->preconditioner = param->preconditionerUP;
-	      }
       	      K_guess->uploadToCuda(b,flag_eo);
 	      dirac.prepare(in,out,*x,*b,param->solution_type);
 	  
@@ -6821,6 +6838,11 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	      t3 = MPI_Wtime();
 	      K_temp->zero_device();
 	      if(NUCLEON == PROTON){
+		//Ensure mu is positive:
+		if(param->mu < 0) param->mu *= -1.0;
+		//Set MG Preconditioner to UP
+		param->preconditioner = param->preconditionerUP;
+
 		if( ( my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		  K_contract->seqSourceFixSinkPart2(*K_temp,
 						    *K_prop3D_up, 
@@ -6828,6 +6850,11 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 						    PID, NUCLEON);
 	      }
 	      else if(NUCLEON == NEUTRON){
+		//Ensure mu is negative:
+		if(param->mu > 0) param->mu *= -1.0;
+		//Set MG Preconditioner to DN
+		param->preconditioner = param->preconditionerDN;
+		
 		if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		  K_contract->seqSourceFixSinkPart2(*K_temp,
 						    *K_prop3D_down, 
@@ -6842,20 +6869,6 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	      K_vector->scaleVector(1e+10);
 	      //
 	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-
-	      if(NUCLEON == PROTON){
-		//Ensure mu is positive:
-		if(param->mu < 0) param->mu *= -1.0;
-		//Set MG Preconditioner to UP
-		param->preconditioner = param->preconditionerUP;
-	      }
-	      else{
-		//Ensure mu is negative:
-		if(param->mu > 0) param->mu *= -1.0;
-		//Set MG Preconditioner to DN
-		param->preconditioner = param->preconditionerDN;
-	      }
-
 	      K_guess->uploadToCuda(b,flag_eo);
 	      dirac.prepare(in,out,*x,*b,param->solution_type);
 	      

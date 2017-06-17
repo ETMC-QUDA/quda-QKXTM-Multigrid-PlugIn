@@ -1,10 +1,7 @@
 ETMC-QUDA production code base                        30th May 2017
 ------------------------------------------------------------------------
 
-This library is an extension to QUDA mainline: 30th May 2017
-
-The current QUDA branch to be pointed to is:
-feature/multigrid
+This library is an extension to QUDA feature/multigrid: GIT hash 3b19d92
 
 This plug-in contains routines to calculate 2- and 3-point hadronic correlation functions,
 and an All-to-All propagator with a gauge covariant derivative, with a 
@@ -46,7 +43,7 @@ of the QUDA mainline source code against which you compile.
 For safe results, please use quda-QKXTM-Multigrid which has been thoroughly 
 tested. For more recent QUDA builds, use this plug-in with caution.
 
-LATEST SUCCESSFUL COMPILATION: 30 May 2017
+LATEST SUCCESSFUL COMPILATION: 17 June 2017
 
 If you have compilation issues, please @cpviolator
 
@@ -87,9 +84,9 @@ multiple MG preconditioners, but this can be fixed with three minor additions:
 
 First, one must add to quda/include/quda.h two extra preconditioner pointers:
 
-void preconditioner; -> void preconditioner;
-     		        void preconditionerUP;
-			void preconditionerDN;
+void *preconditioner; -> void *preconditioner;
+       		         void *preconditionerUP;
+			 void *preconditionerDN;
 
 Then, adjust the quda/lib/check_params.h file:
 
@@ -105,6 +102,14 @@ integer(8) :: preconditioner -> integer(8) :: preconditioner
 
 This will allow for sucessful compilation of the 2 flavour routines, set 
 by the CMake Flag QKXTM_2FLAVMG.
+
+In order to QUDA's tunecache, you must (at present) edit out line 264 of
+QUDA's tune.cpp file
+
+https://github.com/lattice/quda/blob/feature/multigrid/lib/tune.cpp#L264
+
+This is because QUDA has strict checks on versions, and this library has
+a diffrent git hash to QUDA.
 
 Known Issues:
 

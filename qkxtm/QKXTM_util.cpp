@@ -1668,9 +1668,9 @@ char proj_list_file[257] = "default";
 char *corr_write_space = "MOMENTUM";
 
 //-C.K. loop Parameters
-int Nstoch = 100;     // Number of stochastic noise vectors
-unsigned long int seed   = 100;  // The seed for the stochastic vectors
-int Ndump  = 10;      // Write the loop every Ndump stoch. vectors
+int Nstoch = 100;              // Number of stochastic noise vectors
+unsigned long int seed = 100;  // The seed for the stochastic vectors
+int Ndump  = 10;               // Write the loop every Ndump stoch. vectors
 char loop_fname[512] = "loop";
 char *loop_file_format = "ASCII";
 char source_type[257] = "random";
@@ -1679,13 +1679,14 @@ int TSM_NHP = 0;
 int TSM_NLP = 0;
 int TSM_NdumpHP = 0;
 int TSM_NdumpLP = 0;
-long int TSM_maxiter = 0;
-double TSM_tol = 0;
-
+int TSM_NLP_iters = 1;
+int TSM_maxiter[10] = { };
+double TSM_tol[10] = { };
 
 #ifdef HAVE_ARPACK
 //- Loop params with ARPACK enabled
-char filename_dSteps[512]="none";
+int defl_steps = 1;
+int defl_step_nEv[10] = { };
 
 //-C.K. ARPACK Parameters
 char pathEigenVectorsUp[257] = "ev_u.0000";
@@ -1693,9 +1694,9 @@ char pathEigenVectorsDown[257] = "ev_d.0000";
 char pathEigenValuesUp[257] = "evals_u.dat";
 char pathEigenValuesDown[257] = "evals_d.dat";
 
-int PolyDeg = 100;     // degree of the Chebysev polynomial
-int nEv = 100;         // Number of the eigenvectors we want
-int nKv = 200;         // total size of Krylov space
+int PolyDeg = 100;         // degree of the Chebysev polynomial
+int nEv = 100;             // Number of the eigenvectors we want
+int nKv = 200;             // total size of Krylov space
 char *spectrumPart = "SR"; // for which part of the spectrum we want to solve
 bool isACC = true;
 double tolArpack = 1.0e-5;
@@ -1845,14 +1846,13 @@ void usage(char** argv )
   printf("    --loop-filename                           # File name to save loops (default \"loop\")\n");
   printf("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
   printf("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
-  printf("    --UseEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
+  printf("    --useEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
   printf("    --useTSM                                  # Use (or not) the truncated solver method for the Full Operator (yes/no, default: no\n");
   printf("    --TSM-NHP                                 # Number of High-precision sources for TSM\n");
-  printf("    --TSM-NLP                                 # Number of Low-precision sources for TSM\n");
-  printf("    --TSM-NdumpHP                             # Every how many High-precision sources to print for TSM\n");
-  printf("    --TSM-NdumpLP                             # Every how many Low-precision sources to print for TSM\n");
-  printf("    --TSM-maxiter                             # Set the iteration number as criterion for Low-precision sources for TSM\n");
-  printf("    --TSM-tol                                 # Set the CG tolerance as criterion for Low-precision sources for TSM\n");
+  printf("    --TSM-NdumpHP                             # How many High-precision data sumps to print for TSM\n");
+  printf("    --TSM-NLP-iters                           # How many Low-precision criteria for TSM\n");
+  printf("    --TSM-maxiter <step> <n>                  # Set the iteration number as criterion for Low-precision sources for TSM\n");
+  printf("    --TSM-tol <step> <tol>                    # Set the solver tolerance as criterion for Low-precision sources for TSM\n");
 #ifdef HAVE_ARPACK
   printf("    --pathEigenVectorsUp                      # Path where the eigenVectors for up flavor are (default ev_u.0000)\n");
   printf("    --pathEigenVectorsDown                    # Path where the eigenVectors for up flavor are (default ev_d.0000)\n");
@@ -1871,13 +1871,14 @@ void usage(char** argv )
   printf("    --pathArpackLogfile                       # Path to the ARPACK log file (default  \"arpack.log\")\n");
   printf("    --aminARPACK                              # amin parameter used in Cheb. Poly. Acc. (default 3.0e-4)\n");
   printf("    --amaxARPACK                              # amax parameter used in Cheb. Poly. Acc. (default 3.5)\n");
-  printf("    --UseFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
-  printf("    --defl_steps                              # File to deflation steps (default none)\n");
-
-  printf("    --k-probing                                 # This parameters is for the Hierarchical probing where neighbors distance D=2**k (default 0: No probing)\n");
-  printf("    --spinColorDil <true/false>                 # Whether we want spin color dilution (default false)\n");
-  
+  printf("    --useFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
+  printf("    --defl-steps <steps>                      # Number of deflation steps (default: 1, the total requested NeV)\n");
+  printf("    --defl-step-NeV <step> <NeV_at_step>      # Number of eigenvectors to deflate at step <step> (default: the total requested NeV)\n");
 #endif
+  printf("    --k-probing                               # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
+  printf("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
+  
+
   //--------//
 
   printf("    --help                                    # Print out this message\n"); 
@@ -3255,9 +3256,15 @@ int process_command_line_option(int argc, char** argv, int* idx)
     if(i+1 >= argc){
       usage(argv);
     }
-    if( strcmp(argv[i+1],"yes")==0 || strcmp(argv[i+1],"YES")==0 ) useTSM = true;
-    else if ( strcmp(argv[i+1],"no")==0 || strcmp(argv[i+1],"NO")==0 ) useTSM = false;
-    else usage(argv);
+
+    if (strcmp(argv[i+1], "true") == 0){
+      useTSM = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      useTSM = false;
+    } else {
+      fprintf(stderr, "ERROR: invalid value for useTSM (true/false)\n");
+      exit(1);
+    }
     i++;
     ret = 0;
     goto out;
@@ -3273,16 +3280,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
  
-  if( strcmp(argv[i], "--TSM-NLP") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    TSM_NLP = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
- 
   if( strcmp(argv[i], "--TSM-NdumpHP") ==0){
     if(i+1 >= argc){
       usage(argv);
@@ -3293,21 +3290,29 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
  
-  if( strcmp(argv[i], "--TSM-NdumpLP") ==0){
+  if( strcmp(argv[i], "--TSM-NLP-iters") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    TSM_NdumpLP = atoi(argv[i+1]);
+    TSM_NLP_iters = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;
   }
+  
  
   if( strcmp(argv[i], "--TSM-maxiter") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    TSM_maxiter = atoi(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level > 10) {
+      printf("ERROR: invalid TSM maxiter level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    TSM_maxiter[level] = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -3317,32 +3322,65 @@ int process_command_line_option(int argc, char** argv, int* idx)
     if(i+1 >= argc){
       usage(argv);
     }
-    TSM_tol = atof(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level > 10) {
+      printf("ERROR: invalid TSM tol level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    TSM_tol[level] = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
   }
  
-  if( strcmp(argv[i], "--UseEven") ==0){
+  if( strcmp(argv[i], "--useEven") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    if( strcmp(argv[i+1],"yes")==0 || 
-	strcmp(argv[i+1],"YES")==0 ) isEven = true;
-    else if ( strcmp(argv[i+1],"no")==0 || 
-	      strcmp(argv[i+1],"NO")==0 ) isEven = false;
-    else usage(argv);
+    if (strcmp(argv[i+1], "true") == 0){
+      isEven = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      isEven = false;
+    } else {
+      fprintf(stderr, "ERROR: invalid value for useEven (true/false)\n");
+      exit(1);
+    }
+    
     i++;
     ret = 0;
     goto out;
   }
 #ifdef HAVE_ARPACK
   //-Loop info with ARPACK enabled
+
   if( strcmp(argv[i], "--defl-steps") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    strcpy(filename_dSteps, argv[i+1]);
+    defl_steps = atoi(argv[i+1]);
+    if (defl_steps < 0 || defl_steps > 10){
+      printf("ERROR: invalid number of defl steps (%d): \n", defl_steps);
+      usage(argv);
+    }
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--defl-step-NeV") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level > 10) {
+      printf("ERROR: invalid defl step level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    defl_step_nEv[level] = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -3434,11 +3472,14 @@ int process_command_line_option(int argc, char** argv, int* idx)
     if(i+1 >= argc){
       usage(argv);
     }
-    if( strcmp(argv[i+1],"yes")==0 || 
-	strcmp(argv[i+1],"YES")==0 ) isACC = true;
-    else if ( strcmp(argv[i+1],"no")==0 || 
-	      strcmp(argv[i+1],"NO")==0 ) isACC = false;
-    else usage(argv);
+    if (strcmp(argv[i+1], "true") == 0){
+      isACC = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      isACC = false;
+    } else {
+      fprintf(stderr, "ERROR: invalid value for issACC (true/false)\n");
+      exit(1);
+    }
     i++;
     ret = 0;
     goto out;
@@ -3505,13 +3546,19 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
  
-  if( strcmp(argv[i], "--UseFullOp") ==0){
+  if( strcmp(argv[i], "--useFullOp") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    if( strcmp(argv[i+1],"yes")==0 || strcmp(argv[i+1],"YES")==0 ) isFullOp = true;
-    else if ( strcmp(argv[i+1],"no")==0 || strcmp(argv[i+1],"NO")==0 ) isFullOp = false;
-    else usage(argv);
+    if (strcmp(argv[i+1], "true") == 0){
+      isFullOp = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      isFullOp = false;
+    } else {
+      fprintf(stderr, "ERROR: invalid value for useFullOp (true/false)\n");
+      exit(1);
+    }
+    
     i++;
     ret = 0;
     goto out;

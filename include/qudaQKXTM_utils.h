@@ -19,6 +19,7 @@
 #define MAX_NMOMENTA 5000
 #define MAX_TSINK 10
 #define MAX_DEFLSTEPS 10
+#define MAX_LP_CRIT 10
 #define MAX_PROJS 5
 
 #define LEXIC(it,iz,iy,ix,L) ( (it)*L[0]*L[1]*L[2] + (iz)*L[0]*L[1] + (iy)*L[0] + (ix) )
@@ -119,8 +120,9 @@ namespace quda {
     int TSM_NdumpLP;
     int TSM_NprintHP;
     int TSM_NprintLP;
-    long int TSM_maxiter;
-    double TSM_tol;
+    int TSM_NLP_iters;
+    int TSM_maxiter[MAX_LP_CRIT];
+    double TSM_tol[MAX_LP_CRIT];
     int k_probing; // if its value <=0 then probing is switched off
     bool spinColorDil; // enables spin color dilution
   } qudaQKXTM_loopInfo;

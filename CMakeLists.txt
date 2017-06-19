@@ -715,7 +715,7 @@ mark_as_advanced(CMAKE_F_FLAGS)
 
 ### add tests and quda library
 add_subdirectory(lib)
-add_subdirectory(tests)
+#add_subdirectory(tests)
 #QKXTM: DMH Add QKXTM directory
 add_subdirectory(qkxtm)
 #QKXTM: DMH

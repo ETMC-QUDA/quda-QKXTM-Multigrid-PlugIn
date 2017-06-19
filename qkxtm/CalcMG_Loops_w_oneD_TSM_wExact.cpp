@@ -118,14 +118,15 @@ extern char loop_fname[];
 extern char *loop_file_format;
 extern int Ndump;
 extern char source_type[];
-extern char filename_dSteps[];
+extern int defl_steps;
+extern int defl_step_nEv[];;
 extern bool useTSM;
 extern int TSM_NHP;
 extern int TSM_NLP;
 extern int TSM_NdumpHP;
 extern int TSM_NdumpLP;
-extern int TSM_maxiter;
-extern double TSM_tol;
+extern int TSM_maxiter[];
+extern double TSM_tol[];
 
 //-C.K. ARPACK Parameters
 extern int PolyDeg;
@@ -473,6 +474,9 @@ void setInvertParam(QudaInvertParam &inv_param) {
 
 int main(int argc, char **argv)
 {
+
+  using namespace quda;
+
   // We give here the default value to some of the array
   for(int i =0; i<QUDA_MAX_MG_LEVEL; i++) {
     mg_verbosity[i] = QUDA_SILENT;
@@ -505,7 +509,7 @@ int main(int argc, char **argv)
   //QKXTM: qkxtm specific inputs
   //--------------------------------------------------------------------
   //-C.K. Pass ARPACK parameters to arpackInfo  
-  quda::qudaQKXTM_arpackInfo arpackInfo;
+  qudaQKXTM_arpackInfo arpackInfo;
   arpackInfo.PolyDeg = PolyDeg;
   arpackInfo.nEv = nEv;
   arpackInfo.nKv = nKv;
@@ -518,34 +522,34 @@ int main(int argc, char **argv)
   arpackInfo.isEven = isEven;
   arpackInfo.isFullOp = isFullOp;
 
-  if(strcmp(spectrumPart,"SR")==0) arpackInfo.spectrumPart = quda::SR;
-  else if(strcmp(spectrumPart,"LR")==0) arpackInfo.spectrumPart = quda::LR;
-  else if(strcmp(spectrumPart,"SM")==0) arpackInfo.spectrumPart = quda::SM;
-  else if(strcmp(spectrumPart,"LM")==0) arpackInfo.spectrumPart = quda::LM;
-  else if(strcmp(spectrumPart,"SI")==0) arpackInfo.spectrumPart = quda::SI;
-  else if(strcmp(spectrumPart,"LI")==0) arpackInfo.spectrumPart = quda::LI;
+  if(strcmp(spectrumPart,"SR")==0) arpackInfo.spectrumPart = SR;
+  else if(strcmp(spectrumPart,"LR")==0) arpackInfo.spectrumPart = LR;
+  else if(strcmp(spectrumPart,"SM")==0) arpackInfo.spectrumPart = SM;
+  else if(strcmp(spectrumPart,"LM")==0) arpackInfo.spectrumPart = LM;
+  else if(strcmp(spectrumPart,"SI")==0) arpackInfo.spectrumPart = SI;
+  else if(strcmp(spectrumPart,"LI")==0) arpackInfo.spectrumPart = LI;
   else{
     printf("Error: Your spectrumPart option is suspicious\n");
     exit(-1);
   }
   
   //-C.K. General QKXTM information
-  quda::qudaQKXTMinfo info;
+  qudaQKXTMinfo info;
   info.lL[0] = xdim;
   info.lL[1] = ydim;
   info.lL[2] = zdim;
   info.lL[3] = tdim;
   info.Q_sq = Q_sq;
   info.isEven = isEven;
-  if( strcmp(source_type,"random")==0 ) info.source_type = quda::RANDOM;
-  else if( strcmp(source_type,"unity")==0 ) info.source_type = quda::UNITY;
+  if( strcmp(source_type,"random")==0 ) info.source_type = RANDOM;
+  else if( strcmp(source_type,"unity")==0 ) info.source_type = UNITY;
   else{
-    printf("Wrong type for stochastic source type. Must be either random/unity. Exiting.\n");
-    exit(1);
+    printfQuda("Unknown type for stochastic source type. Must be either random or unity. Defaulting to random.\n");
+    info.source_type = RANDOM;
   }
 
   //-C.K. Pass loop parameters to loopInfo
-  quda::qudaQKXTM_loopInfo loopInfo;
+  qudaQKXTM_loopInfo loopInfo;
   loopInfo.Nstoch = Nstoch;
   loopInfo.seed = seed;
   loopInfo.Ndump = Ndump;
@@ -558,83 +562,83 @@ int main(int argc, char **argv)
   if( strcmp(loop_file_format,"ASCII")==0 || 
       strcmp(loop_file_format,"ascii")==0 ) {
     // Determine whether to write the loops in ASCII
-    loopInfo.FileFormat = quda::ASCII_FORM;
+    loopInfo.FileFormat = ASCII_FORM;
   }
   else if( strcmp(loop_file_format,"HDF5")==0 || 
 	   strcmp(loop_file_format,"hdf5")==0 ) {
     // Determine whether to write the loops in HDF5
-    loopInfo.FileFormat = quda::HDF5_FORM; 
+    loopInfo.FileFormat = HDF5_FORM; 
   }
-  else fprintf(stderr,"Undefined option for --loop-file-format. Options are ASCII(ascii)/HDF5(hdf5)\n");
-
+  else {
+    printfQuda("Unknown option for --loop-file-format. Options are ASCII(ascii)/HDF5(hdf5). Defaulting to HDF5\n");
+  }
   if(loopInfo.Nstoch%loopInfo.Ndump==0) loopInfo.Nprint = loopInfo.Nstoch/loopInfo.Ndump;
   else errorQuda("NdumpStep MUST divide Nstoch exactly! Exiting.\n");
-
-
+  
+  
   //-C.K. Determine the deflation steps
-  if(strcmp(filename_dSteps,"none")==0){
+  if(defl_steps == 1){
     loopInfo.nSteps_defl = 1;
     loopInfo.deflStep[0] = nEv;
-    //loopInfo.deflStep[1] = 200;
-    //loopInfo.deflStep[2] = 300;
   }
-  else{
-    FILE *ptr_dstep;
-    if( (ptr_dstep = fopen(filename_dSteps,"r"))==NULL ){
-      fprintf(stderr,"Cannot open %s for reading. Exiting\n",filename_dSteps);
-      exit(-1);
+  else{    
+    loopInfo.nSteps_defl = defl_steps;
+    for(int a=0; a <defl_steps; a++) {      
+      loopInfo.deflStep[a] = defl_step_nEv[a];
     }
-    fscanf(ptr_dstep,"%d\n",&loopInfo.nSteps_defl);
-    fscanf(ptr_dstep,"%d\n",&loopInfo.deflStep[0]);
-    if(loopInfo.deflStep[0]>nEv){
-      printf("ERROR: Supplied deflation step is larger than eigenvalues requested. Exiting.\n");
-      exit(-1);
-    }
-    for(int s=1;s<loopInfo.nSteps_defl;s++){
-      fscanf(ptr_dstep,"%d\n",&loopInfo.deflStep[s]);
-      if(loopInfo.deflStep[s]<loopInfo.deflStep[s-1]){
-        printf("ERROR: Deflation steps MUST be in ascending order. Exiting.\n");
-        exit(-1);
-      }
-      if(loopInfo.deflStep[s]>nEv){
-        printf("WARNING: Supplied deflation step %d is larger than eigenvalues requested. Discarding this step.\n",s);
-        s--;
-        loopInfo.nSteps_defl--;
-      }
-    }
-    fclose(ptr_dstep);
-
-    //- This is to always make sure that the total number of eigenvalues is included
+    //Sort for sanity checks
+    for(int a=0; a < defl_steps+1; a++)  
+      if ( loopInfo.deflStep[a+1] < defl_step_nEv[a] )
+	errorQuda("Please arrange deflation steps in ascending order\n"
+		  "Step %d:%d < Step %d:%d", 
+		  a+1,defl_step_nEv[a+1],a,defl_step_nEv[a]);
+    
+    // This is to always make sure that the total number of eigenvalues 
+    // is included
     if(loopInfo.deflStep[loopInfo.nSteps_defl-1] != nEv){
       loopInfo.nSteps_defl++;
       loopInfo.deflStep[loopInfo.nSteps_defl-1] = nEv;
     }
   }
-
+  
   //- TSM parameters
   loopInfo.useTSM = useTSM;
   if(useTSM){
+    //Number of HP solves to perform, in units of stochastic noise
+    //vectors. N.B. If Spin-colour dilution and/or probing is enabled,
+    //there will be many inversions per source.
     loopInfo.TSM_NHP = TSM_NHP;
-    loopInfo.TSM_NLP = TSM_NLP;
+
+    //How many HP stochastic vectors to include at each data dump.
     loopInfo.TSM_NdumpHP = TSM_NdumpHP;
-    loopInfo.TSM_NdumpLP = TSM_NdumpLP;
-    
-    if(loopInfo.TSM_NHP%loopInfo.TSM_NdumpHP==0) {
+
+    //If using TSM, one will always perform the full number of inversions
+    //in LP, these are same as the total number of vectors
+    //requested, and how many to dump. 
+    loopInfo.TSM_NLP = Nstoch;
+    loopInfo.TSM_NdumpLP = Ndump;
+
+    //Sanity checks, and ascertaining how many files to print.
+    if(loopInfo.TSM_NHP % loopInfo.TSM_NdumpHP == 0) {
       loopInfo.TSM_NprintHP = loopInfo.TSM_NHP/loopInfo.TSM_NdumpHP;
     } else errorQuda("TSM_NdumpHP MUST divide TSM_NHP exactly! Exiting.\n");
     
-    if(loopInfo.TSM_NLP%loopInfo.TSM_NdumpLP==0) {
-      loopInfo.TSM_NprintLP = loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP;
-    } else errorQuda("TSM_NdumpLP MUST divide TSM_NLP exactly! Exiting.\n");
+    if(loopInfo.TSM_NLP % loopInfo.TSM_NdumpLP==0) {
+      //Here we must multiply by the number of LP criteria
+      loopInfo.TSM_NprintLP = 
+	loopInfo.TSM_NLP_iters*(loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP);
+    } else errorQuda("Ndump MUST divide Nstoch exactly! Exiting.\n");
     
-    loopInfo.TSM_tol = TSM_tol;
-    loopInfo.TSM_maxiter = TSM_maxiter;
-    if( (TSM_maxiter==0) && (TSM_tol==0) ) {
-      errorQuda("Criterion for low-precision sources not set!\n");
+    //Populate LP criteria arrays
+    for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
+      loopInfo.TSM_tol[a] = TSM_tol[a];
+      loopInfo.TSM_maxiter[a] = TSM_maxiter[a];
+      if( (TSM_maxiter[a]==0) && (TSM_tol[a]==0) ) {
+	errorQuda("Criterion for low-precision sources not set!\n");
+      }
     }
-    if(TSM_tol!=0) errorQuda("Setting the tolerance as low-precision criterion for Truncated Solver method not supported! Re-run using --TSM_maxiter <iter> as criterion.\n");
   }
-
+  
   // QUDA parameters begin here.
   //-----------------------------------------------------------------
   if ( dslash_type != QUDA_TWISTED_MASS_DSLASH && 
@@ -680,6 +684,7 @@ int main(int argc, char **argv)
   }
 
   // load in the command line supplied gauge field
+  //QIO METHOD
   //read_gauge_field(latfile, gauge, gauge_param.cpu_prec, gauge_param.X, 
   //argc, argv);
   //construct_gauge_field(gauge, 2, gauge_param.cpu_prec, &gauge_param);
@@ -701,7 +706,7 @@ int main(int argc, char **argv)
   initQuda(device);
   //Print remaining info to stdout
   init_qudaQKXTM(&info);
-  quda::printf_qudaQKXTM();
+  printf_qudaQKXTM();
 
   // load the gauge field
   loadGaugeQuda((void*)gauge, &gauge_param);
@@ -745,4 +750,4 @@ int main(int argc, char **argv)
   finalizeComms();
   
   return 0;
-}
+  }

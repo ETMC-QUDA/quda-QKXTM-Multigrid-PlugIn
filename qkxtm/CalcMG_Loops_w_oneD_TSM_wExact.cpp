@@ -125,6 +125,7 @@ extern int TSM_NHP;
 extern int TSM_NLP;
 extern int TSM_NdumpHP;
 extern int TSM_NdumpLP;
+extern int TSM_NLP_iters;
 extern int TSM_maxiter[];
 extern double TSM_tol[];
 
@@ -145,6 +146,7 @@ extern bool isFullOp;
 // K.H probing parameters
 extern int k_probing;
 extern bool spinColorDil;
+extern bool loopCovDev;
 
 namespace quda {
   extern void setTransferGPU(bool);
@@ -557,6 +559,7 @@ int main(int argc, char **argv)
   loopInfo.Qsq = Q_sq;
   loopInfo.k_probing = k_probing;
   loopInfo.spinColorDil = spinColorDil;
+  loopInfo.loopCovDev = loopCovDev;
   strcpy(loopInfo.loop_fname,loop_fname);
 
   if( strcmp(loop_file_format,"ASCII")==0 || 
@@ -587,7 +590,7 @@ int main(int argc, char **argv)
       loopInfo.deflStep[a] = defl_step_nEv[a];
     }
     //Sort for sanity checks
-    for(int a=0; a < defl_steps+1; a++)  
+    for(int a=0; a < defl_steps-1; a++)  
       if ( loopInfo.deflStep[a+1] < defl_step_nEv[a] )
 	errorQuda("Please arrange deflation steps in ascending order\n"
 		  "Step %d:%d < Step %d:%d", 
@@ -604,6 +607,15 @@ int main(int argc, char **argv)
   //- TSM parameters
   loopInfo.useTSM = useTSM;
   if(useTSM){
+    
+    //How many LP criteria to calculate. Default is zero. If TSM is
+    //enabled, and TSM_LP_iters is not greater than zero, an error
+    //will be thrown.
+    loopInfo.TSM_NLP_iters = TSM_NLP_iters;
+    if(loopInfo.TSM_NLP_iters == 0)
+      errorQuda("TSM is enabled. Please specify at least one LP "
+		"iteration and stopping criterion.\n");
+    
     //Number of HP solves to perform, in units of stochastic noise
     //vectors. N.B. If Spin-colour dilution and/or probing is enabled,
     //there will be many inversions per source.
@@ -624,12 +636,11 @@ int main(int argc, char **argv)
     } else errorQuda("TSM_NdumpHP MUST divide TSM_NHP exactly! Exiting.\n");
     
     if(loopInfo.TSM_NLP % loopInfo.TSM_NdumpLP==0) {
-      //Here we must multiply by the number of LP criteria
-      loopInfo.TSM_NprintLP = 
-	loopInfo.TSM_NLP_iters*(loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP);
+      loopInfo.TSM_NprintLP = loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP;
     } else errorQuda("Ndump MUST divide Nstoch exactly! Exiting.\n");
     
     //Populate LP criteria arrays
+    
     for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
       loopInfo.TSM_tol[a] = TSM_tol[a];
       loopInfo.TSM_maxiter[a] = TSM_maxiter[a];

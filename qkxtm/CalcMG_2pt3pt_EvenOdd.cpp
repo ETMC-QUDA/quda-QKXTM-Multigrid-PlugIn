@@ -27,8 +27,6 @@
 // In a typical application, quda.h is the only QUDA header required.
 #include <quda.h>
 #include <qudaQKXTM.h>
-// Wilson, clover-improved Wilson, twisted mass, and domain wall are 
-// supported.
 
 //========================================================================//
 //====== P A R A M E T E R   S E T T I N G S   A N D   C H E C K S =======//
@@ -708,38 +706,28 @@ int main(int argc, char **argv)
   if (dslash_type == QUDA_TWISTED_CLOVER_DSLASH) 
     loadCloverQuda(NULL, NULL, &inv_param);
   printfQuda("After clover term\n");
-  
+
   //QKXTM: DMH EXP
   // setup the multigrid solver for UP flavour
-
-  printfQuda("inv mu init= %f\n", inv_param.mu );
-
-  if( inv_param.mu < 0 ) {
-    //mg_param.invert_param->mu *= -1.0;
-    //inv_param.mu *= -1.0;
+  if( mg_param.invert_param->mu < 0 ) {
+    mg_param.invert_param->mu *= -1.0;
   }
-  printfQuda("inv mu pre UP= %f\n", inv_param.mu );
-
+  
   void *mg_preconditionerUP = newMultigridQuda(&mg_param);
   inv_param.preconditionerUP = mg_preconditionerUP;
 
   // setup the multigrid solver for DN flavour
-  if( inv_param.mu > 0 ) {
-    //mg_param.invert_param->mu *= -1.0;
-    //inv_param.mu *= -1.0;
+  if( mg_param.invert_param->mu > 0 ) {
+    mg_param.invert_param->mu *= -1.0;
   }
-  printfQuda("inv mu pre DN= %f\n", inv_param.mu );
 
-  //void *mg_preconditionerDN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDN = mg_preconditionerUP;
+  void *mg_preconditionerDN = newMultigridQuda(&mg_param);
+  inv_param.preconditionerDN = mg_preconditionerDN;
 
   // reset twist flavour
-  if( inv_param.mu < 0 ) {
-    //mg_param.invert_param->mu *= -1.0;
-    //inv_param.mu *= -1.0;
+  if( mg_param.invert_param->mu < 0 ) {
+    mg_param.invert_param->mu *= -1.0;
   }
-  printfQuda("inv mu pre EXE= %f\n", inv_param.mu );
-
 
   calcMG_threepTwop_EvenOdd(gauge_APE, gaugeContract, &gauge_param,
 			    &inv_param, info, twop_filename,
@@ -747,7 +735,7 @@ int main(int argc, char **argv)
 
   // free the multigrid solvers
   destroyMultigridQuda(mg_preconditionerUP);
-  //destroyMultigridQuda(mg_preconditionerDN);
+  destroyMultigridQuda(mg_preconditionerDN);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 

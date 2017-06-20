@@ -72,7 +72,7 @@ extern int GK_timeSize;
 
 template<typename Float>
 void QKXTM_Deflation<Float>::
-Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
+Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param, bool loopCovDev,
 			    void *gen_uloc,void *std_uloc,
 			    void **gen_oneD, 
 			    void **std_oneD, 
@@ -200,82 +200,82 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 
   cudaDeviceSynchronize();
 
-  /*
-  // ONE-DERIVATIVE Generalized one-end trick
-  for(int mu=0; mu<4; mu++){
-    cov->M(tmp4,tmp3,mu);
-    // Term 0
-    contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5); 
+  if(loopCovDev == true) {
+    // ONE-DERIVATIVE Generalized one-end trick
+    for(int mu=0; mu<4; mu++){
+      cov->M(tmp4,tmp3,mu);
+      // Term 0
+      contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5); 
     
-    cov->M  (tmp4, x,  mu+4);
-    // Term 0 + Term 3
-    contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
-    cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
+      cov->M  (tmp4, x,  mu+4);
+      // Term 0 + Term 3
+      contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
+      cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
     
-    cov->M  (tmp4, x, mu);
-    // Term 0 + Term 3 + Term 2 (C Sum)
-    contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-    // Term 0 + Term 3 - Term 2 (D Dif)
-    contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);                
+      cov->M  (tmp4, x, mu);
+      // Term 0 + Term 3 + Term 2 (C Sum)
+      contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+      // Term 0 + Term 3 - Term 2 (D Dif)
+      contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);                
     
-    cov->M  (tmp4, tmp3,  mu+4);
-    // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
-    contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-    // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
-    contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
-    cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
+      cov->M  (tmp4, tmp3,  mu+4);
+      // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
+      contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+      // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
+      contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+      cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
 
-    if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) gen_oneD[mu], incy);
-    else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) gen_oneD[mu], incy);
+      if( typeid(Float) == typeid(float) ) 
+	cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) gen_oneD[mu], incy);
+      else if( typeid(Float) == typeid(double) ) 
+	cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) gen_oneD[mu], incy);
     
-    cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
+      cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
 
-    if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) gen_csvC[mu], incy);
-    else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) gen_csvC[mu], incy);
-  }
+      if( typeid(Float) == typeid(float) ) 
+	cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) gen_csvC[mu], incy);
+      else if( typeid(Float) == typeid(double) ) 
+	cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) gen_csvC[mu], incy);
+    }
   
-  //------------------------------------------------
+    //------------------------------------------------
 
-  // ONE-DERIVATIVE Standard one-end trick
-  for(int mu=0; mu<4; mu++){
-    cov->M  (tmp4, x,  mu);
-    cov->M  (tmp3, x,  mu+4);
-    // Term 0
-    contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
-    // Term 0 + Term 3
-    contract(tmp3, x, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
-    cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
+    // ONE-DERIVATIVE Standard one-end trick
+    for(int mu=0; mu<4; mu++){
+      cov->M  (tmp4, x,  mu);
+      cov->M  (tmp3, x,  mu+4);
+      // Term 0
+      contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
+      // Term 0 + Term 3
+      contract(tmp3, x, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
+      cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
     
-    // Term 0 + Term 3 + Term 2 (C Sum)
-    contract(tmp4, x, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-    // Term 0 + Term 3 - Term 2 (D Dif)
-    contract(tmp4, x, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
-    // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
-    contract(x, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-    // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
-    contract(x, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
-    cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
+      // Term 0 + Term 3 + Term 2 (C Sum)
+      contract(tmp4, x, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+      // Term 0 + Term 3 - Term 2 (D Dif)
+      contract(tmp4, x, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+      // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
+      contract(x, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+      // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
+      contract(x, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+      cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
 
-    if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) std_oneD[mu], incy);
-    else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) std_oneD[mu], incy);
+      if( typeid(Float) == typeid(float) ) 
+	cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) std_oneD[mu], incy);
+      else if( typeid(Float) == typeid(double) ) 
+	cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) std_oneD[mu], incy);
     
-    cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
+      cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
     
-    if( typeid(Float) == typeid(float) ) 
-      cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) std_csvC[mu], incy);
-    else if( typeid(Float) == typeid(double) ) 
-      cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) std_csvC[mu], incy);
+      if( typeid(Float) == typeid(float) ) 
+	cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) std_csvC[mu], incy);
+      else if( typeid(Float) == typeid(double) ) 
+	cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) std_csvC[mu], incy);
+    }
+
+    //------------------------------------------------
+    delete cov;
   }
-
-  //------------------------------------------------
-  delete cov;
-  */
 
   delete Kvec;
   delete x1;
@@ -293,7 +293,7 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 
 template<typename Float>
 void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3, 
-			   ColorSpinorField &tmp4, QudaInvertParam *param, 
+			   ColorSpinorField &tmp4, QudaInvertParam *param, bool loopCovDev,
 			   void *cnRes_gv,void *cnRes_vv, void **cnD_gv, 
 			   void **cnD_vv, void **cnC_gv, void **cnC_vv){
   
@@ -383,101 +383,100 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   }  
   cudaDeviceSynchronize();
 
-  //QKXTM: DMH Leave out the derivatives for now.
-  /* 
-  ////////////////// DERIVATIVES //////////////////////////////
-  CovD *cov = new CovD(gaugePrecise, profileCovDev);
+  if(loopCovDev == true) {
+    ////////////////// DERIVATIVES //////////////////////////////
+    CovD *cov = new CovD(gaugePrecise, profileCovDev);
 
-  // for generalized one-end trick
-  for(int mu=0; mu<4; mu++)	
-    {
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu);
-      // Term 0
-      contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
+    // for generalized one-end trick
+    for(int mu=0; mu<4; mu++)	
+      {
+	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu);
+	// Term 0
+	contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
 
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu+4);
-      // Term 0 + Term 3
-      contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
-      cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
+	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu+4);
+	// Term 0 + Term 3
+	contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
+	cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
 
-      // Term 0 + Term 3 + Term 2 (C Sum)
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
-      contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-      // Term 0 + Term 3 - Term 2 (D Dif)
-      contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	// Term 0 + Term 3 + Term 2 (C Sum)
+	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
+	contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	// Term 0 + Term 3 - Term 2 (D Dif)
+	contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
 
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu+4);
-      // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
-      contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-      // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
-      contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
-      cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
+	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu+4);
+	// Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
+	contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	// Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
+	contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
       
-      if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx,  (float*) cnD_gv[mu], incy);
-      }
-      else if( typeid(Float) == typeid(double) ) {
-	cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnD_gv[mu], incy);
-      }
-      //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
-      //	((Float *) cnD_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
+	if( typeid(Float) == typeid(float) ) {
+	  cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx,  (float*) cnD_gv[mu], incy);
+	}
+	else if( typeid(Float) == typeid(double) ) {
+	  cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnD_gv[mu], incy);
+	}
+	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
+	//	((Float *) cnD_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
       
-      cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
+	cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
       
-      if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) cnC_gv[mu], incy);
+	if( typeid(Float) == typeid(float) ) {
+	  cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) cnC_gv[mu], incy);
+	}
+	else if( typeid(Float) == typeid(double) ) {
+	  cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnC_gv[mu], incy);
+	}
+	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
+	//	((Float *) cnC_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
       }
-      else if( typeid(Float) == typeid(double) ) {
-	cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnC_gv[mu], incy);
-      }
-      //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
-      //	((Float *) cnC_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
-    }
   
-  for(int mu=0; mu<4; mu++) // for standard one-end trick
-    {
-      cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
-      cov->M(static_cast<cudaColorSpinorField&>(tmp3),static_cast<cudaColorSpinorField&>(x),mu+4);
-      // Term 0
-      contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
-      // Term 0 + Term 3
-      contract(tmp3, x, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
-      cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
+    for(int mu=0; mu<4; mu++) // for standard one-end trick
+      {
+	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
+	cov->M(static_cast<cudaColorSpinorField&>(tmp3),static_cast<cudaColorSpinorField&>(x),mu+4);
+	// Term 0
+	contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
+	// Term 0 + Term 3
+	contract(tmp3, x, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
+	cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
       
-      // Term 0 + Term 3 + Term 2 (C Sum)
-      contract(tmp4, x, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-      // Term 0 + Term 3 - Term 2 (D Dif)
-      contract(tmp4, x, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
-      // Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
-      contract(x, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
-      // Term 0 + Term 3 - Term 2 - Term 1 (D Dif)                          
-      contract(x, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
-      cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
+	// Term 0 + Term 3 + Term 2 (C Sum)
+	contract(tmp4, x, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	// Term 0 + Term 3 - Term 2 (D Dif)
+	contract(tmp4, x, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	// Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
+	contract(x, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	// Term 0 + Term 3 - Term 2 - Term 1 (D Dif)                          
+	contract(x, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
       
-      if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnD_vv[mu], incy);
+	if( typeid(Float) == typeid(float) ) {
+	  cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnD_vv[mu], incy);
+	}
+	else if( typeid(Float) == typeid(double) ) { 
+	  cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnD_vv[mu], incy);
+	}
+	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
+	//	((Float *) cnD_vv[mu])[ix]  -= ((Float*)h_ctrn)[ix];
+      
+	cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
+      
+	if( typeid(Float) == typeid(float) ) {
+	  cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnC_vv[mu], incy);
+	}
+	else if( typeid(Float) == typeid(double) ) {
+	  cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnC_vv[mu], incy);
+	}
+      
+	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
+	//	((Float *) cnC_vv[mu])[ix] -= ((Float*)h_ctrn)[ix];
       }
-      else if( typeid(Float) == typeid(double) ) { 
-	cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnD_vv[mu], incy);
-      }
-      //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
-      //	((Float *) cnD_vv[mu])[ix]  -= ((Float*)h_ctrn)[ix];
-      
-      cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
-      
-      if( typeid(Float) == typeid(float) ) {
-	cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnC_vv[mu], incy);
-      }
-      else if( typeid(Float) == typeid(double) ) {
-	cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnC_vv[mu], incy);
-      }
-      
-      //      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
-      //	((Float *) cnC_vv[mu])[ix] -= ((Float*)h_ctrn)[ix];
-    }
 
-  delete cov;
-  */
+    delete cov;
+  }
   cudaFreeHost(h_ctrn);
   cudaFree(ctrnS);
   cudaFree(ctrnC);
@@ -494,6 +493,11 @@ void writeLoops_ASCII(Float *writeBuf, const char *Pref,
 		      bool useTSM, bool LowPrec){
   
   if(exact_loop && useTSM) errorQuda("writeLoops_ASCII: Got conflicting options - exact_loop AND useTSM.\n");
+
+  if(!loopInfo.loopCovDev && type > 1) {
+    printfQuda("writeLoops_ASCII: Loop derivatives not calculated, will not write %s data\n", loopInfo.loop_type[type]);
+    return;
+  }
 
   if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
     FILE *ptr;
@@ -598,6 +602,12 @@ void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc,
 
   if(exact_loop && useTSM) errorQuda("writeLoops_HDF5: Got conflicting options - exact_loop AND useTSM.\n");
 
+  if(!loopInfo.loopCovDev) {
+    printfQuda("writeLoops_HDF5: Loop derivatives not calculated, will not write %s, %s, %s, %s data.\n",
+	       loopInfo.loop_type[2], loopInfo.loop_type[3], loopInfo.loop_type[4], loopInfo.loop_type[5]);
+    return;
+  }
+
   if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
     char fname[512];
     int Nprint,Ndump;
@@ -675,7 +685,8 @@ void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc,
 	  asprintf(&group4_tag,"mom_xyz_%+d_%+d_%+d",momQsq[imom][0],momQsq[imom][1],momQsq[imom][2]);
 	  group4_id = H5Gcreate(group3_id, group4_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-	  if(loopInfo.loop_oneD[it]){
+	  // Extra conditional on loopCovDev
+	  if(loopInfo.loop_oneD[it] && loopInfo.loopCovDev ){
 	    for(int mu=0;mu<4;mu++){
 	      if(strcmp(loopInfo.loop_type[it],"Loops")==0)   loopBuf = buf_std_oneD[mu];
 	      if(strcmp(loopInfo.loop_type[it],"LoopsCv")==0) loopBuf = buf_std_csvC[mu];

@@ -462,7 +462,7 @@ namespace quda {
     void polynomialOperator(cudaColorSpinorField &out, 
 			    const cudaColorSpinorField &in);
     void eigenSolver();
-    void Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param, 
+    void Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param, bool loopCovDev,
 				     void *gen_uloc, void *std_uloc, 
 				     void **gen_oneD, void **std_oneD, 
 				     void **gen_csvC, void **std_csvC);

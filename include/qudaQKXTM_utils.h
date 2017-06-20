@@ -121,10 +121,11 @@ namespace quda {
     int TSM_NprintHP;
     int TSM_NprintLP;
     int TSM_NLP_iters;
-    int TSM_maxiter[MAX_LP_CRIT];
-    double TSM_tol[MAX_LP_CRIT];
-    int k_probing; // if its value <=0 then probing is switched off
+    int TSM_maxiter[MAX_LP_CRIT] = {0,0,0,0,0,0,0,0,0,0};
+    double TSM_tol[MAX_LP_CRIT]  = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+    int k_probing;     // if its value <=0 then probing is switched off
     bool spinColorDil; // enables spin color dilution
+    bool loopCovDev;   // enables covariant derivate calculations in loops.
   } qudaQKXTM_loopInfo;
   
   enum ALLOCATION_FLAG{NONE,HOST,DEVICE,BOTH,BOTH_EXTRA};

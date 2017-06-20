@@ -1679,7 +1679,7 @@ int TSM_NHP = 0;
 int TSM_NLP = 0;
 int TSM_NdumpHP = 0;
 int TSM_NdumpLP = 0;
-int TSM_NLP_iters = 1;
+int TSM_NLP_iters = 0;
 int TSM_maxiter[10] = { };
 double TSM_tol[10] = { };
 
@@ -1710,6 +1710,7 @@ bool isFullOp = false;
 
 int k_probing = 0; // default is without probing
 bool spinColorDil = false;
+bool loopCovDev = false;
 //===========//
 
 
@@ -1877,6 +1878,7 @@ void usage(char** argv )
 #endif
   printf("    --k-probing                               # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
   printf("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
+  printf("    --loopCovDev <true/false>               # Whether we want to compute loop covariant derivatives (default false)\n");
   
 
   //--------//
@@ -2728,7 +2730,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int xsize =  atoi(argv[i+1]);
     if (xsize <= 0 ){
-      printf("ERROR: invalid X block size");
+      printf("ERROR: invalid X block size %d\n", xsize);
       usage(argv);
     }
     geo_block_size[level][0] = xsize;
@@ -2736,7 +2738,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int ysize =  atoi(argv[i+1]);
     if (ysize <= 0 ){
-      printf("ERROR: invalid Y block size");
+      printf("ERROR: invalid Y block size %d\n", ysize);
       usage(argv);
     }
     geo_block_size[level][1] = ysize;
@@ -2744,7 +2746,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int zsize =  atoi(argv[i+1]);
     if (zsize <= 0 ){
-      printf("ERROR: invalid Z block size");
+      printf("ERROR: invalid Z block size %d\n", zsize);
       usage(argv);
     }
     geo_block_size[level][2] = zsize;
@@ -2752,7 +2754,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int tsize =  atoi(argv[i+1]);
     if (tsize <= 0 ){
-      printf("ERROR: invalid T block size");
+      printf("ERROR: invalid T block size %d\n", tsize);
       usage(argv);
     }
     geo_block_size[level][3] = tsize;
@@ -3328,8 +3330,8 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }
     i++;
-
-    TSM_tol[level] = atof(argv[i+1]);
+    double tol = atof(argv[i+1]);
+    TSM_tol[level] = tol;
     i++;
     ret = 0;
     goto out;
@@ -3594,6 +3596,25 @@ int process_command_line_option(int argc, char** argv, int* idx)
     ret = 0;
     goto out;
   }
+
+  if( strcmp(argv[i], "--loopCovDev") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+
+    if (strcmp(argv[i+1], "true") == 0){
+      loopCovDev = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      loopCovDev = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid loopCovDev type\n");	
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
  
   //-----------------------------------------------------------
 
@@ -3603,11 +3624,11 @@ int process_command_line_option(int argc, char** argv, int* idx)
     printf(" %s GPU build\n", msg);
     exit(0);
   }
-
+  
  out:
   *idx = i;
   return ret ;
-
+  
 }
 
 

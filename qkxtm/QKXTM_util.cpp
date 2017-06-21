@@ -1567,6 +1567,7 @@ QudaReconstructType link_recon_precondition = QUDA_RECONSTRUCT_INVALID;
 QudaPrecision prec = QUDA_SINGLE_PRECISION;
 QudaPrecision  prec_sloppy = QUDA_INVALID_PRECISION;
 QudaPrecision  prec_precondition = QUDA_INVALID_PRECISION;
+QudaPrecision prec_null = QUDA_INVALID_PRECISION;
 int xdim = 24;
 int ydim = 24;
 int zdim = 24;
@@ -1591,6 +1592,7 @@ QudaInverterType precon_type = QUDA_INVALID_INVERTER;
 int multishift = 0;
 bool verify_results = true;
 double mass = 0.1;
+double kappa = -1.0;
 double mu = 0.1;
 double anisotropy = 1.0;
 double clover_coeff = 0.1;
@@ -1616,12 +1618,15 @@ QudaSetupType setup_type = QUDA_NULL_VECTOR_SETUP;//
 bool pre_orthonormalize = false;//
 bool post_orthonormalize = true;//
 double omega = 0.85;
-QudaInverterType smoother_type = QUDA_MR_INVERTER;
-QudaInverterType coarsest_solver = QUDA_GCR_INVERTER;//
-double coarsest_tol = 0; // if 0, then we use tolhq //
-int coarsest_maxiter = 1000;//
+QudaInverterType coarse_solver[QUDA_MAX_MG_LEVEL] = { };
+double coarse_solver_tol[QUDA_MAX_MG_LEVEL] = { };
+QudaInverterType smoother_type[QUDA_MAX_MG_LEVEL] = { };
+double smoother_tol[QUDA_MAX_MG_LEVEL] = { };
+int coarse_solver_maxiter[QUDA_MAX_MG_LEVEL] = { };
 bool generate_nullspace = true;
 bool generate_all_levels = true;
+QudaSchwarzType schwarz_type[QUDA_MAX_MG_LEVEL] = { };
+int schwarz_cycle[QUDA_MAX_MG_LEVEL] = { };
 
 int geo_block_size[QUDA_MAX_MG_LEVEL][QUDA_MAX_DIM] = { };
 
@@ -1632,7 +1637,6 @@ static int dim_partitioned[4] = {0,0,0,0};
 /////////////////////
 
 //-C.K. Generic Input parameters
-double kappa = 0.161231;
 int traj;
 char latfile_smeared[257] = "";
 double csw = 1.57551;
@@ -1723,7 +1727,7 @@ int dimPartitioned(int dim)
 void __attribute__((weak)) usage_extra(char** argv){};
 
 void usage(char** argv )
-{
+{  
   printf("Usage: %s [options]\n", argv[0]);
   printf("Common options: \n");
 #ifndef MULTI_GPU
@@ -1732,6 +1736,7 @@ void usage(char** argv )
   printf("    --prec <double/single/half>               # Precision in GPU\n");
   printf("    --prec-sloppy <double/single/half>        # Sloppy precision in GPU\n");
   printf("    --prec-precondition <double/single/half>  # Preconditioner precision in GPU\n");
+  printf("    --prec-null <double/single/half>          # Null vector precision in GPU\n");
   printf("    --recon <8/9/12/13/18>                    # Link reconstruction type\n");
   printf("    --recon-sloppy <8/9/12/13/18>             # Sloppy link reconstruction type\n");
   printf("    --recon-precondition <8/9/12/13/18>       # Preconditioner link reconstruction type\n");
@@ -1754,16 +1759,17 @@ void usage(char** argv )
 	 "                                                  wilson/clover/twisted-mass/twisted-clover/staggered\n"
          "                                                  /asqtad/domain-wall/domain-wall-4d/mobius\n");
   printf("    --flavor <type>                           # Set the twisted mass flavor type (singlet (default), deg-doublet, nondeg-doublet)\n");
+  printf("    --load-gauge file                         # Load gauge field \"file\" for the test (requires QIO)\n");
   printf("    --niter <n>                               # The number of iterations to perform (default 10)\n");
   printf("    --ngcrkrylov <n>                          # The number of inner iterations to use for GCR, BiCGstab-l (default 10)\n");
   printf("    --pipeline <n>                            # The pipeline length for fused operations in GCR, BiCGstab-l (default 0, no pipelining)\n");
   printf("    --solution-pipeline <n>                   # The pipeline length for fused solution accumulation (default 0, no pipelining)\n");
   printf("    --inv-type <cg/bicgstab/gcr>              # The type of solver to use (default cg)\n");
-  printf("    --precon-type <mr/ (unspecified)>         # The type of solver to use (default none (=unspecified)).\n"
-	 "                                                  For multigrid this sets the smoother type.\n");
-  printf("    --multishift <true/false>                 # Whether to do a multi-shift solver test or not (default false)\n");     
+  printf("    --precon-type <mr/ (unspecified)>         # The type of solver to use (default none (=unspecified)).\n");
+  printf("    --multishift <true/false>                 # Whether to do a multi-shift solver test or not (default false)\n");
   printf("    --mass                                    # Mass of Dirac operator (default 0.1)\n");
-  printf("    --mu                                      # Twisted-Mass of Dirac operator (default 0.0085)\n");
+  printf("    --kappa                                   # Kappa of Dirac operator (default -1.0)\n");
+  printf("    --mu                                      # Twisted-Mass of Dirac operator (default 0.1)\n");
   printf("    --compute-clover                          # Compute the clover field or use random numbers (default false)\n");
   printf("    --clover-coeff                            # Clover coefficient (default 1.0)\n");
   printf("    --anisotropy                              # Temporal anisotropy factor (default 1.0)\n");
@@ -1786,32 +1792,34 @@ void usage(char** argv )
   printf("    --mg-pre-orth <true/false>                # If orthonormalize the vector before inverting in the setup of multigrid (default false)\n");
   printf("    --mg-post-orth <true/false>               # If orthonormalize the vector after inverting in the setup of multigrid (default true)\n");
   printf("    --mg-omega                                # The over/under relaxation factor for the smoother of multigrid (default 0.85)\n");
-  printf("    --mg-smoother                             # The smoother to use for multigrid (default mr)\n");
-  printf("    --mg-coarsest-solver                      # The solver to use in the coarsest level of multigrid (default gcr)\n");
-  printf("    --mg-coarsest-tol                         # The solver tolerance to use in the coarsest level of multigrid (default tolhq)\n");
-  printf("    --mg-coarsest-maxiter                     # The solver maxiter to use in the coarsest level of multigrid (default 1000)\n");
-  printf("    --mg-block-size <level x y z t>           # Set the geometric block size for the each multigrid level's transfer operator(default 4 4 4 4)\n");
-  printf("    --mg-mu-factor <level factor >            # Set the multiplicative factor for the twisted mass mu parameter on each level (default 1)\n");
+  printf("    --mg-coarse-solver <level gcr/etc.>       # The solver to wrap the V cycle on each level (default gcr, only for levels 1+)\n");
+  printf("    --mg-coarse-solver-tol <level gcr/etc.>   # The coarse solver tolerance for each level (default 0.25, only for levels 1+)\n");
+  printf("    --mg-coarse-solver-maxiter <level n>      # The coarse solver maxiter for each level (default 100)\n");
+  printf("    --mg-smoother <level mr/etc.>             # The smoother to use for multigrid (default mr)\n");
+  printf("    --mg-smoother-tol <level resid_tol>       # The smoother tolerance to use for each multigrid (default 0.25)\n");
+  printf("    --mg-schwarz-type <level false/add/mul>   # Whether to use Schwarz preconditioning (requires MR smoother and GCR setup solver) (default false)\n");
+  printf("    --mg-schwarz-cycle <level cycle>          # The number of Schwarz cycles to apply per smoother application (default=1)\n");
+  printf("    --mg-block-size <level x y z t>           # Set the geometric block size for the each multigrid level's transfer operator (default 4 4 4 4)\n");
+  printf("    --mg-mu-factor <level factor>             # Set the multiplicative factor for the twisted mass mu parameter on each level (default 1)\n");
   printf("    --mg-generate-nullspace <true/false>      # Generate the null-space vector dynamically (default true)\n");
-  printf("    --mg-generate-all-levels <true/talse>     # true=generate nul space on all levels, false=generate on level 0 "
-	 "                                                  and create other levels from that (default true)\n");
+  printf("    --mg-generate-all-levels <true/talse>     # true=generate nul space on all levels, false=generate on level 0 and create other levels from that (default true)\n");
   printf("    --mg-load-vec file                        # Load the vectors \"file\" for the multigrid_test (requires QIO)\n");
   printf("    --mg-save-vec file                        # Save the generated null-space vectors \"file\" from the multigrid_test (requires QIO)\n");
-  printf("    --mg-verbosity <level verb>               # The verbosity to use on each level of the multigrid (default silent)\n");
+  printf("    --mg-vebosity <level verb>                # The verbosity to use on each level of the multigrid (default silent)\n");
   printf("    --nsrc <n>                                # How many spinors to apply the dslash to simultaneusly (experimental for staggered only)\n");
   printf("    --msrc <n>                                # Used for testing non-square block blas routines where nsrc defines the other dimension\n");
+
 
   /////////////////////
   // QKXTM additions //
   /////////////////////
 
+
   //-C.K. Generic INPUT
   printf("    --traj                                    # Trajectory of the configuration\n");
-  printf("    --kappa                                   # Kappa value for a specific enseble (default 0.161231)\n");
   printf("    --csw                                     # Clover csw coefficient (default 1.57551)\n");
   printf("    --load-gauge-smeared                      # Load smeared gauge field \"file\" (in LIME format)\n");
   printf("    --verbosity-level                         # Verbosity level (verbose/summarize/silent, default: summarize)\n");
-
 
 
   //-C.K. Correlation function INPUT
@@ -1878,9 +1886,8 @@ void usage(char** argv )
 #endif
   printf("    --k-probing                               # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
   printf("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
-  printf("    --loopCovDev <true/false>               # Whether we want to compute loop covariant derivatives (default false)\n");
+  printf("    --loopCovDev <true/false>                 # Whether we want to compute loop covariant derivatives (default false)\n");
   
-
   //--------//
 
   printf("    --help                                    # Print out this message\n"); 
@@ -1974,6 +1981,16 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
+  if( strcmp(argv[i], "--prec-null") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    prec_null =  get_prec(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
   if( strcmp(argv[i], "--recon") == 0){
     if (i+1 >= argc){
       usage(argv);
@@ -2005,7 +2022,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--dim") == 0){
-    if (i+1 >= argc){
+    if (i+4 >= argc){
       usage(argv);
     }
     xdim= atoi(argv[i+1]);
@@ -2189,7 +2206,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--gridsize") == 0){
-    if (i+1 >= argc){ 
+    if (i+4 >= argc){
       usage(argv);
     }     
     int xsize =  atoi(argv[i+1]);
@@ -2333,6 +2350,16 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }
     mass = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--kappa") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    kappa = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -2485,7 +2512,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
     
   if( strcmp(argv[i], "--mg-nvec") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2517,7 +2544,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     i++;
     ret = 0;
     goto out;
-  }  
+  }
 
   if( strcmp(argv[i], "--mg-nu-pre") == 0){
     if (i+1 >= argc){
@@ -2548,7 +2575,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--mg-setup-inv") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2565,7 +2592,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--mg-setup-iters") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2661,7 +2688,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--mg-verbosity") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2677,48 +2704,135 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
+  if( strcmp(argv[i], "--mg-coarse-solver") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 1 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d for coarse solver", level);
+      usage(argv);
+    }
+    i++;
+
+    coarse_solver[level] = get_solver_type(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
   if( strcmp(argv[i], "--mg-smoother") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
-    smoother_type = get_solver_type(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    smoother_type[level] = get_solver_type(argv[i+1]);
     i++;
     ret = 0;
     goto out;
   }
 
-  if( strcmp(argv[i], "--mg-coarsest-solver") == 0){
-    if (i+1 >= argc){
+  if( strcmp(argv[i], "--mg-smoother-tol") == 0){
+    if (i+2 >= argc){
       usage(argv);
     }
-    coarsest_solver = get_solver_type(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    smoother_tol[level] = atof(argv[i+1]);
+
     i++;
     ret = 0;
     goto out;
   }
 
-  if( strcmp(argv[i], "--mg-coarsest-tol") == 0){
-    if (i+1 >= argc){
+  if( strcmp(argv[i], "--mg-coarse-solver-tol") == 0){
+    if (i+2 >= argc){
       usage(argv);
     }
-    coarsest_tol = atof(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 1 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d for coarse solver", level);
+      usage(argv);
+    }
+    i++;
+
+    coarse_solver_tol[level] = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
   }
 
-  if( strcmp(argv[i], "--mg-coarsest-maxiter") == 0){
-    if (i+1 >= argc){
+  if( strcmp(argv[i], "--mg-coarse-solver-maxiter") == 0){
+    if (i+2 >= argc){
       usage(argv);
     }
-    coarsest_maxiter = atoi(argv[i+1]);
+
+    int level = atoi(argv[i+1]);
+    if (level < 1 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d for coarse solver", level);
+      usage(argv);
+    }
+    i++;
+
+    coarse_solver_maxiter[level] = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+
+  if( strcmp(argv[i], "--mg-schwarz-type") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    schwarz_type[level] = get_schwarz_type(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-schwarz-cycle") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    schwarz_cycle[level] = atoi(argv[i+1]);
+    if (schwarz_cycle[level] < 0 || schwarz_cycle[level] >= 128) {
+      printf("ERROR: invalid Schwarz cycle value requested %d for level %d",
+	     level, schwarz_cycle[level]);
+      usage(argv);
+    }
     i++;
     ret = 0;
     goto out;
   }
 
   if( strcmp(argv[i], "--mg-block-size") == 0){
-    if (i+1 >= argc){ 
+    if (i+5 >= argc){
       usage(argv);
     }     
     int level = atoi(argv[i+1]);
@@ -2730,7 +2844,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int xsize =  atoi(argv[i+1]);
     if (xsize <= 0 ){
-      printf("ERROR: invalid X block size %d\n", xsize);
+      printf("ERROR: invalid X block size");
       usage(argv);
     }
     geo_block_size[level][0] = xsize;
@@ -2738,7 +2852,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int ysize =  atoi(argv[i+1]);
     if (ysize <= 0 ){
-      printf("ERROR: invalid Y block size %d\n", ysize);
+      printf("ERROR: invalid Y block size");
       usage(argv);
     }
     geo_block_size[level][1] = ysize;
@@ -2746,7 +2860,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int zsize =  atoi(argv[i+1]);
     if (zsize <= 0 ){
-      printf("ERROR: invalid Z block size %d\n", zsize);
+      printf("ERROR: invalid Z block size");
       usage(argv);
     }
     geo_block_size[level][2] = zsize;
@@ -2754,7 +2868,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
 
     int tsize =  atoi(argv[i+1]);
     if (tsize <= 0 ){
-      printf("ERROR: invalid T block size %d\n", tsize);
+      printf("ERROR: invalid T block size");
       usage(argv);
     }
     geo_block_size[level][3] = tsize;
@@ -2764,18 +2878,8 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-  if( strcmp(argv[i], "--mass") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }
-    mass= atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
   if( strcmp(argv[i], "--mg-mu-factor") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2863,7 +2967,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     ret = 0;
     goto out;
   }
-
+  
   if( strcmp(argv[i], "--ngcrkrylov") == 0){
     if (i+1 >= argc){
       usage(argv);
@@ -2906,6 +3010,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
+
   /////////////////////
   // QKXTM additions //
   /////////////////////
@@ -2937,16 +3042,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }     
     strcpy(verbosity_level, argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--kappa") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    kappa = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -3616,7 +3711,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
  
-  //-----------------------------------------------------------
+  //-----//
 
   if( strcmp(argv[i], "--version") == 0){
     printf("This program is linked with QUDA library, version %s,", 

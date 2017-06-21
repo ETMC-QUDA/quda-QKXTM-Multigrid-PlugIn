@@ -34,7 +34,6 @@ execute_process(COMMAND ${GIT_EXECUTABLE} show WORKING_DIRECTORY ${QKXTM_QUDA_HO
   ENDIF()
 ENDIF(GIT_FOUND)
 
-
 set(VALID_BUILD_TYPES DEVEL RELEASE STRICT DEBUG HOSTDEBUG DEVICEDEBUG )
 SET(CMAKE_BUILD_TYPE "${DEFBUILD}" CACHE STRING  "Choose the type of build, options are: ${VALID_BUILD_TYPES}")
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS DEVEL RELEASE STRICT DEBUG HOSTDEBUG DEVICEDEBUG)
@@ -158,8 +157,8 @@ set(QUDA_QIOHOME "" CACHE PATH "path to QIO")
 set(QUDA_QMPHOME "" CACHE PATH "path to QMP")
 set(QUDA_LIMEHOME "" CACHE PATH "path to LIME")
 set(QUDA_ARPACK_HOME "" CACHE PATH "path to arpack / parpack")
-#set(QUDA_MAGMAHOME "" CACHE PATH "path to MAGMA, if not set, pkg-config will be attempted")
-#set(QUDA_MAGMA_LIBS "" CACHE STRING "additional linker flags required to link against magma")
+set(QUDA_MAGMAHOME "" CACHE PATH "path to MAGMA, if not set, pkg-config will be attempted")
+set(QUDA_MAGMA_LIBS "" CACHE STRING "additional linker flags required to link against magma")
 
 #######################################################################
 #QUDA ADVANCED OPTIONS
@@ -484,7 +483,7 @@ if(QUDA_DYNAMIC_CLOVER)
 endif(QUDA_DYNAMIC_CLOVER)
 
 if(QUDA_MPI_NVTX)
-  LIST(APPEND COMM_OBJS nvtx_pmpi.c)
+  LIST(APPEND COMM_OBJS ${QKXTM_QUDA_HOME}/lib/nvtx_pmpi.c)
   set(QUDA_NVTX ON)
 endif(QUDA_MPI_NVTX)
 
@@ -600,7 +599,7 @@ add_definitions(-D__COMPUTE_CAPABILITY__=${COMP_CAP})
 
 # NVCC FLAGS independet off build type
 if(NOT USING_CUDA_LANG_SUPPORT)
-  set(QUDA_NVCC_FLAGS -std c++11 -arch=${QUDA_GPU_ARCH} -ftz=true -prec-div=false -prec-sqrt=false)
+  set(QUDA_NVCC_FLAGS "-std c++11 -arch=${QUDA_GPU_ARCH} -ftz=true -prec-div=false -prec-sqrt=false")
 else()
   set(QUDA_NVCC_FLAGS "-ftz=true -prec-div=false -prec-sqrt=false")
   set(CMAKE_CUDA_FLAGS "-arch=${QUDA_GPU_ARCH}" CACHE STRING "Flags used by the CUDA compiler" FORCE)
@@ -621,7 +620,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 ## define CUDA flags when CMake < 3.8
-set(CUDA_NVCC_FLAGS_DEVEL ${QUDA_NVCC_FLAGS} -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo CACHE STRING
+set(CUDA_NVCC_FLAGS_DEVEL ${QUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo CACHE STRING
     "Flags used by the CUDA compiler during regular development builds."
     FORCE )
 set(CUDA_NVCC_FLAGS_STRICT ${CUDA_NVCC_FLAGS_DEVEL} CACHE STRING
@@ -641,7 +640,7 @@ set(CUDA_NVCC_FLAGS_DEBUG ${QUDA_NVCC_FLAGS} -g -DHOST_DEBUG -G CACHE STRING
     FORCE )
 
 ## define CUDA flags when CMake >= 3.8
-set(CMAKE_CUDA_FLAGS_DEVEL "${QUDA_NVCC_FLAGS} -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo" CACHE STRING
+set(CMAKE_CUDA_FLAGS_DEVEL "${QUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo" CACHE STRING
     "Flags used by the CUDA compiler during regular development builds."
     FORCE )
 set(CMAKE_CUDA_FLAGS_STRICT "${CMAKE_CUDA_FLAGS_DEVEL}" CACHE STRING
@@ -715,7 +714,7 @@ mark_as_advanced(CMAKE_F_FLAGS)
 
 ### add tests and quda library
 add_subdirectory(lib)
-#add_subdirectory(tests)
+add_subdirectory(tests)
 #QKXTM: DMH Add QKXTM directory
 add_subdirectory(qkxtm)
 #QKXTM: DMH

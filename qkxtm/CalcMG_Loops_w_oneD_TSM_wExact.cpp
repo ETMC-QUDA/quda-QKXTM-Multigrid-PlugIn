@@ -26,7 +26,6 @@
 
 // In a typical application, quda.h is the only QUDA header required.
 #include <quda.h>
-#include <contractQuda.h>
 #include <qudaQKXTM.h>
 
 //========================================================================//
@@ -46,11 +45,13 @@ extern int Lsdim;
 extern int gridsize_from_cmdline[];
 extern QudaReconstructType link_recon;
 extern QudaPrecision prec;
-extern QudaPrecision  prec_sloppy;
-extern QudaPrecision  prec_precondition;
+extern QudaPrecision prec_sloppy;
+extern QudaPrecision prec_precondition;
+extern QudaPrecision prec_null;
 extern QudaReconstructType link_recon_sloppy;
 extern QudaReconstructType link_recon_precondition;
-extern double mass; 
+extern double mass;  // mass of Dirac operator
+extern double kappa; // kappa of Dirac operator
 extern double mu;
 extern double anisotropy;
 extern double tol; // tolerance for inverter
@@ -79,10 +80,14 @@ extern QudaSetupType setup_type;
 extern bool pre_orthonormalize;
 extern bool post_orthonormalize;
 extern double omega;
-extern QudaInverterType smoother_type;
-extern QudaInverterType coarsest_solver;
-extern double coarsest_tol;
-extern int coarsest_maxiter;
+extern QudaInverterType coarse_solver[QUDA_MAX_MG_LEVEL];
+extern QudaInverterType smoother_type[QUDA_MAX_MG_LEVEL];
+extern double coarse_solver_tol[QUDA_MAX_MG_LEVEL];
+extern double smoother_tol[QUDA_MAX_MG_LEVEL];
+extern int coarse_solver_maxiter[QUDA_MAX_MG_LEVEL];
+
+extern QudaSchwarzType schwarz_type[QUDA_MAX_MG_LEVEL];
+extern int schwarz_cycle[QUDA_MAX_MG_LEVEL];
 
 extern QudaMatPCType matpc_type;
 extern QudaSolveType solve_type;
@@ -152,7 +157,8 @@ namespace quda {
   extern void setTransferGPU(bool);
 }
 
-void display_test_info() {
+void display_test_info() 
+{
   printfQuda("running the following test:\n");
     
   printfQuda("prec    sloppy_prec    link_recon  sloppy_link_recon S_dimension T_dimension Ls_dimension\n");
@@ -167,15 +173,16 @@ void display_test_info() {
   printfQuda(" - number of pre-smoother applications %d\n", nu_pre);
   printfQuda(" - number of post-smoother applications %d\n", nu_post);
 
+  printfQuda("Outer solver paramers\n");
+  printfQuda(" - pipeline = %d\n", pipeline);
+
   printfQuda("Grid partition info:     X  Y  Z  T\n"); 
   printfQuda("                         %d  %d  %d  %d\n", 
 	     dimPartitioned(0),
 	     dimPartitioned(1),
 	     dimPartitioned(2),
 	     dimPartitioned(3)); 
-  
   return ;
-  
 }
 
 QudaPrecision &cpu_prec = prec;
@@ -184,7 +191,6 @@ QudaPrecision &cuda_prec_sloppy = prec_sloppy;
 QudaPrecision &cuda_prec_precondition = prec_precondition;
 
 void setGaugeParam(QudaGaugeParam &gauge_param) {
-
   gauge_param.X[0] = xdim;
   gauge_param.X[1] = ydim;
   gauge_param.X[2] = zdim;
@@ -196,6 +202,7 @@ void setGaugeParam(QudaGaugeParam &gauge_param) {
   gauge_param.t_boundary = QUDA_ANTI_PERIODIC_T;
   
   gauge_param.cpu_prec = cpu_prec;
+
   gauge_param.cuda_prec = cuda_prec;
   gauge_param.reconstruct = link_recon;
 
@@ -224,8 +231,15 @@ void setGaugeParam(QudaGaugeParam &gauge_param) {
 void setMultigridParam(QudaMultigridParam &mg_param) {
   QudaInvertParam &inv_param = *mg_param.invert_param;
 
-  inv_param.kappa = kappa;
-  inv_param.mass = mass;
+  if (kappa == -1.0) {
+    inv_param.mass = mass;
+    inv_param.kappa = 1.0 / (2.0 * (1 + 3/anisotropy + mass));
+  } else {
+    inv_param.kappa = kappa;
+    inv_param.mass = 0.5/kappa - (1.0 + 3.0/anisotropy);
+  }
+
+  printfQuda("Kappa = %.8f Mass = %.8f\n", inv_param.kappa, inv_param.mass);
 
   inv_param.Ls = 1;
 
@@ -293,31 +307,40 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
     mg_param.setup_tol[i] = setup_tol;
     mg_param.spin_block_size[i] = 1;
     mg_param.n_vec[i] = nvec[i] == 0 ? 24 : nvec[i]; // default to 24 vectors if not set
+    mg_param.precision_null[i] = prec_null; // precision to store the null-space basis
     mg_param.nu_pre[i] = nu_pre;
     mg_param.nu_post[i] = nu_post;
     mg_param.mu_factor[i] = mu_factor[i];
     
     mg_param.cycle_type[i] = QUDA_MG_CYCLE_RECURSIVE;
+
+    // set the coarse solver wrappers including bottom solver
+    mg_param.coarse_solver[i] = coarse_solver[i];
+    mg_param.coarse_solver_tol[i] = coarse_solver_tol[i];
+    mg_param.coarse_solver_maxiter[i] = coarse_solver_maxiter[i];
     
-    mg_param.smoother[i] = smoother_type;
+    mg_param.smoother[i] = smoother_type[i];
 
-    // set the smoother / bottom solver tolerance 
-    // (for MR smoothing this will be ignored)
-    // repurpose heavy-quark tolerance for now
+    // set the smoother / bottom solver tolerance (for MR smoothing this will be ignored)
+    mg_param.smoother_tol[i] = smoother_tol[i];
 
-    mg_param.smoother_tol[i] = tol_hq;
-
-    mg_param.global_reduction[i] = QUDA_BOOLEAN_YES;
-
-    // set to QUDA_DIRECT_SOLVE for no even/odd 
-    // preconditioning on the smoother
     // set to QUDA_DIRECT_PC_SOLVE for to enable even/odd 
     // preconditioning on the smoother
     mg_param.smoother_solve_type[i] = QUDA_DIRECT_PC_SOLVE; // EVEN-ODD
 
+    // set to QUDA_ADDITIVE_SCHWARZ for Additive Schwarz precondioned smoother 
+    // (presently only impelemented for MR)
+    mg_param.smoother_schwarz_type[i] = schwarz_type[i];
+
+    // if using Schwarz preconditioning then use local reductions only
+    mg_param.global_reduction[i] = 
+      (schwarz_type[i] == QUDA_INVALID_SCHWARZ) ? QUDA_BOOLEAN_YES : QUDA_BOOLEAN_NO;
+
+    // set number of Schwarz cycles to apply
+    mg_param.smoother_schwarz_cycle[i] = schwarz_cycle[i];
+
     // set to QUDA_MAT_SOLUTION to inject a full field into coarse grid
-    // set to QUDA_MATPC_SOLUTION to inject single parity field into 
-    // coarse grid
+    // set to QUDA_MATPC_SOLUTION to inject single parity field into  coarse grid
 
     // if we are using an outer even-odd preconditioned solve, then we
     // use single parity injection into the coarse grid
@@ -334,13 +357,6 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
   mg_param.setup_type = setup_type;
   mg_param.pre_orthonormalize = pre_orthonormalize ? QUDA_BOOLEAN_YES :  QUDA_BOOLEAN_NO;
   mg_param.post_orthonormalize = post_orthonormalize ? QUDA_BOOLEAN_YES :  QUDA_BOOLEAN_NO;
-
-  // coarsest grid solver
-  // coarsest grid solver
-  mg_param.smoother[mg_levels-1] = coarsest_solver;
-  mg_param.smoother_tol[mg_levels-1] = coarsest_tol == 0 ? tol_hq : coarsest_tol;
-  mg_param.nu_pre[mg_levels-1] = coarsest_maxiter;
-  mg_param.nu_post[mg_levels-1] = 0;
 
   mg_param.compute_null_vector = generate_nullspace ? 
     QUDA_COMPUTE_NULL_VECTOR_YES : QUDA_COMPUTE_NULL_VECTOR_NO;
@@ -367,8 +383,16 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
 
 void setInvertParam(QudaInvertParam &inv_param) {
 
-  inv_param.kappa = kappa;
-  inv_param.mass = mass;
+  if (kappa == -1.0) {
+    inv_param.mass = mass;
+    inv_param.kappa = 1.0 / (2.0 * (1 + 3/anisotropy + mass));
+  } else {
+    inv_param.kappa = kappa;
+    inv_param.mass = 0.5/kappa - (1.0 + 3.0/anisotropy);
+  }
+  
+  printfQuda("Kappa = %.8f Mass = %.8f\n", inv_param.kappa, inv_param.mass);
+
 
   inv_param.Ls = 1;
 
@@ -419,10 +443,15 @@ void setInvertParam(QudaInvertParam &inv_param) {
   inv_param.solution_type = QUDA_MAT_SOLUTION;
 
   // do we want to use an even-odd preconditioned solve or not
-  if(isEven) inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
-  else inv_param.matpc_type = QUDA_MATPC_ODD_ODD;
-  
-  inv_param.solve_type = solve_type;  
+  inv_param.solve_type = solve_type;
+  if(isEven) {
+    inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
+    printf("### Running for the Even-Even Operator\n");
+  }
+  else {
+    printf("### Running for the Odd-Odd Operator\n");
+    inv_param.matpc_type = QUDA_MATPC_ODD_ODD;
+  }
   
   inv_param.inv_type = QUDA_GCR_INVERTER;
 
@@ -484,7 +513,14 @@ int main(int argc, char **argv)
     mg_verbosity[i] = QUDA_SILENT;
     setup_inv[i] = QUDA_BICGSTAB_INVERTER;
     num_setup_iter[i] = 1;
-    mu_factor[i] = 1.0;
+    mu_factor[i] = 1.;
+    schwarz_type[i] = QUDA_INVALID_SCHWARZ;
+    schwarz_cycle[i] = 1;
+    smoother_type[i] = QUDA_MR_INVERTER;
+    smoother_tol[i] = 0.25;
+    coarse_solver[i] = QUDA_GCR_INVERTER;
+    coarse_solver_tol[i] = 0.25;
+    coarse_solver_maxiter[i] = 10;
   }
 
   for (int i = 1; i < argc; i++){
@@ -497,6 +533,7 @@ int main(int argc, char **argv)
 
   if (prec_sloppy == QUDA_INVALID_PRECISION) prec_sloppy = prec;
   if (prec_precondition == QUDA_INVALID_PRECISION) prec_precondition = prec_sloppy;
+  if (prec_null == QUDA_INVALID_PRECISION) prec_null = prec_precondition;
   if (link_recon_sloppy == QUDA_RECONSTRUCT_INVALID) link_recon_sloppy = link_recon;
   if (link_recon_precondition == QUDA_RECONSTRUCT_INVALID) link_recon_precondition = link_recon_sloppy;
 
@@ -639,8 +676,7 @@ int main(int argc, char **argv)
       loopInfo.TSM_NprintLP = loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP;
     } else errorQuda("Ndump MUST divide Nstoch exactly! Exiting.\n");
     
-    //Populate LP criteria arrays
-    
+    //Populate LP criteria arrays    
     for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
       loopInfo.TSM_tol[a] = TSM_tol[a];
       loopInfo.TSM_maxiter[a] = TSM_maxiter[a];

@@ -4,6 +4,7 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/dslash_coarse.cu
   ${QKXTM_QUDA_HOME}/lib/coarse_op.cu
   ${QKXTM_QUDA_HOME}/lib/coarsecoarse_op.cu
+  ${QKXTM_QUDA_HOME}/lib/coarse_op_preconditioned.cu
   ${QKXTM_QUDA_HOME}/lib/multigrid.cpp
   ${QKXTM_QUDA_HOME}/lib/transfer.cpp
   ${QKXTM_QUDA_HOME}/lib/transfer_util.cu
@@ -29,6 +30,7 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/inv_xsd_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_pcg_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_mre.cpp
+  qudaQKXTM_interface.cpp 
   ${QKXTM_QUDA_HOME}/lib/util_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/color_spinor_field.cpp
   ${QKXTM_QUDA_HOME}/lib/color_spinor_util.cu
@@ -104,8 +106,8 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ds.cu
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_sd.cu
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_ss.cu
-  #${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_hs.cu 
-  #${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_sh.cu
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_hs.cu 
+  ${QKXTM_QUDA_HOME}/lib/copy_color_spinor_mg_sh.cu
   ${QKXTM_QUDA_HOME}/lib/copy_gauge_double.cu
   ${QKXTM_QUDA_HOME}/lib/copy_gauge_single.cu
   ${QKXTM_QUDA_HOME}/lib/copy_gauge_half.cu
@@ -148,7 +150,6 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/deflation.cpp
   ${QKXTM_QUDA_HOME}/lib/version.cpp
   qudaQKXTM_kernels.cu 
-  qudaQKXTM_interface.cpp 
   )
 
 ## split source into cu and cpp files
@@ -231,6 +232,10 @@ if(QUDA_QIO)
   target_link_libraries(QKXTMquda ${QIO_LIB} ${LIME_LIB})
 endif()
 
+if(QUDA_QDPJIT)
+  target_link_libraries(quda ${QDP_LIB} ${QIO_LIB} ${LIME_LIB} ${QMP_LIB} ${MPI_CXX_LIBRARIES})
+endif()
+
 if(QUDA_QMP)
   target_link_libraries(QKXTMquda ${QMP_LIB} ${MPI_CXX_LIBRARIES})
 endif()
@@ -278,6 +283,7 @@ write_basic_package_version_file(
 export(EXPORT QKXTMqudaTargets FILE "${CMAKE_CURRENT_BINARY_DIR}/QKXTMqudaTargets.cmake" NAMESPACE quda::)
 set(ConfigPackageLocation lib/cmake/quda/)
 install(EXPORT QKXTMqudaTargets NAMESPACE quda:: DESTINATION ${ConfigPackageLocation})
+
 
 add_custom_target(gen ${PYTHON_EXECUTABLE} ${QKXTM_QUDA_HOME}/lib/generate/gen.py
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}

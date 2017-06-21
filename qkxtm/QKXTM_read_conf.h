@@ -165,7 +165,7 @@ read gauge fileld config stored in binary file
 	      
 	      strcpy	(tmpVar, "kappa =");
 	      sscanf(qcd_getParamComma(tmpVar,lime_data, lime_data_size),"%lf",&dDummy);    
-	      printfQuda("Kappa given is : %f \t Kappa conf is : %f \t check them agree\n", inv_param->kappa , dDummy);
+	      printfQuda("Kappa given is : %.8f \t Kappa conf is : %.8f \t check that they agree\n", inv_param->kappa , dDummy);
 	      
 	      strcpy	(tmpVar, "mu =");
 	      sscanf(qcd_getParamComma(tmpVar,lime_data, lime_data_size),"%lf",&dDummy);

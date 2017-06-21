@@ -2225,8 +2225,10 @@ multigrid_solver::multigrid_solver(QudaMultigridParam &mg_param, TimeProfile &pr
 
   // this is the Dirac operator we use for sloppy smoothing (we use the preconditioner fields for this)
   DiracParam diracSmoothSloppyParam;
-  setDiracPreParam(diracSmoothSloppyParam, param, fine_grid_pc_solve, true);
-  dSmoothSloppy = Dirac::create(diracSmoothSloppyParam);;
+  setDiracPreParam(diracSmoothSloppyParam, param, fine_grid_pc_solve,
+		   mg_param.smoother_schwarz_type[0] == QUDA_INVALID_SCHWARZ ? true : false);
+
+  dSmoothSloppy = Dirac::create(diracSmoothSloppyParam);
   mSmoothSloppy = new DiracM(*dSmoothSloppy);
 
   printfQuda("Creating vector of null space fields of length %d\n", mg_param.n_vec[0]);
@@ -2277,7 +2279,7 @@ void updateMultigridQuda(void *mg_, QudaMultigridParam *mg_param) {
   // for reporting level 1 is the fine level but internally use level 0 for indexing
   // sprintf(mg->prefix,"MG level 1 (%s): ", param.location == QUDA_CUDA_FIELD_LOCATION ? "GPU" : "CPU" );
   // setOutputPrefix(prefix);
-  setOutputPrefix("MG level 1 (GPU)"); //fix me
+  setOutputPrefix("MG level 1 (GPU): "); //fix me
 
   printfQuda("Updating operator on level 1 of %d levels\n", mg->mgParam->Nlevel);
 
@@ -2323,13 +2325,8 @@ void updateMultigridQuda(void *mg_, QudaMultigridParam *mg_param) {
   if(mg->mgParam->mg_global.invert_param != param)
     mg->mgParam->mg_global.invert_param = param;
 
-  openMagma();
-
   mg->mg->updateCoarseOperator();
 
-  closeMagma();
-
-  printfQuda("update completed\n");
   setOutputPrefix("");
 
   // cache is written out even if a long benchmarking job gets interrupted

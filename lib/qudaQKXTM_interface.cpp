@@ -7898,19 +7898,21 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	// dOp
 	writeLoops_ASCII(buf_gen_uloc[0], loop_exact_fname, 
 			 loopInfo, momQsq, 1, 0, exact_part, false ,false);
-	for(int mu = 0 ; mu < 4 ; mu++){
-	  // Loops
-	  writeLoops_ASCII(buf_std_oneD[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 2, mu, exact_part,false,false);
-	  // LoopsCv 
-	  writeLoops_ASCII(buf_std_csvC[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 3, mu, exact_part,false,false);
-	  // LpsDw
-	  writeLoops_ASCII(buf_gen_oneD[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 4, mu, exact_part,false,false);
-	  // LpsDwCv 
-	  writeLoops_ASCII(buf_gen_csvC[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 5, mu, exact_part,false,false); 
+	if(loopCovDev) {
+	  for(int mu = 0 ; mu < 4 ; mu++){
+	    // Loops
+	    writeLoops_ASCII(buf_std_oneD[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 2, mu, exact_part,false,false);
+	    // LoopsCv 
+	    writeLoops_ASCII(buf_std_csvC[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 3, mu, exact_part,false,false);
+	    // LpsDw
+	    writeLoops_ASCII(buf_gen_oneD[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 4, mu, exact_part,false,false);
+	    // LpsDwCv 
+	    writeLoops_ASCII(buf_gen_csvC[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 5, mu, exact_part,false,false); 
+	  }
 	}
       }
       else if(LoopFileFormat==HDF5_FORM){
@@ -8123,8 +8125,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	K_vector->packVector((double*) temp_input_vector);
 	K_vector->loadVector();
 	K_vector->uploadToCuda(b,flag_eo);
-
-	t1 = MPI_Wtime();
       
 	if(useTSM) {
 	  double orig_tol = param->tol;
@@ -8147,8 +8147,11 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	    Solver *solve_LP = Solver::create(solverParam_LP, m, mSloppy, 
 					      mPre, profileInvert);
 	    //LP solve
+	    t1 = MPI_Wtime();
 	    (*solve_LP)(*out,*in);	    
 	    dirac.reconstruct(*x_LP[LP_crit],*b,param->solution_type);
+	    t2 = MPI_Wtime();
+	    printfQuda("Inversion time: %.6f secs\n", t2 - t1);
 	    //Store each LP solution
 	    sol_LP[LP_crit] = new cudaColorSpinorField(*x_LP[LP_crit]);
 	    if(is == 0 && LP_crit == 0) saveTuneCache();
@@ -8167,12 +8170,14 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	  SolverParam solverParam(*param);
 	  Solver *solve = Solver::create(solverParam, m, mSloppy, 
 					 mPre, profileInvert);
+	  t1 = MPI_Wtime();
 	  (*solve)(*out,*in);
-	  delete solve;
-
 	  dirac.reconstruct(*x,*b,param->solution_type);    
+	  t2 = MPI_Wtime();
+	  printfQuda("Inversion time: %.6f secs\n", t2 - t1);
 	  sol_LP[0] = new cudaColorSpinorField(*x);    
-	  
+
+	  delete solve;	  
 	  if(is == 0) saveTuneCache();
 	}
 	
@@ -8230,20 +8235,21 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 		doCudaFFT_v2<double>(gen_uloc[idx], tmp_loop); // dOp
 		copyLoopToWriteBuf(buf_gen_uloc[idx], tmp_loop, 
 				   iPrint, info.Q_sq, Nmoms, mom);
-	    
-		for(int mu = 0 ; mu < 4 ; mu++){
-		  doCudaFFT_v2<double>(std_oneD[idx][mu], tmp_loop); // Loops
-		  copyLoopToWriteBuf(buf_std_oneD[idx][mu], tmp_loop, 
-				     iPrint, info.Q_sq, Nmoms, mom);
-		  doCudaFFT_v2<double>(std_csvC[idx][mu], tmp_loop); // LoopsCv
-		  copyLoopToWriteBuf(buf_std_csvC[idx][mu], tmp_loop, 
-				     iPrint, info.Q_sq, Nmoms, mom);	      
-		  doCudaFFT_v2<double>(gen_oneD[idx][mu],tmp_loop); // LpsDw
-		  copyLoopToWriteBuf(buf_gen_oneD[idx][mu], tmp_loop, 
-				     iPrint, info.Q_sq, Nmoms, mom);
-		  doCudaFFT_v2<double>(gen_csvC[idx][mu], tmp_loop); // LpsDwCv
-		  copyLoopToWriteBuf(buf_gen_csvC[idx][mu], tmp_loop, 
-				     iPrint, info.Q_sq, Nmoms, mom);
+		if(loopCovDev) {
+		  for(int mu = 0 ; mu < 4 ; mu++){
+		    doCudaFFT_v2<double>(std_oneD[idx][mu], tmp_loop); // Loops
+		    copyLoopToWriteBuf(buf_std_oneD[idx][mu], tmp_loop, 
+				       iPrint, info.Q_sq, Nmoms, mom);
+		    doCudaFFT_v2<double>(std_csvC[idx][mu], tmp_loop); // LoopsCv
+		    copyLoopToWriteBuf(buf_std_csvC[idx][mu], tmp_loop, 
+				       iPrint, info.Q_sq, Nmoms, mom);	      
+		    doCudaFFT_v2<double>(gen_oneD[idx][mu],tmp_loop); // LpsDw
+		    copyLoopToWriteBuf(buf_gen_oneD[idx][mu], tmp_loop, 
+				       iPrint, info.Q_sq, Nmoms, mom);
+		    doCudaFFT_v2<double>(gen_csvC[idx][mu], tmp_loop); // LpsDwCv
+		    copyLoopToWriteBuf(buf_gen_csvC[idx][mu], tmp_loop, 
+				       iPrint, info.Q_sq, Nmoms, mom);
+		  }
 		}
 	      }
 	      else if(GK_nProc[2]>1){
@@ -8251,16 +8257,18 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				   iPrint, Nmoms, momQsq);
 		performFFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
 				   iPrint, Nmoms, momQsq);
-		
-		for(int mu=0;mu<4;mu++){
-		  performFFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
-				     iPrint, Nmoms, momQsq);
-		  performFFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
-				     iPrint, Nmoms, momQsq);
-		  performFFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
-				     iPrint, Nmoms, momQsq);
-		  performFFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
-				     iPrint, Nmoms, momQsq);
+	
+		if(loopCovDev) {	
+		  for(int mu=0;mu<4;mu++){
+		    performFFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
+				       iPrint, Nmoms, momQsq);
+		    performFFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
+				       iPrint, Nmoms, momQsq);
+		    performFFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
+				       iPrint, Nmoms, momQsq);
+		    performFFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
+				       iPrint, Nmoms, momQsq);
+		  }
 		}
 	      }
 	      t2 = MPI_Wtime();
@@ -8305,19 +8313,21 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	writeLoops_ASCII(buf_gen_uloc[idx], loop_stoch_fname, 
 			 loopInfo, momQsq, 1, 0, stoch_part, 
 			 useTSM, LowPrecSum); // dOp
-	for(int mu = 0 ; mu < 4 ; mu++){
-	  writeLoops_ASCII(buf_std_oneD[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 2, mu, stoch_part, 
-			   useTSM, LowPrecSum); // Loops
-	  writeLoops_ASCII(buf_std_csvC[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 3, mu, stoch_part, 
-			   useTSM, LowPrecSum); // LoopsCv
-	  writeLoops_ASCII(buf_gen_oneD[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 4, mu, stoch_part, 
-			   useTSM, LowPrecSum); // LpsDw
-	  writeLoops_ASCII(buf_gen_csvC[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 5, mu, stoch_part, 
-			   useTSM, LowPrecSum); // LpsDwCv
+	if(loopCovDev) {
+	  for(int mu = 0 ; mu < 4 ; mu++){
+	    writeLoops_ASCII(buf_std_oneD[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 2, mu, stoch_part, 
+			     useTSM, LowPrecSum); // Loops
+	    writeLoops_ASCII(buf_std_csvC[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 3, mu, stoch_part, 
+			     useTSM, LowPrecSum); // LoopsCv
+	    writeLoops_ASCII(buf_gen_oneD[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 4, mu, stoch_part, 
+			     useTSM, LowPrecSum); // LpsDw
+	    writeLoops_ASCII(buf_gen_csvC[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 5, mu, stoch_part, 
+			     useTSM, LowPrecSum); // LpsDwCv
+	  }
 	}
       }
       else if(LoopFileFormat==HDF5_FORM){ 
@@ -8447,12 +8457,14 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	    SolverParam solverParam_LP(*param);
 	    Solver *solve_LP = Solver::create(solverParam_LP, m, mSloppy, 
 					      mPre, profileInvert);
+	    t1 = MPI_Wtime();
 	    (*solve_LP)(*out,*in);
-	    delete solve_LP;
 	    dirac.reconstruct(*x_LP[LP_crit],*b,param->solution_type);
-	    
+	    t2 = MPI_Wtime();	
+	    printfQuda("Inversion time: %.6f secs\n", t2 - t1);
+
 	    sol_LP[LP_crit] = new cudaColorSpinorField(*x_LP[LP_crit]);
-	    
+	    delete solve_LP;	
 	  }
 	  
 	  // Revert to the original, high-precision values
@@ -8467,10 +8479,13 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	  SolverParam solverParam(*param);
 	  Solver *solve = Solver::create(solverParam, m, mSloppy, mPre, 
 					 profileInvert);
+	  t1 = MPI_Wtime();
 	  (*solve)(*out,*in);
-	  delete solve;
 	  dirac.reconstruct(*x,*b,param->solution_type);
-      
+	  t2 = MPI_Wtime();
+	  printfQuda("Inversion time: %.6f secs\n", t2 - t1);      
+
+	  delete solve;
 	  sol = new cudaColorSpinorField(*x);
     	  //-------------------------------------------------
 
@@ -8523,20 +8538,22 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 		copyLoopToWriteBuf(buf_gen_uloc_HP[dstep], tmp_loop, 
 				   iPrint, info.Q_sq, Nmoms, mom); // dOp
 
-		for(int mu = 0 ; mu < 4 ; mu++){
-		  doCudaFFT_v2<double>(std_oneD[dstep][mu]   ,tmp_loop);  
-		  copyLoopToWriteBuf(buf_std_oneD_HP[dstep][mu], tmp_loop, 
-				     iPrint,info.Q_sq,Nmoms,mom); // Loops
-		  doCudaFFT_v2<double>(std_csvC[dstep][mu]   ,tmp_loop);  
-		  copyLoopToWriteBuf(buf_std_csvC_HP[dstep][mu], tmp_loop, 
-				     iPrint,info.Q_sq,Nmoms,mom); // LoopsCv
-		  doCudaFFT_v2<double>(gen_oneD[dstep][mu]   ,tmp_loop);
-		  copyLoopToWriteBuf(buf_gen_oneD_HP[dstep][mu],tmp_loop,
-				     iPrint,info.Q_sq,Nmoms,mom); // LpsDw
-		  doCudaFFT_v2<double>(gen_csvC[dstep][mu]   ,tmp_loop);  
-		  copyLoopToWriteBuf(buf_gen_csvC_HP[dstep][mu],tmp_loop,
-				     iPrint,info.Q_sq,Nmoms,mom); // LpsDwCv
-
+		if(loopCovDev) {
+		  for(int mu = 0 ; mu < 4 ; mu++){
+		    doCudaFFT_v2<double>(std_oneD[dstep][mu]   ,tmp_loop);  
+		    copyLoopToWriteBuf(buf_std_oneD_HP[dstep][mu], tmp_loop, 
+				       iPrint,info.Q_sq,Nmoms,mom); // Loops
+		    doCudaFFT_v2<double>(std_csvC[dstep][mu]   ,tmp_loop);  
+		    copyLoopToWriteBuf(buf_std_csvC_HP[dstep][mu], tmp_loop, 
+				       iPrint,info.Q_sq,Nmoms,mom); // LoopsCv
+		    doCudaFFT_v2<double>(gen_oneD[dstep][mu]   ,tmp_loop);
+		    copyLoopToWriteBuf(buf_gen_oneD_HP[dstep][mu],tmp_loop,
+				       iPrint,info.Q_sq,Nmoms,mom); // LpsDw
+		    doCudaFFT_v2<double>(gen_csvC[dstep][mu]   ,tmp_loop);  
+		    copyLoopToWriteBuf(buf_gen_csvC_HP[dstep][mu],tmp_loop,
+				       iPrint,info.Q_sq,Nmoms,mom); // LpsDwCv
+		    
+		  }
 		}
 	      }
 	      else if(GK_nProc[2]>1){
@@ -8544,20 +8561,23 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				   iPrint, Nmoms, momQsq);  
 		performFFT<double>(buf_gen_uloc_HP[dstep], gen_uloc[dstep], 
 				   iPrint, Nmoms, momQsq);  
-		for(int mu=0;mu<4;mu++){
-		  performFFT<double>(buf_std_oneD_HP[dstep][mu], 
-				     std_oneD[dstep][mu], iPrint, 
-				     Nmoms, momQsq);  
-		  performFFT<double>(buf_std_csvC_HP[dstep][mu], 
-				     std_csvC[dstep][mu], iPrint, 
-				     Nmoms, momQsq);  
-		  performFFT<double>(buf_gen_oneD_HP[dstep][mu], 
-				     gen_oneD[dstep][mu], iPrint, 
-				     Nmoms, momQsq);  
-		  performFFT<double>(buf_gen_csvC_HP[dstep][mu], 
-				     gen_csvC[dstep][mu], iPrint, 
-				     Nmoms, momQsq);  
 
+		if(loopCovDev) {
+		  for(int mu=0;mu<4;mu++){
+		    performFFT<double>(buf_std_oneD_HP[dstep][mu], 
+				       std_oneD[dstep][mu], iPrint, 
+				       Nmoms, momQsq);  
+		    performFFT<double>(buf_std_csvC_HP[dstep][mu], 
+				       std_csvC[dstep][mu], iPrint, 
+				       Nmoms, momQsq);  
+		    performFFT<double>(buf_gen_oneD_HP[dstep][mu], 
+				       gen_oneD[dstep][mu], iPrint, 
+				       Nmoms, momQsq);  
+		    performFFT<double>(buf_gen_csvC_HP[dstep][mu], 
+				       gen_csvC[dstep][mu], iPrint, 
+				       Nmoms, momQsq);  
+		    
+		  }
 		}
 	      }	      
 	      t2 = MPI_Wtime();
@@ -8566,7 +8586,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	    }//-if 
 	  }//-deflation step
 	  
-
+	  
 	  //----------- Perform contractions for LP solves second. -------------//
 	  //--------------------------------------------------------------------//
 	  //Loop over LP criteria first to preserve data structure
@@ -8579,14 +8599,14 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	      
 	      printfQuda("Performing TSM LP contractions for Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, LP_crit = %02d\n",
 			 is, ih, sc, NeV_defl, LP_crit);
-
+	      
 	      //Index to point to correct part of accumulation array.
 	      int idx = LP_crit*deflSteps + dstep;
 	      
 	      t1 = MPI_Wtime();
 	      K_vector->downloadFromCuda(sol_LP[LP_crit],flag_eo);
 	      K_vector->download();
-	    
+	      
 	      // Solution is projected and put into x, x <- (1-UU^dag) x
 	      deflation->projectVector(*K_vecdef,*K_vector,is+1,NeV_defl);
 	      K_vecdef->uploadToCuda(x_LP[LP_crit],flag_eo); //DMH ???
@@ -8618,20 +8638,22 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 		  doCudaFFT_v2<double>(gen_uloc_LP[idx],tmp_loop); 
 		  copyLoopToWriteBuf(buf_gen_uloc_LP[idx], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom); // dOp
-		  
-		  for(int mu = 0 ; mu < 4 ; mu++){
-		    doCudaFFT_v2<double>(std_oneD_LP[idx][mu], tmp_loop);  
-		    copyLoopToWriteBuf(buf_std_oneD_LP[idx][mu], tmp_loop,
-				       iPrint,info.Q_sq,Nmoms,mom); // Loops
-		    doCudaFFT_v2<double>(std_csvC_LP[idx][mu],tmp_loop);  
-		    copyLoopToWriteBuf(buf_std_csvC_LP[idx][mu],tmp_loop,
-				       iPrint,info.Q_sq,Nmoms,mom); // LoopsCv
-		    doCudaFFT_v2<double>(gen_oneD_LP[idx][mu],tmp_loop);  
-		    copyLoopToWriteBuf(buf_gen_oneD_LP[idx][mu],tmp_loop,
-				     iPrint,info.Q_sq,Nmoms,mom); // LpsDw
-		    doCudaFFT_v2<double>(gen_csvC_LP[idx][mu],tmp_loop);  
-		    copyLoopToWriteBuf(buf_gen_csvC_LP[idx][mu],tmp_loop,
-				       iPrint,info.Q_sq,Nmoms,mom); // LpsDws
+
+		  if(loopCovDev) {	  
+		    for(int mu = 0 ; mu < 4 ; mu++){
+		      doCudaFFT_v2<double>(std_oneD_LP[idx][mu], tmp_loop);  
+		      copyLoopToWriteBuf(buf_std_oneD_LP[idx][mu], tmp_loop,
+					 iPrint,info.Q_sq,Nmoms,mom); // Loops
+		      doCudaFFT_v2<double>(std_csvC_LP[idx][mu],tmp_loop);  
+		      copyLoopToWriteBuf(buf_std_csvC_LP[idx][mu],tmp_loop,
+					 iPrint,info.Q_sq,Nmoms,mom); // LoopsCv
+		      doCudaFFT_v2<double>(gen_oneD_LP[idx][mu],tmp_loop);  
+		      copyLoopToWriteBuf(buf_gen_oneD_LP[idx][mu],tmp_loop,
+					 iPrint,info.Q_sq,Nmoms,mom); // LpsDw
+		      doCudaFFT_v2<double>(gen_csvC_LP[idx][mu],tmp_loop);  
+		      copyLoopToWriteBuf(buf_gen_csvC_LP[idx][mu],tmp_loop,
+					 iPrint,info.Q_sq,Nmoms,mom); // LpsDws
+		    }
 		  }
 		}
 		else if(GK_nProc[2]>1){
@@ -8639,21 +8661,22 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				     iPrint, Nmoms, momQsq);
 		  performFFT<double>(buf_gen_uloc_LP[idx], gen_uloc_LP[idx], 
 				     iPrint, Nmoms, momQsq);
-		  
-		  for(int mu=0;mu<4;mu++){
-		    
-		    performFFT<double>(buf_std_oneD_LP[idx][mu], 
-				       std_oneD_LP[idx][mu], iPrint, 
-				       Nmoms, momQsq);
-		    performFFT<double>(buf_std_csvC_LP[idx][mu], 
-				       std_csvC_LP[idx][mu], iPrint, 
-				       Nmoms, momQsq);
-		    performFFT<double>(buf_gen_oneD_LP[idx][mu], 
-				       gen_oneD_LP[idx][mu], iPrint, 
-				       Nmoms, momQsq);
-		    performFFT<double>(buf_gen_csvC_LP[idx][mu], 
-				       gen_csvC_LP[idx][mu], iPrint, 
-				       Nmoms, momQsq);
+		  if(loopCovDev) {
+		    for(int mu=0;mu<4;mu++){
+		      
+		      performFFT<double>(buf_std_oneD_LP[idx][mu], 
+					 std_oneD_LP[idx][mu], iPrint, 
+					 Nmoms, momQsq);
+		      performFFT<double>(buf_std_csvC_LP[idx][mu], 
+					 std_csvC_LP[idx][mu], iPrint, 
+					 Nmoms, momQsq);
+		      performFFT<double>(buf_gen_oneD_LP[idx][mu], 
+					 gen_oneD_LP[idx][mu], iPrint, 
+					 Nmoms, momQsq);
+		      performFFT<double>(buf_gen_csvC_LP[idx][mu], 
+					 gen_csvC_LP[idx][mu], iPrint, 
+					 Nmoms, momQsq);
+		    }
 		  }
 		}
 		t2 = MPI_Wtime();
@@ -8688,19 +8711,21 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	writeLoops_ASCII(buf_gen_uloc_HP[dstep], loop_stoch_fname, 
 			 loopInfo, momQsq, 1, 0, stoch_part, 
 			 useTSM, HighPrecSum); // dOp
-	for(int mu = 0 ; mu < 4 ; mu++){
-	  writeLoops_ASCII(buf_std_oneD_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 2, mu, 
-			   stoch_part, useTSM, HighPrecSum); // Loops
-	  writeLoops_ASCII(buf_std_csvC_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 3, mu, 
-			   stoch_part, useTSM, HighPrecSum); // LoopsCv
-	  writeLoops_ASCII(buf_gen_oneD_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 4, mu, 
-			   stoch_part, useTSM, HighPrecSum); // LpsDw
-	  writeLoops_ASCII(buf_gen_csvC_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 5, mu, 
-			   stoch_part, useTSM, HighPrecSum); // LpsDwCv
+	if(loopCovDev) {
+	  for(int mu = 0 ; mu < 4 ; mu++){
+	    writeLoops_ASCII(buf_std_oneD_HP[dstep][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 2, mu, 
+			     stoch_part, useTSM, HighPrecSum); // Loops
+	    writeLoops_ASCII(buf_std_csvC_HP[dstep][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 3, mu, 
+			     stoch_part, useTSM, HighPrecSum); // LoopsCv
+	    writeLoops_ASCII(buf_gen_oneD_HP[dstep][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 4, mu, 
+			     stoch_part, useTSM, HighPrecSum); // LpsDw
+	    writeLoops_ASCII(buf_gen_csvC_HP[dstep][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 5, mu, 
+			     stoch_part, useTSM, HighPrecSum); // LpsDwCv
+	  }
 	}
       }
       else if(LoopFileFormat==HDF5_FORM){
@@ -8739,19 +8764,22 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	  writeLoops_ASCII(buf_gen_uloc_LP[idx], loop_stoch_fname, 
 			   loopInfo, momQsq, 1, 0, 
 			   stoch_part, useTSM, HighPrecSum); // dOp
-	  for(int mu = 0 ; mu < 4 ; mu++){
-	    writeLoops_ASCII(buf_std_oneD_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 2, mu, 
-			     stoch_part, useTSM, HighPrecSum); // Loops
-	    writeLoops_ASCII(buf_std_csvC_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 3, mu, 
-			     stoch_part, useTSM, HighPrecSum); // LoopsCv
-	    writeLoops_ASCII(buf_gen_oneD_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 4, mu, 
-			     stoch_part, useTSM, HighPrecSum); // LpsDw
-	    writeLoops_ASCII(buf_gen_csvC_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 5, mu, 
-			     stoch_part, useTSM, HighPrecSum); // LpsDwCv
+
+	  if(loopCovDev) {
+	    for(int mu = 0 ; mu < 4 ; mu++){
+	      writeLoops_ASCII(buf_std_oneD_LP[idx][mu], loop_stoch_fname, 
+			       loopInfo, momQsq, 2, mu, 
+			       stoch_part, useTSM, HighPrecSum); // Loops
+	      writeLoops_ASCII(buf_std_csvC_LP[idx][mu], loop_stoch_fname, 
+			       loopInfo, momQsq, 3, mu, 
+			       stoch_part, useTSM, HighPrecSum); // LoopsCv
+	      writeLoops_ASCII(buf_gen_oneD_LP[idx][mu], loop_stoch_fname, 
+			       loopInfo, momQsq, 4, mu, 
+			       stoch_part, useTSM, HighPrecSum); // LpsDw
+	      writeLoops_ASCII(buf_gen_csvC_LP[idx][mu], loop_stoch_fname, 
+			       loopInfo, momQsq, 5, mu, 
+			       stoch_part, useTSM, HighPrecSum); // LpsDwCv
+	    }
 	  }
 	}
 	else if(LoopFileFormat==HDF5_FORM){ 

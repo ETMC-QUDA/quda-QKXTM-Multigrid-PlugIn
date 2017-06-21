@@ -1,7 +1,7 @@
-ETMC-QUDA production code base                        30th May 2017
+ETMC-QUDA production code base                        20th June 2017
 ------------------------------------------------------------------------
 
-This library is an extension to QUDA feature/multigrid: GIT hash 3b19d92
+This library is an extension to QUDA feature/multigrid: GIT hash c3320f8 
 
 This plug-in contains routines to calculate 2- and 3-point hadronic correlation functions,
 and an All-to-All propagator with a gauge covariant derivative, with a 

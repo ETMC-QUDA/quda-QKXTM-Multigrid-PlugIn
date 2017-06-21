@@ -7394,19 +7394,17 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   printfQuda(" Will perform the loop for the following %d numbers of eigenvalues:",deflSteps);
   if(useTSM){
     printfQuda("\n Will perform the Truncated Solver method using the following parameters:\n");
+    printfQuda(" %d Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions per TSM criterion\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
     printfQuda(" N_HP = %d High precision stochastic vectors\n",TSM_NHP);
     printfQuda(" N_LP_iters = %d Low precision stopping criteria\n",TSM_NLP_iters);
     for(int a=0; a<TSM_NLP_iters; a++) {
       if (TSM_maxiter[0] == 0) printfQuda(" Solver stopping criterion %d is: tol = %e\n",a, TSM_tol[a]);
       else printfQuda(" Solver stopping criterion %d is: max-iter = %ld\n", a, TSM_maxiter[a]);
     }
-    printfQuda(" Will dump every %d high-precision noise vectors, thus %d times\n",TSM_NdumpHP,TSM_NprintHP);
-    printfQuda(" Will dump every %d low-precision noise vectors , thus %dx%d=%d times\n",TSM_NdumpLP, TSM_NdumpLP, TSM_NLP_iters, TSM_NprintLP);
   }
   else{
     printfQuda(" Will not perform the Truncated Solver method\n");
-    printfQuda(" No. of noise vectors: %d\n",Nstoch);
-    printfQuda(" Will dump every %d noise vectors, thus %d times\n",Ndump,Nprint);
+    printfQuda(" %s Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
   }
   printfQuda(" Will project\n");
   for (int a=0; a<deflSteps; a++) printfQuda(" Ndefl %d: %d\n", a, nDefl[a]);
@@ -7461,9 +7459,9 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
     
     cudaMemset(std_uloc[step], 0, sizeof(double)*2*16*GK_localVolume);
     cudaMemset(gen_uloc[step], 0, sizeof(double)*2*16*GK_localVolume);
-
+    
     cudaDeviceSynchronize();
-
+    
     //- one-Derivative and conserved current loops
     std_oneD[step] = (void**) malloc(sizeof(double*)*4);
     gen_oneD[step] = (void**) malloc(sizeof(double*)*4);
@@ -7480,51 +7478,53 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       errorQuda("%s: Error allocating memory gen_csvC[%d]\n",fname,step);
     cudaDeviceSynchronize();
     
-    for(int mu = 0; mu < 4 ; mu++){
-      if((cudaHostAlloc(&(std_oneD[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			cudaHostAllocMapped)) != cudaSuccess)
-	errorQuda("%s: Error allocating memory std_oneD[%d][%d]\n",
-		  fname,step,mu);
-      if((cudaHostAlloc(&(gen_oneD[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			cudaHostAllocMapped)) != cudaSuccess)
-	errorQuda("%s: Error allocating memory gen_oneD[%d][%d]\n",
-		  fname,step,mu);
-      if((cudaHostAlloc(&(std_csvC[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			cudaHostAllocMapped)) != cudaSuccess)
-	errorQuda("%s: Error allocating memory std_csvC[%d][%d]\n",
-		  fname,step,mu);
-      if((cudaHostAlloc(&(gen_csvC[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			cudaHostAllocMapped)) != cudaSuccess)
-	errorQuda("%s: Error allocating memory gen_csvC[%d][%d]\n",
-		  fname,step,mu);
-      
-      cudaMemset(std_oneD[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
-      cudaMemset(gen_oneD[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
-      cudaMemset(std_csvC[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
-      cudaMemset(gen_csvC[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
+    if(loopCovDev) {
+      for(int mu = 0; mu < 4 ; mu++){
+	if((cudaHostAlloc(&(std_oneD[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			  cudaHostAllocMapped)) != cudaSuccess)
+	  errorQuda("%s: Error allocating memory std_oneD[%d][%d]\n",
+		    fname,step,mu);
+	if((cudaHostAlloc(&(gen_oneD[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			  cudaHostAllocMapped)) != cudaSuccess)
+	  errorQuda("%s: Error allocating memory gen_oneD[%d][%d]\n",
+		    fname,step,mu);
+	if((cudaHostAlloc(&(std_csvC[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			  cudaHostAllocMapped)) != cudaSuccess)
+	  errorQuda("%s: Error allocating memory std_csvC[%d][%d]\n",
+		    fname,step,mu);
+	if((cudaHostAlloc(&(gen_csvC[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			  cudaHostAllocMapped)) != cudaSuccess)
+	  errorQuda("%s: Error allocating memory gen_csvC[%d][%d]\n",
+		    fname,step,mu);
+	
+	cudaMemset(std_oneD[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
+	cudaMemset(gen_oneD[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
+	cudaMemset(std_csvC[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
+	cudaMemset(gen_csvC[step][mu], 0, sizeof(double)*2*16*GK_localVolume);
+      }
     }
     cudaDeviceSynchronize();
   }//-step (Nev and TSM LP)
   printfQuda("%s: Accumulation buffers memory allocated properly.\n",fname);
   //----------------------------------------------------------------------//
   
-  //-Allocate memory for the write buffers //DMH ???
+  //-Allocate memory for the write buffers 
   int Nprt = ( useTSM ? TSM_NprintLP*TSM_NLP_iters : Nprint );
-
+  
   double *buf_std_uloc[deflSteps*TSM_NLP_iters];
   double *buf_gen_uloc[deflSteps*TSM_NLP_iters];
   double **buf_std_oneD[deflSteps*TSM_NLP_iters];
   double **buf_gen_oneD[deflSteps*TSM_NLP_iters];
   double **buf_std_csvC[deflSteps*TSM_NLP_iters];
   double **buf_gen_csvC[deflSteps*TSM_NLP_iters];
-
+  
   for(int step=0;step<deflSteps*TSM_NLP_iters;step++){
-
+    
     buf_std_uloc[step] = 
       (double*)malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
     buf_gen_uloc[step] = 
       (double*)malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
-
+    
     buf_std_oneD[step] = (double**) malloc(sizeof(double*)*4);
     buf_gen_oneD[step] = (double**) malloc(sizeof(double*)*4);  
     buf_std_csvC[step] = (double**) malloc(sizeof(double*)*4);
@@ -7544,42 +7544,43 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
     if( buf_gen_csvC[step] == NULL ) 
       errorQuda("Allocation of buffer buf_gen_csvC[%d] failed.\n",step);
     
-    for(int mu = 0; mu < 4 ; mu++){
-      buf_std_oneD[step][mu] = 
-	(double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
-      buf_gen_oneD[step][mu] = 
-	(double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
-      buf_std_csvC[step][mu] = 
-	(double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
-      buf_gen_csvC[step][mu] = 
-	(double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
-      
-      if( buf_std_oneD[step][mu] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD[%d][%d] failed.\n",
-		 step,mu);
-      if( buf_gen_oneD[step][mu] == NULL ) 
-	errorQuda("Allocation of buffer buf_gen_oneD[%d][%d] failed.\n",
-		  step,mu);
-      if( buf_std_csvC[step][mu] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_csvC[%d][%d] failed.\n",
-		  step,mu);
-      if( buf_gen_csvC[step][mu] == NULL ) 
-	errorQuda("Allocation of buffer buf_gen_csvC[%d][%d] failed.\n",
-		  step,mu);
+    if(loopCovDev) {
+      for(int mu = 0; mu < 4 ; mu++){
+	buf_std_oneD[step][mu] = 
+	  (double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
+	buf_gen_oneD[step][mu] = 
+	  (double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
+	buf_std_csvC[step][mu] = 
+	  (double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
+	buf_gen_csvC[step][mu] = 
+	  (double*) malloc(sizeof(double)*Nprt*2*16*Nmoms*GK_localL[3]);
+	
+	if( buf_std_oneD[step][mu] == NULL ) 
+	  errorQuda("Allocation of buffer buf_std_oneD[%d][%d] failed.\n",
+		    step,mu);
+	if( buf_gen_oneD[step][mu] == NULL ) 
+	  errorQuda("Allocation of buffer buf_gen_oneD[%d][%d] failed.\n",
+		    step,mu);
+	if( buf_std_csvC[step][mu] == NULL ) 
+	  errorQuda("Allocation of buffer buf_std_csvC[%d][%d] failed.\n",
+		    step,mu);
+	if( buf_gen_csvC[step][mu] == NULL ) 
+	  errorQuda("Allocation of buffer buf_gen_csvC[%d][%d] failed.\n",
+		    step,mu);
+      }
     }
   }
-
   
   //------------------ Allocate extra memory if using TSM ----------------//
   //======================================================================//
-
+  
   void *std_uloc_LP[deflSteps*TSM_NLP_iters];
   void *gen_uloc_LP[deflSteps*TSM_NLP_iters];
   void **std_oneD_LP[deflSteps*TSM_NLP_iters];
   void **gen_oneD_LP[deflSteps*TSM_NLP_iters];
   void **std_csvC_LP[deflSteps*TSM_NLP_iters];
   void **gen_csvC_LP[deflSteps*TSM_NLP_iters];
-
+  
   //Write buffers
   double *buf_std_uloc_LP[deflSteps*TSM_NLP_iters];
   double *buf_gen_uloc_LP[deflSteps*TSM_NLP_iters];
@@ -7587,7 +7588,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   double **buf_gen_oneD_LP[deflSteps*TSM_NLP_iters];
   double **buf_std_csvC_LP[deflSteps*TSM_NLP_iters];
   double **buf_gen_csvC_LP[deflSteps*TSM_NLP_iters];
- 
+  
   if(useTSM){
     for(int step=0;step<deflSteps*TSM_NLP_iters;step++){
       //- low-precision accumulation buffers, ultra-local
@@ -7595,7 +7596,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 			cudaHostAllocMapped)) != cudaSuccess)
 	errorQuda("%s: Error allocating memory std_uloc_LP[%d]\n",
 		  fname,step);
-
+      
       if((cudaHostAlloc(&(gen_uloc_LP[step]), sizeof(double)*2*16*GK_localVolume, 
 			cudaHostAllocMapped)) != cudaSuccess)
 	errorQuda("%s: Error allocating memory gen_uloc_LP[%d]\n",
@@ -7626,51 +7627,54 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 		  fname,step);
       cudaDeviceSynchronize();
       
-      for(int mu = 0; mu < 4 ; mu++){
-	if((cudaHostAlloc(&(std_oneD_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory std_oneD_LP[%d][%d]\n",
-		    fname,step,mu);
-
-	if((cudaHostAlloc(&(gen_oneD_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory gen_oneD_LP[%d][%d]\n",
-		    fname,step,mu);
-
-	if((cudaHostAlloc(&(std_csvC_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory std_csvC_LP[%d][%d]\n",
-		    fname,step,mu);
-	
-	if((cudaHostAlloc(&(gen_csvC_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory gen_csvC_LP[%d][%d]\n",
-		    fname,step,mu);    
-	
-	cudaMemset(std_oneD_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(gen_oneD_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(std_csvC_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(gen_csvC_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
+      if(loopCovDev) {
+	for(int mu = 0; mu < 4 ; mu++){
+	  if((cudaHostAlloc(&(std_oneD_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			    cudaHostAllocMapped)) != cudaSuccess)
+	    errorQuda("%s: Error allocating memory std_oneD_LP[%d][%d]\n",
+		      fname,step,mu);
+	  
+	  if((cudaHostAlloc(&(gen_oneD_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			    cudaHostAllocMapped)) != cudaSuccess)
+	    errorQuda("%s: Error allocating memory gen_oneD_LP[%d][%d]\n",
+		      fname,step,mu);
+	  
+	  if((cudaHostAlloc(&(std_csvC_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			    cudaHostAllocMapped)) != cudaSuccess)
+	    errorQuda("%s: Error allocating memory std_csvC_LP[%d][%d]\n",
+		      fname,step,mu);
+	  
+	  if((cudaHostAlloc(&(gen_csvC_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
+			    cudaHostAllocMapped)) != cudaSuccess)
+	    errorQuda("%s: Error allocating memory gen_csvC_LP[%d][%d]\n",
+		      fname,step,mu);    
+	  
+	  cudaMemset(std_oneD_LP[step][mu], 0, 
+		     sizeof(double)*2*16*GK_localVolume);
+	  cudaMemset(gen_oneD_LP[step][mu], 0, 
+		     sizeof(double)*2*16*GK_localVolume);
+	  cudaMemset(std_csvC_LP[step][mu], 0, 
+		     sizeof(double)*2*16*GK_localVolume);
+	  cudaMemset(gen_csvC_LP[step][mu], 0, 
+		     sizeof(double)*2*16*GK_localVolume);
+	}
+	cudaDeviceSynchronize();
       }
-      cudaDeviceSynchronize();
+    
       //------------------------------
-
-
+    
+    
       //-write buffers for Low-precision loops      
       buf_std_uloc_LP[step] = 
 	(double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
       buf_gen_uloc_LP[step] = 
 	(double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-
+      
       buf_std_oneD_LP[step] = (double**)malloc(4*sizeof(double*));
       buf_gen_oneD_LP[step] = (double**)malloc(4*sizeof(double*));
       buf_std_csvC_LP[step] = (double**)malloc(4*sizeof(double*));
       buf_gen_csvC_LP[step] = (double**)malloc(4*sizeof(double*));
-
+      
       if( buf_std_uloc_LP[step] == NULL ) 
 	errorQuda("Allocation of buffer buf_std_uloc_LP[%d] failed.",step);
       if( buf_gen_uloc_LP[step] == NULL ) 
@@ -7684,36 +7688,37 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	errorQuda("Allocation of buffer buf_std_oneD_LP[%d] failed.",step);
       if( buf_gen_csvC_LP[step] == NULL ) 
 	errorQuda("Allocation of buffer buf_std_oneD_LP[%d] failed.",step);
-
-      for(int mu = 0; mu < 4 ; mu++){
-
-      buf_std_oneD_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_gen_oneD_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_std_csvC_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_gen_csvC_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
       
-      if(buf_std_oneD_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		  step,mu);
-      if(buf_gen_oneD_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		  step,mu);
-      if(buf_std_csvC_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		   step,mu);
-      if(buf_gen_csvC_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		   step,mu);
+      if(loopCovDev) {
+	for(int mu = 0; mu < 4 ; mu++){
+	  buf_std_oneD_LP[step][mu] = 
+	    (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  buf_gen_oneD_LP[step][mu] = 
+	    (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  buf_std_csvC_LP[step][mu] = 
+	    (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  buf_gen_csvC_LP[step][mu] = 
+	    (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  
+	  if(buf_std_oneD_LP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
+		      step,mu);
+	  if(buf_gen_oneD_LP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
+		      step,mu);
+	  if(buf_std_csvC_LP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
+		      step,mu);
+	  if(buf_gen_csvC_LP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
+		      step,mu);
+	}
       }
     }
   }
   //---------write buffers for High-precision loops -----------//
   //-----------------------------------------------------------//
-
+  
   double *buf_std_uloc_HP[deflSteps];
   double *buf_gen_uloc_HP[deflSteps];
   double **buf_std_oneD_HP[deflSteps];
@@ -7747,31 +7752,31 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       if( buf_gen_csvC_HP[step] == NULL ) 
 	errorQuda("Allocation of buffer buf_std_oneD_HP[%d] failed.",step);
       
-      for(int mu = 0; mu < 4 ; mu++){
-	
-	buf_std_oneD_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	buf_gen_oneD_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	buf_std_csvC_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	buf_gen_csvC_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	
-	if(buf_std_oneD_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
-	if(buf_gen_oneD_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
-	if(buf_std_csvC_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
-	if(buf_gen_csvC_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
+      if(loopCovDev) {
+	for(int mu = 0; mu < 4 ; mu++){
+	  buf_std_oneD_HP[step][mu] = 
+	    (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  buf_gen_oneD_HP[step][mu] = 
+	    (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  buf_std_csvC_HP[step][mu] = 
+	    (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  buf_gen_csvC_HP[step][mu] = 
+	      (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
+	  
+	  if(buf_std_oneD_HP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
+		      step,mu);
+	  if(buf_gen_oneD_HP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
+		      step,mu);
+	  if(buf_std_csvC_HP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
+			step,mu);
+	  if(buf_gen_csvC_HP[step][mu] == NULL) 
+	    errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
+		      step,mu);
+	}
       }
-      
     }//-dsetp
   }//-if useTSM
   
@@ -8820,11 +8825,14 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
     //-accumulation buffers
     cudaFreeHost(std_uloc[step]);
     cudaFreeHost(gen_uloc[step]);
-    for(int mu = 0 ; mu < 4 ; mu++){
-      cudaFreeHost(std_oneD[step][mu]);
-      cudaFreeHost(gen_oneD[step][mu]);
-      cudaFreeHost(std_csvC[step][mu]);
-      cudaFreeHost(gen_csvC[step][mu]);
+
+    if(loopCovDev) {	
+      for(int mu = 0 ; mu < 4 ; mu++){
+	cudaFreeHost(std_oneD[step][mu]);
+	cudaFreeHost(gen_oneD[step][mu]);
+	cudaFreeHost(std_csvC[step][mu]);
+	cudaFreeHost(gen_csvC[step][mu]);
+      }
     }
     free(std_oneD[step]);
     free(gen_oneD[step]);
@@ -8852,11 +8860,13 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
     for(int step=0;step<loopInfo.nSteps_defl*TSM_NLP_iters;step++){
       cudaFreeHost(std_uloc_LP[step]);
       cudaFreeHost(gen_uloc_LP[step]);
-      for(int mu = 0 ; mu < 4 ; mu++){
-	cudaFreeHost(std_oneD_LP[step][mu]);
-	cudaFreeHost(gen_oneD_LP[step][mu]);
-	cudaFreeHost(std_csvC_LP[step][mu]);
-	cudaFreeHost(gen_csvC_LP[step][mu]);
+      if(loopCovDev) {	
+	for(int mu = 0 ; mu < 4 ; mu++){
+	  cudaFreeHost(std_oneD_LP[step][mu]);
+	  cudaFreeHost(gen_oneD_LP[step][mu]);
+	  cudaFreeHost(std_csvC_LP[step][mu]);
+	  cudaFreeHost(gen_csvC_LP[step][mu]);
+	}
       }
       free(std_oneD_LP[step]);
       free(gen_oneD_LP[step]);
@@ -8866,12 +8876,13 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       free(buf_std_uloc_LP[step]); 
       free(buf_gen_uloc_LP[step]);
  
-
-      for(int mu = 0 ; mu < 4 ; mu++){
-	free(buf_std_oneD_LP[step][mu]);
-	free(buf_std_csvC_LP[step][mu]);
-	free(buf_gen_oneD_LP[step][mu]);
-	free(buf_gen_csvC_LP[step][mu]);	
+      if(loopCovDev) {	
+	for(int mu = 0 ; mu < 4 ; mu++){
+	  free(buf_std_oneD_LP[step][mu]);
+	  free(buf_std_csvC_LP[step][mu]);
+	  free(buf_gen_oneD_LP[step][mu]);
+	  free(buf_gen_csvC_LP[step][mu]);	
+	}
       }
       free(buf_std_oneD_LP[step]);
       free(buf_std_csvC_LP[step]);
@@ -8879,15 +8890,17 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       free(buf_gen_csvC_LP[step]);
       
     }//-dstep
-
+    
     for(int dstep=0; dstep<loopInfo.nSteps_defl; dstep++){
       free(buf_std_uloc_HP[dstep]);
       free(buf_gen_uloc_HP[dstep]);
-      for(int mu = 0 ; mu < 4 ; mu++){
-	free(buf_std_oneD_HP[dstep][mu]);
-	free(buf_std_csvC_HP[dstep][mu]);
-	free(buf_gen_oneD_HP[dstep][mu]);
-	free(buf_gen_csvC_HP[dstep][mu]);
+      if(loopCovDev) {	
+	for(int mu = 0 ; mu < 4 ; mu++){
+	  free(buf_std_oneD_HP[dstep][mu]);
+	  free(buf_std_csvC_HP[dstep][mu]);
+	  free(buf_gen_oneD_HP[dstep][mu]);
+	  free(buf_gen_csvC_HP[dstep][mu]);
+	}
       }
       free(buf_std_oneD_HP[dstep]);
       free(buf_std_csvC_HP[dstep]);
@@ -8932,9 +8945,9 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   }
 
   printfQuda("Flag 3\n");
-  free(x_LP);
+  //free(x_LP);
   printfQuda("Flag 4\n");
-  free(sol_LP);
+  //free(sol_LP);
   printfQuda("Flag 5\n");
   printfQuda("...Done\n");
   popVerbosity();

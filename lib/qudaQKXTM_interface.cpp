@@ -7812,7 +7812,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   
   //Create object to store and calculate eigenpairs
   QKXTM_Deflation<double> *deflation = 
-    new QKXTM_Deflation<double>(param,arpackInfo);
+    new QKXTM_Deflation<double>(EvInvParam,arpackInfo);
   deflation->printInfo();
   
 

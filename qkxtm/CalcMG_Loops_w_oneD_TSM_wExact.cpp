@@ -141,6 +141,7 @@ extern int nKv;
 extern char *spectrumPart;
 extern bool isACC;
 extern double tolArpack;
+extern int modeArpack;
 extern int maxIterArpack;
 extern char arpack_logfile[];
 extern double amin;
@@ -554,6 +555,7 @@ int main(int argc, char **argv)
   arpackInfo.nKv = nKv;
   arpackInfo.isACC = isACC;
   arpackInfo.tolArpack = tolArpack;
+  arpackInfo.modeArpack;
   arpackInfo.maxIterArpack = maxIterArpack;
   strcpy(arpackInfo.arpack_logfile,arpack_logfile);
   arpackInfo.amin = amin;

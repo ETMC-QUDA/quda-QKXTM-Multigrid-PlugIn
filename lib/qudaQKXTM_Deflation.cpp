@@ -99,7 +99,7 @@ QKXTM_Deflation(int N_EigenVectors, bool isEven):
 template<typename Float>
 QKXTM_Deflation<Float>::
 QKXTM_Deflation(QudaInvertParam *param, 
-		       qudaQKXTM_arpackInfo arpackInfo): 
+		qudaQKXTM_arpackInfo arpackInfo): 
   h_elem(NULL), eigenValues(NULL), diracOp(NULL){
   if(GK_init_qudaQKXTM_flag == false)
     errorQuda("You must initialize QKXTM library first\n");
@@ -1003,11 +1003,9 @@ void QKXTM_Deflation<Float>::eigenSolver(){
   iparam[2] = maxIterArpack;
   iparam[3] = 1;
   iparam[6] = 1;
-  //iparam[7] = modeArpack;
+  iparam[7] = modeArpack;
   //if(iparam[7] == 3) {
   //populate array with 'sigma' shift values
-    
-  
 
   double d1,d2,d3;
 
@@ -1244,7 +1242,7 @@ void QKXTM_Deflation<Float>::eigenSolver(){
   }
   // Caluclate v^dag gamma_5 v
   char fname[256];
-  sprintf(fname,"v_g5_product.txt");  
+  sprintf(fname,"v_g5_product_%s",arpack_logfile);  
   FILE *fptr;
   fptr = fopen(fname,"wa");
 

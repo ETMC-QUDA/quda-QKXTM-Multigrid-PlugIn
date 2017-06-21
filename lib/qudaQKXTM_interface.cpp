@@ -7400,8 +7400,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       if (TSM_maxiter[0] == 0) printfQuda(" Solver stopping criterion %d is: tol = %e\n",a, TSM_tol[a]);
       else printfQuda(" Solver stopping criterion %d is: max-iter = %ld\n", a, TSM_maxiter[a]);
     }
-    printfQuda("  Will dump every %d high-precision noise vectors, thus %d times\n",TSM_NdumpHP,TSM_NprintHP);
-    printfQuda("  Will dump every %d low-precision noise vectors , thus %dx%d=%d times\n",TSM_NdumpLP, TSM_NdumpLP, TSM_NLP_iters, TSM_NprintLP);
+    printfQuda(" Will dump every %d high-precision noise vectors, thus %d times\n",TSM_NdumpHP,TSM_NprintHP);
+    printfQuda(" Will dump every %d low-precision noise vectors , thus %dx%d=%d times\n",TSM_NdumpLP, TSM_NdumpLP, TSM_NLP_iters, TSM_NprintLP);
   }
   else{
     printfQuda(" Will not perform the Truncated Solver method\n");
@@ -7409,7 +7409,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
     printfQuda(" Will dump every %d noise vectors, thus %d times\n",Ndump,Nprint);
   }
   printfQuda(" Will project\n");
-  for (int a=0; a<deflSteps; a++) printfQuda("%d\n", nDefl[a]);
+  for (int a=0; a<deflSteps; a++) printfQuda(" Ndefl %d: %d\n", a, nDefl[a]);
   printfQuda(" exact eigenmodes fom the solutions\n");
   if(info.source_type==RANDOM) printfQuda(" Will use RANDOM stochastic sources\n");
   else if (info.source_type==UNITY) printfQuda(" Will use UNITY stochastic sources\n");

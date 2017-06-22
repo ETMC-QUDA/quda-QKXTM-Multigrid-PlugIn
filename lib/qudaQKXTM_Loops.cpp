@@ -297,6 +297,8 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
 			   void *cnRes_gv,void *cnRes_vv, void **cnD_gv, 
 			   void **cnD_vv, void **cnC_gv, void **cnC_vv){
   
+  printfQuda("ini flag 1\n");
+
   void *h_ctrn, *ctrnS, *ctrnC;
   
   if((cudaMallocHost(&h_ctrn, sizeof(Float)*32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3])) == cudaErrorMemoryAllocation)
@@ -312,6 +314,8 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   cudaMemset(ctrnC, 0, sizeof(Float)*32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]);
 
   checkCudaError();
+
+  printfQuda("ini flag 2\n");
   
   DiracParam dWParam;
   dWParam.matpcType        = QUDA_MATPC_EVEN_EVEN;
@@ -340,6 +344,9 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   else{
     errorQuda("Error one end trick works only for twisted mass fermions\n");
   }
+
+  printfQuda("ini flag 3\n");
+
   checkCudaError();
 
   gamma5Cuda(static_cast<cudaColorSpinorField*>(&tmp3.Even()), 
@@ -357,6 +364,8 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   Float pceval[2] = {1.0,0.0};
   Float mceval[2] = {-1.0,0.0};
 
+  printfQuda("ini flag 4\n");
+
   ///////////////// LOCAL ///////////////////////////
   contract(x, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5);
   cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
@@ -366,12 +375,16 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   else if( typeid(Float) == typeid(double) ) 
     cblas_zaxpy(NN,(double*)pceval,(double*)h_ctrn,incx,(double*)cnRes_gv,incy);
   
+  printfQuda("ini flag 5\n");
+
   //    for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
   //      ((Float*) cnRes_gv)[ix] += ((Float*)h_ctrn)[ix]; // generalized one end trick
   
   contract(x, x, ctrnS, QUDA_CONTRACT_GAMMA5);
   cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
   
+  printfQuda("ini flag 6\n");
+
   //    for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
   //      ((Float*) cnRes_vv)[ix] -= ((Float*)h_ctrn)[ix]; // standard one end trick
   
@@ -383,51 +396,80 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   }  
   cudaDeviceSynchronize();
 
+  printfQuda("Local: Flag 1\n");
+
   if(loopCovDev == true) {
+
+    printfQuda("Loops: Flag 0\n");
+
     ////////////////// DERIVATIVES //////////////////////////////
     CovD *cov = new CovD(gaugePrecise, profileCovDev);
+
+    printfQuda("Loops: Flag 1\n");
 
     // for generalized one-end trick
     for(int mu=0; mu<4; mu++)	
       {
+
+	printfQuda("Loops: Flag 2, mu: %d\n", mu);
+
 	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu);
+	printfQuda("Loops: Flag 3, mu: %d\n", mu);
+
 	// Term 0
 	contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
+	printfQuda("Loops: Flag 4, mu: %d\n", mu);
 
 	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu+4);
+	printfQuda("Loops: Flag 5, mu: %d\n", mu);
 	// Term 0 + Term 3
 	contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
+	printfQuda("Loops: Flag 6, mu: %d\n", mu);
 	cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
+	printfQuda("Loops: Flag 7, mu: %d\n", mu);
 
 	// Term 0 + Term 3 + Term 2 (C Sum)
 	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
+	printfQuda("Loops: Flag 8, mu: %d\n", mu);
 	contract(tmp4, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	printfQuda("Loops: Flag 9, mu: %d\n", mu);
 	// Term 0 + Term 3 - Term 2 (D Dif)
 	contract(tmp4, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	printfQuda("Loops: Flag 10, mu: %d\n", mu);
 
 	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu+4);
+	printfQuda("Loops: Flag 11, mu: %d\n", mu);
 	// Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
 	contract(x, tmp4, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	printfQuda("Loops: Flag 12, mu: %d\n", mu);
 	// Term 0 + Term 3 - Term 2 - Term 1 (D Dif)
 	contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	printfQuda("Loops: Flag 13, mu: %d\n", mu);
 	cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
+	printfQuda("Loops: Flag 14, mu: %d\n", mu);
       
 	if( typeid(Float) == typeid(float) ) {
 	  cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx,  (float*) cnD_gv[mu], incy);
+	  printfQuda("Loops: Flag 15, mu: %d\n", mu);
 	}
 	else if( typeid(Float) == typeid(double) ) {
 	  cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnD_gv[mu], incy);
+	  printfQuda("Loops: Flag 16, mu: %d\n", mu);
 	}
+
 	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
 	//	((Float *) cnD_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
       
 	cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
+	printfQuda("Loops: Flag 17, mu: %d\n", mu);
       
 	if( typeid(Float) == typeid(float) ) {
 	  cblas_caxpy(NN, (float*) pceval, (float*) h_ctrn, incx, (float*) cnC_gv[mu], incy);
+	  printfQuda("Loops: Flag 18, mu: %d\n", mu);
 	}
 	else if( typeid(Float) == typeid(double) ) {
 	  cblas_zaxpy(NN, (double*) pceval, (double*) h_ctrn, incx, (double*) cnC_gv[mu], incy);
+	  printfQuda("Loops: Flag 19, mu: %d\n", mu);
 	}
 	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
 	//	((Float *) cnC_gv[mu])[ix] += ((Float*)h_ctrn)[ix];
@@ -436,39 +478,53 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
     for(int mu=0; mu<4; mu++) // for standard one-end trick
       {
 	cov->M(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(x),mu);
+	printfQuda("Loops: Flag 20, mu: %d\n", mu);
 	cov->M(static_cast<cudaColorSpinorField&>(tmp3),static_cast<cudaColorSpinorField&>(x),mu+4);
+	printfQuda("Loops: Flag 21, mu: %d\n", mu);
 	// Term 0
 	contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
+	printfQuda("Loops: Flag 22, mu: %d\n", mu);
 	// Term 0 + Term 3
 	contract(tmp3, x, ctrnS, QUDA_CONTRACT_GAMMA5_PLUS);
+	printfQuda("Loops: Flag 23, mu: %d\n", mu);
 	cudaMemcpy(ctrnC, ctrnS, sizeBuffer, cudaMemcpyDeviceToDevice);
+	printfQuda("Loops: Flag 24, mu: %d\n", mu);
       
 	// Term 0 + Term 3 + Term 2 (C Sum)
 	contract(tmp4, x, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	printfQuda("Loops: Flag 25, mu: %d\n", mu);
 	// Term 0 + Term 3 - Term 2 (D Dif)
 	contract(tmp4, x, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	printfQuda("Loops: Flag 26, mu: %d\n", mu);
 	// Term 0 + Term 3 + Term 2 + Term 1 (C Sum)
 	contract(x, tmp3, ctrnC, QUDA_CONTRACT_GAMMA5_PLUS);
+	printfQuda("Loops: Flag 27, mu: %d\n", mu);
 	// Term 0 + Term 3 - Term 2 - Term 1 (D Dif)                          
 	contract(x, tmp3, ctrnS, QUDA_CONTRACT_GAMMA5_MINUS);
+	printfQuda("Loops: Flag 28, mu: %d\n", mu);
 	cudaMemcpy(h_ctrn, ctrnS, sizeBuffer, cudaMemcpyDeviceToHost);
-      
+      	printfQuda("Loops: Flag 29, mu: %d\n", mu);
 	if( typeid(Float) == typeid(float) ) {
 	  cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnD_vv[mu], incy);
+	  printfQuda("Loops: Flag 30, mu: %d\n", mu);
 	}
 	else if( typeid(Float) == typeid(double) ) { 
 	  cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnD_vv[mu], incy);
+	  printfQuda("Loops: Flag 31, mu: %d\n", mu);
 	}
 	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)
 	//	((Float *) cnD_vv[mu])[ix]  -= ((Float*)h_ctrn)[ix];
       
 	cudaMemcpy(h_ctrn, ctrnC, sizeBuffer, cudaMemcpyDeviceToHost);
+	printfQuda("Loops: Flag 32, mu: %d\n", mu);
       
 	if( typeid(Float) == typeid(float) ) {
 	  cblas_caxpy(NN, (float*) mceval, (float*) h_ctrn, incx, (float*) cnC_vv[mu], incy);
+	  printfQuda("Loops: Flag 33, mu: %d\n", mu);
 	}
 	else if( typeid(Float) == typeid(double) ) {
 	  cblas_zaxpy(NN, (double*) mceval, (double*) h_ctrn, incx, (double*) cnC_vv[mu], incy);
+	  printfQuda("Loops: Flag 34, mu: %d\n", mu);
 	}
       
 	//      for(int ix=0; ix < 32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]; ix++)

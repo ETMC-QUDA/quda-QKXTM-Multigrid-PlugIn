@@ -1083,6 +1083,8 @@ void QKXTM_Deflation<Float>::eigenSolver(){
 
   t_ini = MPI_Wtime();
 
+  int arpack_iter = 0;
+
   do{
 
 #ifndef MPI_COMMS 
@@ -1124,6 +1126,9 @@ void QKXTM_Deflation<Float>::eigenSolver(){
       *h_v2= *d_v2;
     }
 
+    printfQuda("arpack iter = %d\n", arpack_iter);
+    arpack_iter++;
+    
   } while (ido != 99);
   
   /*

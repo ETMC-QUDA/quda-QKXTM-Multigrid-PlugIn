@@ -620,6 +620,49 @@ int HadamardElements(int i, int j){
     return -1;
 }
 
+
+template <typename Float>
+void get_probing4D_spinColor_temporal_dilution(void *temp_input_vector, void *input_vector, unsigned short int *Vc, int ih, int sc, int T_block){
+  
+  //Zero out temp vector
+  memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));
+
+  // GK_timeRank is the value of the MPI process in the T dimension
+  // GK_timeSize is the total  MPI processes in the T dimension
+  // GK_totalL[3] is the temporal extent of the lattice
+  // GK_localL[3] is the temporal extent of on the MPI node
+  // T_block is the nth lattice timeslice to be populated.
+  
+  // Must determine if the local i index is part of a timeslice
+  // to be populated. Using integer division, the local index i
+  // divided by the local spatial volume gives a floored integer
+  // equal to the local temporal index: eg
+  // for a local x,y,z,t of {4,4,4,8} and index of, say 361
+  // t_loc = floor[361/(4**3)] = 5, so the local time index is 5.
+  // The lattice time index t is therefore 
+  // t = GK_timeRank * GK_localL[3] + t_loc
+  // If t%T_block == 0, populate the array.
+
+  int c;
+  int signProbing;
+  int t;
+  int localSpaceVol = GK_localVolume/GK_localL[3];
+  for(int i = 0 ; i < GK_localVolume ; i++){
+    //get local t index
+    t = i/localSpaceVol;
+    //get global t index
+    t += GK_timeRank*GK_localL[3];
+    //Apply temporal blocking condition
+    if(t%T_block == 0) {      
+      c = Vc[i];
+      int signProbing = HadamardElements(c,ih);
+      for(int ri = 0 ; ri < 2 ; ri++)
+	((Float*)temp_input_vector)[i*12*2+sc*2+ri] = signProbing * ((Float*)input_vector)[i*12*2+sc*2+ri];
+    }
+  }
+}
+
+
 template <typename Float>
 void get_probing4D_spinColor_dilution(void *temp_input_vector, void *input_vector, unsigned short int *Vc, int ih, int sc){
   memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));

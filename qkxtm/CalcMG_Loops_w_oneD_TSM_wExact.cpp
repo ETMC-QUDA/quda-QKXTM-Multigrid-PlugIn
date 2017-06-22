@@ -152,6 +152,7 @@ extern bool isFullOp;
 // K.H probing parameters
 extern int k_probing;
 extern bool spinColorDil;
+extern bool tDilution;
 extern bool loopCovDev;
 
 namespace quda {
@@ -597,6 +598,7 @@ int main(int argc, char **argv)
   loopInfo.traj = traj;
   loopInfo.Qsq = Q_sq;
   loopInfo.k_probing = k_probing;
+  loopInfo.tDilution = tDilution;
   loopInfo.spinColorDil = spinColorDil;
   loopInfo.loopCovDev = loopCovDev;
   strcpy(loopInfo.loop_fname,loop_fname);

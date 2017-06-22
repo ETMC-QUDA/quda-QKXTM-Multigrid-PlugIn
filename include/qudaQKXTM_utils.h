@@ -124,6 +124,7 @@ namespace quda {
     int TSM_maxiter[MAX_LP_CRIT] = {0,0,0,0,0,0,0,0,0,0};
     double TSM_tol[MAX_LP_CRIT]  = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
     int k_probing;     // if its value <=0 then probing is switched off
+    int tDilution;     // populate every tDilution = nth timeslice only
     bool spinColorDil; // enables spin color dilution
     bool loopCovDev;   // enables covariant derivate calculations in loops.
   } qudaQKXTM_loopInfo;

@@ -1247,7 +1247,7 @@ void QKXTM_Deflation<Float>::eigenSolver(){
   }
   // Caluclate v^dag gamma_5 v
   char fname[256];
-  sprintf(fname,"v_g5_product_%s",arpack_logfile);  
+  sprintf(fname,"%s_v_g5_product",arpack_logfile);  
   FILE *fptr;
   fptr = fopen(fname,"wa");
 

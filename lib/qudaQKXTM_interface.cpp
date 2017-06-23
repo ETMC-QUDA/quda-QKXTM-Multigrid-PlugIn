@@ -8149,6 +8149,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	      dirac.prepare(in,out,*x_LP[LP_crit],*b,param->solution_type); 
 
 	      // Create the low-precision solver
+	      //if(LP_crit > 0) param->use_init_guess = QUDA_USE_INIT_GUESS_YES;
 	      SolverParam solverParam_LP(*param);
 	      Solver *solve_LP = Solver::create(solverParam_LP, m, mSloppy, 
 						mPre, profileInvert);
@@ -8161,7 +8162,10 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	      if(is == 0 && LP_crit == 0) saveTuneCache();
 	      delete solve_LP;
 	      t2 = MPI_Wtime();
-
+	      
+	      //DMH: Experimental, attempt to reuse last result
+	      //if(LP_crit < TSM_NLP_iters - 1) blas::copy(*x_LP[LP_crit + 1], *out);
+	      
 	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
 			 "TempDil = %02d, Spin-colour = %02d, LP_crit = %02d "
 			 "- Data Run Inversion Time: %f sec\n",
@@ -8314,11 +8318,11 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       
       t1 = MPI_Wtime();
       if(useTSM) {
-	sprintf(loop_stoch_fname,"%s_stoch_TSM_LP-crit-%d_NeV%d",
-		loopInfo.loop_fname, LP_crit, NeV_defl);
+	sprintf(loop_stoch_fname,"%s_stoch_TSM_LP-crit-%d_NeV%d-tDil%d",
+		loopInfo.loop_fname, LP_crit, NeV_defl, tDil);
       } else {
-	sprintf(loop_stoch_fname,"%s_stoch_NeV%d",
-		loopInfo.loop_fname,  NeV_defl);
+	sprintf(loop_stoch_fname,"%s_stoch_NeV%d-tDil%d",
+		loopInfo.loop_fname,  NeV_defl, tDil);
       }
       
       if(LoopFileFormat==ASCII_FORM){ 
@@ -8726,8 +8730,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       int NeV_defl = loopInfo.deflStep[dstep];
 
       t1 = MPI_Wtime();
-      sprintf(loop_stoch_fname,"%s_stoch_TSM_NeV%d_HighPrec",
-	      loopInfo.loop_fname, NeV_defl);
+      sprintf(loop_stoch_fname,"%s_stoch_TSM_NeV%d_HighPrec-tDil%d",
+	      loopInfo.loop_fname, NeV_defl, tDil);
       if(LoopFileFormat==ASCII_FORM){ 
 	// Write the loops in ASCII format
 	writeLoops_ASCII(buf_std_uloc_HP[dstep], loop_stoch_fname, 
@@ -8776,8 +8780,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	int idx = LP_crit*deflSteps + dstep;
 
 	t1 = MPI_Wtime();
-	sprintf(loop_stoch_fname,"%s_stoch_TSM_NeV%d_LowPrec-crit-%d",
-		loopInfo.loop_fname, NeV_defl, LP_crit);
+	sprintf(loop_stoch_fname,"%s_stoch_TSM_NeV%d_LowPrec-crit-%d-tDil%d",
+		loopInfo.loop_fname, NeV_defl, LP_crit, tDil);
 
 	if(LoopFileFormat==ASCII_FORM){ 
 	  // Write the loops in ASCII format

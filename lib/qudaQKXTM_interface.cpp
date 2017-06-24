@@ -7350,12 +7350,10 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   char loop_exact_fname[512];
   char loop_stoch_fname[512];
 
+  //Fix to true for data write routines only.
+  bool useTSM = true;
+
   //-C.K. Truncated solver method params
-  bool useTSM = loopInfo.useTSM;
-  int TSM_NHP = loopInfo.TSM_NHP;
-  int TSM_NdumpHP = loopInfo.TSM_NdumpHP;
-  int TSM_NdumpLP = loopInfo.TSM_NdumpLP;
-  int TSM_NprintHP = loopInfo.TSM_NprintHP;
   int TSM_NprintLP = loopInfo.TSM_NprintLP;
   int TSM_NLP_iters = loopInfo.TSM_NLP_iters;
   double TSM_tol[TSM_NLP_iters];
@@ -7393,20 +7391,11 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   printfQuda(" The loop file format is %s\n", (LoopFileFormat == ASCII_FORM) ? "ASCII" : "HDF5");
   printfQuda(" The loop base name is %s\n",loopInfo.loop_fname);
   printfQuda(" Will %sperform covariant derivative calculations\n",loopCovDev ? "" : "not ");
-  printfQuda(" Will perform the loop for the following %d numbers of eigenvalues:",deflSteps);
-  if(useTSM){
-    printfQuda("\n Will perform the Truncated Solver method using the following parameters:\n");
-    printfQuda(" %d Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions per TSM criterion\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
-    printfQuda(" N_HP = %d High precision stochastic vectors\n",TSM_NHP);
-    printfQuda(" N_LP_iters = %d Low precision stopping criteria\n",TSM_NLP_iters);
-    for(int a=0; a<TSM_NLP_iters; a++) {
-      if (TSM_maxiter[0] == 0) printfQuda(" Solver stopping criterion %d is: tol = %e\n",a, TSM_tol[a]);
-      else printfQuda(" Solver stopping criterion %d is: max-iter = %ld\n", a, TSM_maxiter[a]);
-    }
-  }
-  else{
-    printfQuda(" Will not perform the Truncated Solver method\n");
-    printfQuda(" %s Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
+  printfQuda(" %d Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions per TSM criterion\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
+  printfQuda(" N_LP_iters = %d Low precision stopping criteria\n",TSM_NLP_iters);
+  for(int a=0; a<TSM_NLP_iters; a++) {
+    if (TSM_maxiter[0] == 0) printfQuda(" Solver stopping criterion %d is: tol = %e\n",a, TSM_tol[a]);
+    else printfQuda(" Solver stopping criterion %d is: max-iter = %ld\n", a, TSM_maxiter[a]);
   }
   printfQuda(" Will project\n");
   for (int a=0; a<deflSteps; a++) printfQuda(" Ndefl %d: %d\n", a, nDefl[a]);
@@ -7508,8 +7497,9 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   printfQuda("%s: Accumulation buffers memory allocated properly.\n",fname);
   //----------------------------------------------------------------------//
   
-  //-Allocate memory for the write buffers //DMH ???
-  int Nprt = ( useTSM ? TSM_NprintLP*TSM_NLP_iters : Nprint );
+  //-Allocate memory for the write buffers
+  //int Nprt = ( useTSM ? TSM_NprintLP*TSM_NLP_iters : Nprint );
+  int Nprt = TSM_NprintLP*TSM_NLP_iters;
 
   double *buf_std_uloc[deflSteps*TSM_NLP_iters];
   double *buf_gen_uloc[deflSteps*TSM_NLP_iters];
@@ -7569,212 +7559,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
     }
   }
 
-  
-  //------------------ Allocate extra memory if using TSM ----------------//
-  //======================================================================//
 
-  void *std_uloc_LP[deflSteps*TSM_NLP_iters];
-  void *gen_uloc_LP[deflSteps*TSM_NLP_iters];
-  void **std_oneD_LP[deflSteps*TSM_NLP_iters];
-  void **gen_oneD_LP[deflSteps*TSM_NLP_iters];
-  void **std_csvC_LP[deflSteps*TSM_NLP_iters];
-  void **gen_csvC_LP[deflSteps*TSM_NLP_iters];
-
-  //Write buffers
-  double *buf_std_uloc_LP[deflSteps*TSM_NLP_iters];
-  double *buf_gen_uloc_LP[deflSteps*TSM_NLP_iters];
-  double **buf_std_oneD_LP[deflSteps*TSM_NLP_iters];
-  double **buf_gen_oneD_LP[deflSteps*TSM_NLP_iters];
-  double **buf_std_csvC_LP[deflSteps*TSM_NLP_iters];
-  double **buf_gen_csvC_LP[deflSteps*TSM_NLP_iters];
- 
-  if(useTSM){
-    for(int step=0;step<deflSteps*TSM_NLP_iters;step++){
-      //- low-precision accumulation buffers, ultra-local
-      if((cudaHostAlloc(&(std_uloc_LP[step]), sizeof(double)*2*16*GK_localVolume, 
-			cudaHostAllocMapped)) != cudaSuccess)
-	errorQuda("%s: Error allocating memory std_uloc_LP[%d]\n",
-		  fname,step);
-
-      if((cudaHostAlloc(&(gen_uloc_LP[step]), sizeof(double)*2*16*GK_localVolume, 
-			cudaHostAllocMapped)) != cudaSuccess)
-	errorQuda("%s: Error allocating memory gen_uloc_LP[%d]\n",
-		  fname,step);
-      
-      cudaMemset(std_uloc_LP[step], 0, sizeof(double)*2*16*GK_localVolume);
-      cudaMemset(gen_uloc_LP[step], 0, sizeof(double)*2*16*GK_localVolume);
-      cudaDeviceSynchronize();
-      
-      //- low-precision accumulation buffers, 
-      // one-Derivative and conserved current
-      std_oneD_LP[step] = (void**) malloc(4*sizeof(double*));
-      gen_oneD_LP[step] = (void**) malloc(4*sizeof(double*));
-      std_csvC_LP[step] = (void**) malloc(4*sizeof(double*));
-      gen_csvC_LP[step] = (void**) malloc(4*sizeof(double*));
-      
-      if(gen_oneD_LP[step] == NULL) 
-	errorQuda("%s: Error allocating memory gen_oneD_LP[%d]\n",
-		  fname,step);
-      if(std_oneD_LP[step] == NULL) 
-	errorQuda("%s: Error allocating memory std_oneD_LP[%d]\n",
-		  fname,step);
-      if(gen_csvC_LP[step] == NULL) 
-	errorQuda("%s: Error allocating memory gen_csvC_LP[%d]\n",
-		  fname,step);
-      if(std_csvC_LP[step] == NULL) 
-	errorQuda("%s: Error allocating memory std_csvC_LP[%d]\n",
-		  fname,step);
-      cudaDeviceSynchronize();
-      
-      for(int mu = 0; mu < 4 ; mu++){
-	if((cudaHostAlloc(&(std_oneD_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory std_oneD_LP[%d][%d]\n",
-		    fname,step,mu);
-
-	if((cudaHostAlloc(&(gen_oneD_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory gen_oneD_LP[%d][%d]\n",
-		    fname,step,mu);
-
-	if((cudaHostAlloc(&(std_csvC_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory std_csvC_LP[%d][%d]\n",
-		    fname,step,mu);
-	
-	if((cudaHostAlloc(&(gen_csvC_LP[step][mu]), sizeof(double)*2*16*GK_localVolume, 
-			  cudaHostAllocMapped)) != cudaSuccess)
-	  errorQuda("%s: Error allocating memory gen_csvC_LP[%d][%d]\n",
-		    fname,step,mu);    
-	
-	cudaMemset(std_oneD_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(gen_oneD_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(std_csvC_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(gen_csvC_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-      }
-      cudaDeviceSynchronize();
-      //------------------------------
-
-
-      //-write buffers for Low-precision loops      
-      buf_std_uloc_LP[step] = 
-	(double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_gen_uloc_LP[step] = 
-	(double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-
-      buf_std_oneD_LP[step] = (double**)malloc(4*sizeof(double*));
-      buf_gen_oneD_LP[step] = (double**)malloc(4*sizeof(double*));
-      buf_std_csvC_LP[step] = (double**)malloc(4*sizeof(double*));
-      buf_gen_csvC_LP[step] = (double**)malloc(4*sizeof(double*));
-
-      if( buf_std_uloc_LP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_uloc_LP[%d] failed.",step);
-      if( buf_gen_uloc_LP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_gen_uloc_LP[%d] failed.",step);
-      
-      if( buf_std_oneD_LP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d] failed.",step);
-      if( buf_gen_oneD_LP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d] failed.",step);
-      if( buf_std_csvC_LP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d] failed.",step);
-      if( buf_gen_csvC_LP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d] failed.",step);
-
-      for(int mu = 0; mu < 4 ; mu++){
-
-      buf_std_oneD_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_gen_oneD_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_std_csvC_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_gen_csvC_LP[step][mu] = 
-        (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      
-      if(buf_std_oneD_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		  step,mu);
-      if(buf_gen_oneD_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		  step,mu);
-      if(buf_std_csvC_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		   step,mu);
-      if(buf_gen_csvC_LP[step][mu] == NULL) 
-	errorQuda("Allocation of buffer buf_std_oneD_LP[%d][%d] failed.",
-		   step,mu);
-      }
-    }
-  }
-  //---------write buffers for High-precision loops -----------//
-  //-----------------------------------------------------------//
-
-  double *buf_std_uloc_HP[deflSteps];
-  double *buf_gen_uloc_HP[deflSteps];
-  double **buf_std_oneD_HP[deflSteps];
-  double **buf_gen_oneD_HP[deflSteps]; 
-  double **buf_std_csvC_HP[deflSteps]; 
-  double **buf_gen_csvC_HP[deflSteps];
-  
-  if(useTSM) { 
-    for(int step=0;step<deflSteps;step++){      
-      buf_std_uloc_HP[step] = 
-	(double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      buf_gen_uloc_HP[step] = 
-	(double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-      
-      buf_std_oneD_HP[step] = (double**)malloc(4*sizeof(double*));
-      buf_gen_oneD_HP[step] = (double**)malloc(4*sizeof(double*));
-      buf_std_csvC_HP[step] = (double**)malloc(4*sizeof(double*));
-      buf_gen_csvC_HP[step] = (double**)malloc(4*sizeof(double*));
-      
-      if( buf_std_uloc_HP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_uloc_HP[%d] failed.",step);
-      if( buf_gen_uloc_HP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_gen_uloc_HP[%d] failed.",step);
-      
-      if( buf_std_oneD_HP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_HP[%d] failed.",step);
-      if( buf_gen_oneD_HP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_HP[%d] failed.",step);
-      if( buf_std_csvC_HP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_HP[%d] failed.",step);
-      if( buf_gen_csvC_HP[step] == NULL ) 
-	errorQuda("Allocation of buffer buf_std_oneD_HP[%d] failed.",step);
-      
-      for(int mu = 0; mu < 4 ; mu++){
-	
-	buf_std_oneD_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	buf_gen_oneD_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	buf_std_csvC_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	buf_gen_csvC_HP[step][mu] = 
-	  (double*)malloc(TSM_NprintHP*2*16*Nmoms*GK_localL[3]*sizeof(double));
-	
-	if(buf_std_oneD_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
-	if(buf_gen_oneD_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
-	if(buf_std_csvC_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
-	if(buf_gen_csvC_HP[step][mu] == NULL) 
-	  errorQuda("Allocation of buffer buf_std_oneD_HP[%d][%d] failed.",
-		    step,mu);
-      }
-      
-    }//-dsetp
-  }//-if useTSM
-  
   printfQuda("%s: Write buffers memory allocated properly.\n",fname);
   //--------------------------------------
   
@@ -8045,10 +7830,10 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   x    = new cudaColorSpinorField(cudaParam);
   tmp3 = new cudaColorSpinorField(cudaParam);
   tmp4 = new cudaColorSpinorField(cudaParam);
-  if(useTSM) {
-    for(int a=0; a<TSM_NLP_iters; a++) 
-      x_LP[a] = new cudaColorSpinorField(cudaParam);
-  }
+  //if(useTSM) {
+  for(int a=0; a<TSM_NLP_iters; a++) 
+    x_LP[a] = new cudaColorSpinorField(cudaParam);
+  //}
 
   profileInvert.TPSTOP(QUDA_PROFILE_H2D);
 
@@ -8131,94 +7916,73 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	  K_vector->loadVector();
 	  K_vector->uploadToCuda(b,flag_eo);
       
-	  if(useTSM) {
-	    double orig_tol = param->tol;
-	    long int orig_maxiter = param->maxiter;
+	  double orig_tol = param->tol;
+	  long int orig_maxiter = param->maxiter;
 	  
-	    //If we are using the TSM, we need the LP
-	    //solves for bias estimation. We loop over
-	    //the LP stopping criteria, and store each 
-	    //solution as a guess for the next LP
-	    for(int LP_crit = 0; LP_crit<TSM_NLP_iters; LP_crit++) {
-
-	      t1 = MPI_Wtime();
-	      // Set the low-precision criterion
-	      if(TSM_maxiter[0]==0) param->tol = TSM_tol[LP_crit];
-	      else if(TSM_tol[0]==0) param->maxiter = TSM_maxiter[LP_crit];  
-
-	      dirac.prepare(in,out,*x_LP[LP_crit],*b,param->solution_type); 
-
-	      // Create the low-precision solver
-	      //if(LP_crit > 0) param->use_init_guess = QUDA_USE_INIT_GUESS_YES;
-	      SolverParam solverParam_LP(*param);
-	      Solver *solve_LP = Solver::create(solverParam_LP, m, mSloppy, 
-						mPre, profileInvert);
-
-	      //LP solve
-	      (*solve_LP)(*out,*in);	    
-	      dirac.reconstruct(*x_LP[LP_crit],*b,param->solution_type);
-	      //Store each LP solution
-	      sol_LP[LP_crit] = new cudaColorSpinorField(*x_LP[LP_crit]);
-	      if(is == 0 && LP_crit == 0) saveTuneCache();
-	      delete solve_LP;
-	      t2 = MPI_Wtime();
-	      
-	      //DMH: Experimental, attempt to reuse last result
-	      //if(LP_crit < TSM_NLP_iters - 1) blas::copy(*x_LP[LP_crit + 1], *out);
-	      
-	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-			 "TempDil = %02d, Spin-colour = %02d, LP_crit = %02d "
-			 "- Data Run Inversion Time: %f sec\n",
-			 msg_str, is, ih, it, sc, LP_crit, t2-t1);
-	      
-	    }
-
-	    // Revert to the original, high-precision values
-	    param->tol = orig_tol;           
-	    param->maxiter = orig_maxiter;
+	  //If we are using the TSM, we need the LP
+	  //solves for bias estimation. We loop over
+	  //the LP stopping criteria, and store each 
+	  //solution as a guess for the next LP. 
+	  //If TSM_NLP_iters is set to 1, this loop,
+	  //runs once.
 	  
-	  }
-
-	  //Else, just do the HP solve.
-	  else {
-	    //HP solve
+	  for(int LP_crit = 0; LP_crit<TSM_NLP_iters; LP_crit++) {
+	    
 	    t1 = MPI_Wtime();
-	    SolverParam solverParam(*param);
-	    Solver *solve = Solver::create(solverParam, m, mSloppy, 
-					   mPre, profileInvert);
-	    (*solve)(*out,*in);
-	    dirac.reconstruct(*x,*b,param->solution_type);    
-	    sol_LP[0] = new cudaColorSpinorField(*x);    
-	    if(is == 0) saveTuneCache();
-	    delete solve;
+	    // Set the low-precision criterion
+	    if(TSM_maxiter[0]==0) param->tol = TSM_tol[LP_crit];
+	    else if(TSM_tol[0]==0) param->maxiter = TSM_maxiter[LP_crit];  
+	    
+	    dirac.prepare(in,out,*x_LP[LP_crit],*b,param->solution_type); 
+
+	    // Create the low-precision solver
+	    if(LP_crit > 0) param->use_init_guess = QUDA_USE_INIT_GUESS_YES;
+	    SolverParam solverParam_LP(*param);
+	    Solver *solve_LP = Solver::create(solverParam_LP, m, mSloppy, 
+					      mPre, profileInvert);
+	    
+	    //LP solve
+	    (*solve_LP)(*out,*in);	    
+	    dirac.reconstruct(*x_LP[LP_crit],*b,param->solution_type);
+	    //Store each LP solution
+	    sol_LP[LP_crit] = new cudaColorSpinorField(*x_LP[LP_crit]);
+	    if(is == 0 && LP_crit == 0) saveTuneCache();
+	    delete solve_LP;
 	    t2 = MPI_Wtime();
-
+	    
+	    //DMH: Experimental, attempt to reuse last result
+	    if(LP_crit < TSM_NLP_iters - 1) blas::copy(*x_LP[LP_crit + 1], *x_LP[LP_crit]);
+	    
 	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-		       "TempDil = %02d, Spin-colour = %02d, "
+		       "TempDil = %02d, Spin-colour = %02d, LP_crit = %02d "
 		       "- Data Run Inversion Time: %f sec\n",
-		       msg_str, is, ih, it, sc, t2-t1);
-
+		       msg_str, is, ih, it, sc, LP_crit, t2-t1);
+	    
 	  }
-	
-	
+	  
+	  // Revert to the original, high-precision values
+	  param->tol = orig_tol;           
+	  param->maxiter = orig_maxiter;
+	  
+	  
 	  //Loop over LP criteria slowest to preserve data structure
 	  //in the HDf5 write routines, with deflation steps running the 
-	  //fastest. If TSM is disabled, TSM_NLP_iters is set to 1 and this 
+	  //fastest. If TSM_NLP_iters is set to 1, this 
 	  //loop runs once.
 	  for(int LP_crit=0; LP_crit<TSM_NLP_iters; LP_crit++){
-	  
+	    
 	    // Loop over the number of deflation steps
 	    for(int dstep=0;dstep<deflSteps;dstep++){
 	      int NeV_defl = nDefl[dstep];
-
+	      
 	      t1 = MPI_Wtime();	
 	      K_vector->downloadFromCuda(sol_LP[LP_crit],flag_eo);
 	      K_vector->download();
-      
+	      
 	      // Solution is projected and put into x, x <- (1-UU^dag) x
 	      deflation->projectVector(*K_vecdef,*K_vector,is+1,NeV_defl);
 	      K_vecdef->uploadToCuda(x_LP[LP_crit], flag_eo);              
-      
+	      
 	      t2 = MPI_Wtime();
 	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
 			 "TempDil = %02d, Spin-colour = %02d, NeV = %04d, "
@@ -8229,26 +7993,26 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	      //Index to point to correct part of accumulation array and 
 	      //write buffer
 	      int idx = LP_crit*deflSteps + dstep;
-
+	      
 	      t1 = MPI_Wtime();
 	      oneEndTrick_w_One_Der<double>(*x_LP[LP_crit], *tmp3, *tmp4, param, loopCovDev,
 					    gen_uloc[idx], std_uloc[idx], 
 					    gen_oneD[idx], std_oneD[idx], 
 					    gen_csvC[idx], std_csvC[idx]);
 	      t2 = MPI_Wtime();
-
+	      
 	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
 			 "TempDil = %02d, Spin-colour = %02d, NeV = %04d, "
 			 "LP crit = %02d - oneEndTrick: %f sec\n",
 			 msg_str,is, ih, it, sc, NeV_defl, LP_crit, t2-t1);
-      	    
+	      
 	      //Condition to assert if we are dumping at this stochastic source
 	      //and if we have completed a loop over Hadamard vectors. If true,
 	      //dump the data.
 	      if( ((is+1)%Nd == 0)&&((ih*tDil+it)*Nsc+sc == Nc*tDil*Nsc-1)){
 		//iPrint increments the starting points in the write buffers.
 		if(idx==0) iPrint++;
-	      
+		
 		t1 = MPI_Wtime();
 		if(GK_nProc[2]==1){      
 		  doCudaFFT_v2<double>(std_uloc[idx], tmp_loop); // Scalar
@@ -8257,7 +8021,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 		  doCudaFFT_v2<double>(gen_uloc[idx], tmp_loop); // dOp
 		  copyLoopToWriteBuf(buf_gen_uloc[idx], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom);
-	    
+		  
 		  for(int mu = 0 ; mu < 4 ; mu++){
 		    doCudaFFT_v2<double>(std_oneD[idx][mu], tmp_loop); // Loops
 		    copyLoopToWriteBuf(buf_std_oneD[idx][mu], tmp_loop, 
@@ -8278,7 +8042,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				     iPrint, Nmoms, momQsq);
 		  performFFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
 				     iPrint, Nmoms, momQsq);
-		
+		  
 		  for(int mu=0;mu<4;mu++){
 		    performFFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
 				       iPrint, Nmoms, momQsq);
@@ -8291,8 +8055,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 		  }
 		}
 		t2 = MPI_Wtime();
-		printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
-			   " - Loops FFT and copy %f sec\n",msg_str, is, ih, sc, NeV_defl, LP_crit, t2-t1);
+		printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, TempDil = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
+			   " - Loops FFT and copy %f sec\n",msg_str, is, ih, it, sc, NeV_defl, LP_crit, t2-t1);
 	      }// Dump conditonal
 	    }// Deflation steps
 	  }// LP criteria
@@ -8317,13 +8081,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       int idx = LP_crit*deflSteps + dstep;
       
       t1 = MPI_Wtime();
-      if(useTSM) {
-	sprintf(loop_stoch_fname,"%s_stoch_TSM_LP-crit-%d_NeV%d-tDil%d",
-		loopInfo.loop_fname, LP_crit, NeV_defl, tDil);
-      } else {
-	sprintf(loop_stoch_fname,"%s_stoch_NeV%d-tDil%d",
-		loopInfo.loop_fname,  NeV_defl, tDil);
-      }
+      sprintf(loop_stoch_fname,"%s_stoch_TSM_LP-crit-%d_NeV%d-tDil%d",
+	      loopInfo.loop_fname, LP_crit, NeV_defl, tDil);
       
       if(LoopFileFormat==ASCII_FORM){ 
 	// Write the loops in ASCII format
@@ -8360,466 +8119,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       printfQuda("TIME_REPORT: Writing the Stochastic part of the loops for NeV = %d, LP crit %d: completed in %f sec.\n",NeV_defl,LP_crit,t2-t1);
     }// LP criteria
   } //
-
-  //- If using Truncated-Solver-Method, then proceed with
-  //- performing the loop calculation, for the low-precision and the 
-  //- high-precision inversions
-  if(useTSM){
-    //-Prepare the loops arrays for High- and Low-Precision
-    cudaMemset(tmp_loop, 0, sizeof(double)*2*16*GK_localVolume);
-
-    //HP
-    for(int dstep=0;dstep<loopInfo.nSteps_defl;dstep++){
-      cudaMemset(std_uloc[dstep], 0, sizeof(double)*2*16*GK_localVolume);  
-      cudaMemset(gen_uloc[dstep], 0, sizeof(double)*2*16*GK_localVolume);  
-      
-      for(int mu = 0; mu < 4 ; mu++){
-	cudaMemset(std_oneD[dstep][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume); 
-	cudaMemset(gen_oneD[dstep][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);  
-	cudaMemset(std_csvC[dstep][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);  
-	cudaMemset(gen_csvC[dstep][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);  
-
-      }
-      cudaDeviceSynchronize();
-    }
-    
-    //LP
-    for(int step=0; step<loopInfo.nSteps_defl*loopInfo.TSM_NLP_iters; step++){
-      cudaMemset(std_uloc_LP[step], 0, sizeof(double)*2*16*GK_localVolume);
-      cudaMemset(gen_uloc_LP[step], 0, sizeof(double)*2*16*GK_localVolume);
-      
-      for(int mu = 0; mu < 4 ; mu++){
-	cudaMemset(std_oneD_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(gen_oneD_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(std_csvC_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-	cudaMemset(gen_csvC_LP[step][mu], 0, 
-		   sizeof(double)*2*16*GK_localVolume);
-      }
-      cudaDeviceSynchronize();
-    }
-
-    //-------------------------------------------------
-    
-    printfQuda("\nWill Perform the HP and LP inversions\n\n");
-
-    Nrun = TSM_NHP;
-    Nd = TSM_NdumpHP;
-    iPrint = -1;
-    for(int is = 0 ; is < Nrun ; is++){
-      t1 = MPI_Wtime();
-      memset(input_vector,0,
-	     GK_localL[0]*
-	     GK_localL[1]*
-	     GK_localL[2]*
-	     GK_localL[3]*spinorSiteSize*sizeof(double));
-
-      getStochasticRandomSource<double>(input_vector,rNum,info.source_type);
-
-      t2 = MPI_Wtime();
-      printfQuda("TIME_REPORT: %s %04d - Source creation: %f sec\n",
-		 msg_str,is+1,t2-t1);
-
-      //Loop over probing iterations
-      for( int ih = 0 ; ih < Nc ; ih++) {
-	//Loop over temporal dilution 
-	for( int it = 0 ; it < tDil ; it++) {
-	  //Loop over spin-colour dilution
-	  for(int sc = 0 ; sc < Nsc ; sc++){      
-	    t3 = MPI_Wtime();
-	  
-	    if(spinColorDil){
-	      if(isProbing)
-		if(tDil > 1) {
-		  get_probing4D_spinColor_temporal_dilution<double>(temp_input_vector, input_vector, Vc, ih, sc, it, tDil);
-		} else {
-		  get_probing4D_spinColor_dilution<double>(temp_input_vector, input_vector, Vc, ih, sc);
-		}
-	    } else{
-	      if(isProbing)
-		get_probing4D_dilution<double>(temp_input_vector, input_vector, Vc, ih);
-	      else
-		temp_input_vector = input_vector;
-	    }
-
-	    K_vector->packVector((double*) temp_input_vector);
-	    K_vector->loadVector();
-	    K_vector->uploadToCuda(b,flag_eo);
-      
-	    // in -> b, out -> x, for parity singlets
-	    dirac.prepare(in,out   ,*x   ,*b,param->solution_type); 
-
-	    //LP solve
-	    //-------------------------------------------------
-	    double orig_tol = param->tol;
-	    long int orig_maxiter = param->maxiter;
-
-	    //If we are using the TSM, we need the LP
-	    //solves for bias estimation. We loop over
-	    //the LP stopping criteria, and store each 
-	    //solution as a guess for the next LP
-	    for(int LP_crit = 0; LP_crit<TSM_NLP_iters; LP_crit++) {
-
-	      t1 = MPI_Wtime();
-
-	      // Set the low-precision criterion
-	      if(TSM_maxiter[0]==0) param->tol = TSM_tol[LP_crit];
-	      else if(TSM_tol[0]==0) param->maxiter = TSM_maxiter[LP_crit];  
-	    
-	      dirac.prepare(in,out,*x_LP[LP_crit],*b,param->solution_type);
-
-	      // Create the low-precision solver
-	      SolverParam solverParam_LP(*param);
-	      Solver *solve_LP = Solver::create(solverParam_LP, m, mSloppy, 
-						mPre, profileInvert);
-	      (*solve_LP)(*out,*in);
-	      dirac.reconstruct(*x_LP[LP_crit],*b,param->solution_type);	    
-	      sol_LP[LP_crit] = new cudaColorSpinorField(*x_LP[LP_crit]);
-	      delete solve_LP;	    
-
-	      t2 = MPI_Wtime();
-
-	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-			 "TempDil = %02d, Spin-colour = %02d, LP_crit = %02d "
-			 "- LP Inversion Time: %f sec\n",
-			 msg_str, is, ih, it, sc, LP_crit, t2-t1);
-
-	    }
-	  
-	    // Revert to the original, high-precision values
-	    if(TSM_maxiter[0]==0) param->tol = orig_tol;           
-	    else if(TSM_tol[0]==0) param->maxiter = orig_maxiter;      
-	
-	    //HP solve
-	    //-------------------------------------------------
-	    t1 = MPI_Wtime();	    
-	    dirac.prepare(in,out,*x,*b,param->solution_type); 
-	    SolverParam solverParam(*param);
-	    Solver *solve = Solver::create(solverParam, m, mSloppy, mPre, 
-					   profileInvert);
-	    (*solve)(*out,*in);
-	    dirac.reconstruct(*x,*b,param->solution_type);
-	    sol = new cudaColorSpinorField(*x);
-	    delete solve;
-	    t2 = MPI_Wtime();	    
-
-	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-		       "TempDil = %02d, Spin-colour = %02d, "
-		       "- HP Inversion Time: %f sec\n",
-		       msg_str, is, ih, it, sc, t2-t1);
-	    
-	    //-------------------------------------------------
-
-
-	    //------ Perform contractions for HP solves first. --------//
-	    //---------------------------------------------------------//
-
-	    for(int dstep=0;dstep<deflSteps;dstep++){
-	      int NeV_defl = loopInfo.deflStep[dstep];
-
-	      t1 = MPI_Wtime();
-	      K_vector->downloadFromCuda(sol,flag_eo);
-	      K_vector->download();
-	      deflation->projectVector(*K_vecdef,*K_vector,is+1,NeV_defl);
-	    
-	      // Solution is projected and put into x, x <- (1-UU^dag) x
-	      K_vecdef->uploadToCuda(x,flag_eo);
-	      t2 = MPI_Wtime();
-
-	      printfQuda("TIME_REPORT: TSM Stoch = %02d, HadVec = %02d, "
-			 "tempDil = %02d, Spin-colour = %02d, NeV = %04d "
-			 "- HP sol projection: %f sec\n",
-			 is, ih, it, sc, NeV_defl, t2-t1);	  	
-	      // Contractions
-	      //-------------------------------------------------
-	      t1 = MPI_Wtime();
-	      //-high-precision
-	      oneEndTrick_w_One_Der<double>(*x, *tmp3, *tmp4, param,loopCovDev,
-					    gen_uloc[dstep], std_uloc[dstep], 
-					    gen_oneD[dstep], std_oneD[dstep], 
-					    gen_csvC[dstep], std_csvC[dstep]); 
-	      t2 = MPI_Wtime();
-	    
-	      printfQuda("TIME_REPORT: TSM Stoch = %02d, HadVec = %02d, "
-			 "tempDil = %02d, Spin-colour = %02d, NeV = %04d "
-			 "- HP Contractions: %f sec\n",
-			 is, ih, it, sc, NeV_defl, t2-t1);	  
-	    
-	    
-	      // FFT and copy to write buffers
-	      //-------------------------------------------------      
-	      if( (is+1)%Nd == 0 && ((ih*tDil+it)*Nsc+sc == Nc*tDil*Nsc-1 ) ){
-	      
-		if(dstep==0) iPrint++;
-		t1 = MPI_Wtime();
-		if(GK_nProc[2]==1){      
-		  doCudaFFT_v2<double>(std_uloc[dstep]   ,tmp_loop);  
-		  copyLoopToWriteBuf(buf_std_uloc_HP[dstep], tmp_loop, 
-				     iPrint, info.Q_sq, Nmoms, mom); // Scalar
-		  doCudaFFT_v2<double>(gen_uloc[dstep]   ,tmp_loop);
-		  copyLoopToWriteBuf(buf_gen_uloc_HP[dstep], tmp_loop, 
-				     iPrint, info.Q_sq, Nmoms, mom); // dOp
-
-		  for(int mu = 0 ; mu < 4 ; mu++){
-		    doCudaFFT_v2<double>(std_oneD[dstep][mu]   ,tmp_loop);  
-		    copyLoopToWriteBuf(buf_std_oneD_HP[dstep][mu], tmp_loop, 
-				       iPrint,info.Q_sq,Nmoms,mom); // Loops
-		    doCudaFFT_v2<double>(std_csvC[dstep][mu]   ,tmp_loop);  
-		    copyLoopToWriteBuf(buf_std_csvC_HP[dstep][mu], tmp_loop, 
-				       iPrint,info.Q_sq,Nmoms,mom); // LoopsCv
-		    doCudaFFT_v2<double>(gen_oneD[dstep][mu]   ,tmp_loop);
-		    copyLoopToWriteBuf(buf_gen_oneD_HP[dstep][mu],tmp_loop,
-				       iPrint,info.Q_sq,Nmoms,mom); // LpsDw
-		    doCudaFFT_v2<double>(gen_csvC[dstep][mu]   ,tmp_loop);  
-		    copyLoopToWriteBuf(buf_gen_csvC_HP[dstep][mu],tmp_loop,
-				       iPrint,info.Q_sq,Nmoms,mom); // LpsDwCv
-
-		  }
-		}
-		else if(GK_nProc[2]>1){
-		  performFFT<double>(buf_std_uloc_HP[dstep], std_uloc[dstep], 
-				     iPrint, Nmoms, momQsq);  
-		  performFFT<double>(buf_gen_uloc_HP[dstep], gen_uloc[dstep], 
-				     iPrint, Nmoms, momQsq);  
-		  for(int mu=0;mu<4;mu++){
-		    performFFT<double>(buf_std_oneD_HP[dstep][mu], 
-				       std_oneD[dstep][mu], iPrint, 
-				       Nmoms, momQsq);  
-		    performFFT<double>(buf_std_csvC_HP[dstep][mu], 
-				       std_csvC[dstep][mu], iPrint, 
-				       Nmoms, momQsq);  
-		    performFFT<double>(buf_gen_oneD_HP[dstep][mu], 
-				       gen_oneD[dstep][mu], iPrint, 
-				       Nmoms, momQsq);  
-		    performFFT<double>(buf_gen_csvC_HP[dstep][mu], 
-				       gen_csvC[dstep][mu], iPrint, 
-				       Nmoms, momQsq);  
-
-		  }
-		}	      
-		t2 = MPI_Wtime();
-		printfQuda("TIME_REPORT: TSM Stoch = %02d, HadVec = %02d, "
-			   "tempDil = %02d, Spin-colour = %02d, NeV = %04d - "
-			   "HP Loops FFT and copy in %f sec\n",
-			   is, ih, it, sc, NeV_defl, t2-t1);
-	      }//-if 
-	    }//-deflation step
-	  
-
-	    //----- Perform contractions for LP solves second. --------//
-	    //---------------------------------------------------------//
-	    //Loop over LP criteria first to preserve data structure
-	    //in the HDf5 write routines
-	    for(int LP_crit=0; LP_crit<TSM_NLP_iters; LP_crit++){
-	    
-	      // Loop over the number of deflation steps
-	      for(int dstep=0;dstep<deflSteps;dstep++){
-		int NeV_defl = nDefl[dstep];
-	      
-		//Index to point to correct part of accumulation array.
-		int idx = LP_crit*deflSteps + dstep;
-		
-		t1 = MPI_Wtime();
-		K_vector->downloadFromCuda(sol_LP[LP_crit],flag_eo);
-		K_vector->download();
-	    
-		// Solution is projected and put into x, x <- (1-UU^dag) x
-		deflation->projectVector(*K_vecdef,*K_vector,is+1,NeV_defl);
-		K_vecdef->uploadToCuda(x_LP[LP_crit],flag_eo); 
-		t2 = MPI_Wtime();
-
-		printfQuda("TIME_REPORT: TSM Stoch = %02d, HadVec = %02d, "
-			   "tempDil = %02d, Spin-colour = %02d, NeV = %04d, "
-			   " LP_crit = %02d - LP sol projection: %f sec\n",
-			   is, ih, it, sc, NeV_defl, LP_crit,t2-t1);	  
-	      
-		t1 = MPI_Wtime();
-		//-low-precision
-		oneEndTrick_w_One_Der<double>(*x_LP[LP_crit], *tmp3, *tmp4, param, loopCovDev,
-					      gen_uloc_LP[idx],std_uloc_LP[idx],
-					      gen_oneD_LP[idx],std_oneD_LP[idx],
-					      gen_csvC_LP[idx],std_csvC_LP[idx]);
-		t2 = MPI_Wtime();
-
-		printfQuda("TIME_REPORT: TSM Stoch = %02d, HadVec = %02d, "
-			   "tempDil = %02d, Spin-colour = %02d, NeV = %04d, "
-			   "LP_crit = %02d - LP Contractions: %f sec\n",
-			   is, ih, it, sc, NeV_defl, LP_crit, t2-t1);
-	      
-		// FFT and copy to write buffers
-		//-------------------------------------------------      
-		if( (is+1)%Nd == 0 && ((ih*tDil+it)*Nsc+sc == Nc*tDil*Nsc-1 ) ){
-		  //if(dstep==0) iPrint++;
-		  t1 = MPI_Wtime();
-		  if(GK_nProc[2]==1){      
-		  
-		    doCudaFFT_v2<double>(std_uloc_LP[idx],tmp_loop);  
-		    copyLoopToWriteBuf(buf_std_uloc_LP[idx], tmp_loop, 
-				       iPrint, info.Q_sq, Nmoms, mom); // Scalar
-		    doCudaFFT_v2<double>(gen_uloc_LP[idx],tmp_loop); 
-		    copyLoopToWriteBuf(buf_gen_uloc_LP[idx], tmp_loop, 
-				       iPrint, info.Q_sq, Nmoms, mom); // dOp
-		  
-		    for(int mu = 0 ; mu < 4 ; mu++){
-		      doCudaFFT_v2<double>(std_oneD_LP[idx][mu], tmp_loop);  
-		      copyLoopToWriteBuf(buf_std_oneD_LP[idx][mu], tmp_loop,
-					 iPrint,info.Q_sq,Nmoms,mom); // Loops
-		      doCudaFFT_v2<double>(std_csvC_LP[idx][mu],tmp_loop);  
-		      copyLoopToWriteBuf(buf_std_csvC_LP[idx][mu],tmp_loop,
-					 iPrint,info.Q_sq,Nmoms,mom); // LoopsCv
-		      doCudaFFT_v2<double>(gen_oneD_LP[idx][mu],tmp_loop);  
-		      copyLoopToWriteBuf(buf_gen_oneD_LP[idx][mu],tmp_loop,
-					 iPrint,info.Q_sq,Nmoms,mom); // LpsDw
-		      doCudaFFT_v2<double>(gen_csvC_LP[idx][mu],tmp_loop);  
-		      copyLoopToWriteBuf(buf_gen_csvC_LP[idx][mu],tmp_loop,
-					 iPrint,info.Q_sq,Nmoms,mom); // LpsDws
-		    }
-		  }
-		  else if(GK_nProc[2]>1){
-		    performFFT<double>(buf_std_uloc_LP[idx], std_uloc_LP[idx], 
-				       iPrint, Nmoms, momQsq);
-		    performFFT<double>(buf_gen_uloc_LP[idx], gen_uloc_LP[idx], 
-				       iPrint, Nmoms, momQsq);
-		  
-		    for(int mu=0;mu<4;mu++){
-		    
-		      performFFT<double>(buf_std_oneD_LP[idx][mu], 
-					 std_oneD_LP[idx][mu], iPrint, 
-					 Nmoms, momQsq);
-		      performFFT<double>(buf_std_csvC_LP[idx][mu], 
-					 std_csvC_LP[idx][mu], iPrint, 
-					 Nmoms, momQsq);
-		      performFFT<double>(buf_gen_oneD_LP[idx][mu], 
-					 gen_oneD_LP[idx][mu], iPrint, 
-					 Nmoms, momQsq);
-		      performFFT<double>(buf_gen_csvC_LP[idx][mu], 
-					 gen_csvC_LP[idx][mu], iPrint, 
-					 Nmoms, momQsq);
-		    }
-		  }
-		  t2 = MPI_Wtime();
-		  printfQuda("TIME_REPORT: TSM Stoch = %02d, HadVec = %02d, "
-			     "tempDil = %02d, Spin-colour = %02d, NeV = %04d, "
-			     "LP_crit = %02d - LP Loop FFT and copy in %f sec\n",
-			     is, ih, it, sc, NeV_defl, LP_crit, t2-t1);
-		}//-if 
-	      }//-deflation step	    
-	    }//LP criteria
-	  
-	    t4 = MPI_Wtime();
-	    printfQuda("TIME_REPORT: TSM Stoch = %02d, HadVec = %02d, "
-		       "tempDil = %02d, Spin-colour = %02d - HP and %d LP "
-		       "criteria Finished: %f sec\n",
-		       is, ih, it, sc, TSM_NLP_iters, t4-t3);
-	    delete sol;
-	    for(int a = 0; a<TSM_NLP_iters; a++) delete sol_LP[a]; 	  
-	  }// spin color dilution
-	}//Temporal Dilution
-      }//hadamard vectors
-    }//-Nstoch
-    
-    //-------Write the high-precision part-------//
-    //-------------------------------------------//
-    for(int dstep=0;dstep<loopInfo.nSteps_defl;dstep++){
-      int NeV_defl = loopInfo.deflStep[dstep];
-
-      t1 = MPI_Wtime();
-      sprintf(loop_stoch_fname,"%s_stoch_TSM_NeV%d_HighPrec-tDil%d",
-	      loopInfo.loop_fname, NeV_defl, tDil);
-      if(LoopFileFormat==ASCII_FORM){ 
-	// Write the loops in ASCII format
-	writeLoops_ASCII(buf_std_uloc_HP[dstep], loop_stoch_fname, 
-			 loopInfo, momQsq, 0, 0, 
-			 stoch_part, useTSM, HighPrecSum); // Scalar
-	writeLoops_ASCII(buf_gen_uloc_HP[dstep], loop_stoch_fname, 
-			 loopInfo, momQsq, 1, 0, stoch_part, 
-			 useTSM, HighPrecSum); // dOp
-	for(int mu = 0 ; mu < 4 ; mu++){
-	  writeLoops_ASCII(buf_std_oneD_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 2, mu, 
-			   stoch_part, useTSM, HighPrecSum); // Loops
-	  writeLoops_ASCII(buf_std_csvC_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 3, mu, 
-			   stoch_part, useTSM, HighPrecSum); // LoopsCv
-	  writeLoops_ASCII(buf_gen_oneD_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 4, mu, 
-			   stoch_part, useTSM, HighPrecSum); // LpsDw
-	  writeLoops_ASCII(buf_gen_csvC_HP[dstep][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 5, mu, 
-			   stoch_part, useTSM, HighPrecSum); // LpsDwCv
-	}
-      }
-      else if(LoopFileFormat==HDF5_FORM){
-	// Write the loops in HDF5 format
-	writeLoops_HDF5(buf_std_uloc_HP[dstep], buf_gen_uloc_HP[dstep], 
-			buf_std_oneD_HP[dstep], buf_std_csvC_HP[dstep], 
-			buf_gen_oneD_HP[dstep], buf_gen_csvC_HP[dstep],
-			loop_stoch_fname, loopInfo, momQsq, 
-			stoch_part, useTSM, HighPrecSum);
-      }
-      t2 = MPI_Wtime();
-      printfQuda("Writing the high-precision loops for NeV = %d completed in %f sec.\n",NeV_defl,t2-t1);
-    }
-    
-    
-    //--------Write the low-precision part----------//
-    //----------------------------------------------//
-    //Loop over LP criteria first to preserve data structure
-    //in the HDf5 write routines
-    for(int LP_crit=0; LP_crit<TSM_NLP_iters; LP_crit++){
-      
-      // Loop over the number of deflation steps
-      for(int dstep=0; dstep<deflSteps; dstep++){
-	int NeV_defl = nDefl[dstep];
-	int idx = LP_crit*deflSteps + dstep;
-
-	t1 = MPI_Wtime();
-	sprintf(loop_stoch_fname,"%s_stoch_TSM_NeV%d_LowPrec-crit-%d-tDil%d",
-		loopInfo.loop_fname, NeV_defl, LP_crit, tDil);
-
-	if(LoopFileFormat==ASCII_FORM){ 
-	  // Write the loops in ASCII format
-	  writeLoops_ASCII(buf_std_uloc_LP[idx], loop_stoch_fname, 
-			   loopInfo, momQsq, 0, 0, 
-			   stoch_part, useTSM, HighPrecSum); // Scalar
-	  writeLoops_ASCII(buf_gen_uloc_LP[idx], loop_stoch_fname, 
-			   loopInfo, momQsq, 1, 0, 
-			   stoch_part, useTSM, HighPrecSum); // dOp
-	  for(int mu = 0 ; mu < 4 ; mu++){
-	    writeLoops_ASCII(buf_std_oneD_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 2, mu, 
-			     stoch_part, useTSM, HighPrecSum); // Loops
-	    writeLoops_ASCII(buf_std_csvC_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 3, mu, 
-			     stoch_part, useTSM, HighPrecSum); // LoopsCv
-	    writeLoops_ASCII(buf_gen_oneD_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 4, mu, 
-			     stoch_part, useTSM, HighPrecSum); // LpsDw
-	    writeLoops_ASCII(buf_gen_csvC_LP[idx][mu], loop_stoch_fname, 
-			     loopInfo, momQsq, 5, mu, 
-			     stoch_part, useTSM, HighPrecSum); // LpsDwCv
-	  }
-	}
-	else if(LoopFileFormat==HDF5_FORM){ 
-	  // Write the loops in HDF5 format
-	  writeLoops_HDF5(buf_std_uloc_LP[idx], buf_gen_uloc_LP[idx], 
-			  buf_std_oneD_LP[idx], buf_std_csvC_LP[idx], 
-			  buf_gen_oneD_LP[idx], buf_gen_csvC_LP[idx],
-			  loop_stoch_fname, loopInfo, momQsq, 
-			  stoch_part, useTSM, HighPrecSum);
-	}
-	t2 = MPI_Wtime();
-	printfQuda("Writing the low-precision loops for NeV = %d, LP_crit %d completed in %f sec.\n",
-		   NeV_defl,LP_crit,t2-t1);
-      }//-dstep
-    }//LP criteria
-  }//-useTSM
+  
   
   gsl_rng_free(rNum);
   
@@ -8871,57 +8171,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   }//-step
   //---------------------------
   
-  //-Free the extra buffers if using TSM
-  if(useTSM){
-    for(int step=0;step<loopInfo.nSteps_defl*TSM_NLP_iters;step++){
-      cudaFreeHost(std_uloc_LP[step]);
-      cudaFreeHost(gen_uloc_LP[step]);
-      for(int mu = 0 ; mu < 4 ; mu++){
-	cudaFreeHost(std_oneD_LP[step][mu]);
-	cudaFreeHost(gen_oneD_LP[step][mu]);
-	cudaFreeHost(std_csvC_LP[step][mu]);
-	cudaFreeHost(gen_csvC_LP[step][mu]);
-      }
-      free(std_oneD_LP[step]);
-      free(gen_oneD_LP[step]);
-      free(std_csvC_LP[step]);
-      free(gen_csvC_LP[step]);
-     
-      free(buf_std_uloc_LP[step]); 
-      free(buf_gen_uloc_LP[step]);
- 
 
-      for(int mu = 0 ; mu < 4 ; mu++){
-	free(buf_std_oneD_LP[step][mu]);
-	free(buf_std_csvC_LP[step][mu]);
-	free(buf_gen_oneD_LP[step][mu]);
-	free(buf_gen_csvC_LP[step][mu]);	
-      }
-      free(buf_std_oneD_LP[step]);
-      free(buf_std_csvC_LP[step]);
-      free(buf_gen_oneD_LP[step]);
-      free(buf_gen_csvC_LP[step]);
-      
-    }//-dstep
-
-    for(int dstep=0; dstep<loopInfo.nSteps_defl; dstep++){
-      free(buf_std_uloc_HP[dstep]);
-      free(buf_gen_uloc_HP[dstep]);
-      for(int mu = 0 ; mu < 4 ; mu++){
-	free(buf_std_oneD_HP[dstep][mu]);
-	free(buf_std_csvC_HP[dstep][mu]);
-	free(buf_gen_oneD_HP[dstep][mu]);
-	free(buf_gen_csvC_HP[dstep][mu]);
-      }
-      free(buf_std_oneD_HP[dstep]);
-      free(buf_std_csvC_HP[dstep]);
-      free(buf_gen_oneD_HP[dstep]);
-      free(buf_gen_csvC_HP[dstep]);
-    }
-
-  }//-useTSM
-  //------------------------------------
-  
   free(input_vector);
   free(output_vector);
 
@@ -8948,13 +8198,13 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 
   printfQuda("Flag 2\n");
 
-  if(useTSM){
-    for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
-      //delete x_LP[a];
-      //delete sol_LP[a];
-    }
+  //if(useTSM){
+  for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
+    delete x_LP[a];
+    //delete sol_LP[a];
   }
-
+  
+  
   printfQuda("Flag 3\n");
   //free(x_LP);
   printfQuda("Flag 4\n");

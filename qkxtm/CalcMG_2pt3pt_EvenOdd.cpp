@@ -432,10 +432,10 @@ void setInvertParam(QudaInvertParam &inv_param) {
   inv_param.solve_type = solve_type;
   if(isEven) {
     inv_param.matpc_type = QUDA_MATPC_EVEN_EVEN;
-    printf("### Running for the Even-Even Operator\n");
+    printfQuda("### Running for the Even-Even Operator\n");
   }
   else {
-    printf("### Running for the Odd-Odd Operator\n");
+    printfQuda("### Running for the Odd-Odd Operator\n");
     inv_param.matpc_type = QUDA_MATPC_ODD_ODD;
   }
 

@@ -291,7 +291,7 @@ read gauge fileld config stored in binary file
      
     }
   else
-    printf("%d bytes reserved for gauge fields (%d x %u)\n", chunksize*nvh*2, chunksize, nvh*2);
+    printfQuda("%d bytes reserved for gauge fields (%d x %u)\n", chunksize*nvh*2, chunksize, nvh*2);
   
   if(MPI_File_read_all(mpifid, ftmp, 4*3*3*2*nvh*2, MPI_DOUBLE, &status) == 1)
     printf("Error in MPI_File_read_all\n");
@@ -570,7 +570,7 @@ static void read_custom_binary_gauge_field_smeared(double **gauge, char *fname, 
      
     }
   else
-    printf("%d bytes reserved for gauge fields (%d x %u)\n", chunksize*nvh*2, chunksize, nvh*2);
+    printfQuda("%d bytes reserved for gauge fields (%d x %u)\n", chunksize*nvh*2, chunksize, nvh*2);
   
   if(MPI_File_read_all(mpifid, ftmp, 4*3*3*2*nvh*2, MPI_DOUBLE, &status) == 1)
     printf("Error in MPI_File_read_all\n");
@@ -755,7 +755,7 @@ static void read_custom_binary_gauge_field_andreas(double **gauge, char *fname, 
      
     }
   else
-    printf("%ld bytes reserved for gauge fields (%d x %ld)\n", chunksize*lvol, chunksize, lvol);
+    printfQuda("%ld bytes reserved for gauge fields (%d x %ld)\n", chunksize*lvol, chunksize, lvol);
   
   if(MPI_File_read_all(mpifid, ftmp, 4*3*3*2*lvol, MPI_DOUBLE, &status) == 1)
     printf("Error in MPI_File_read_all\n");

@@ -671,11 +671,6 @@ int main(int argc, char **argv)
     loopInfo.TSM_NLP = Nstoch;
     loopInfo.TSM_NdumpLP = Ndump;
 
-    //Sanity checks, and ascertaining how many files to print.
-    if(loopInfo.TSM_NHP % loopInfo.TSM_NdumpHP == 0) {
-      loopInfo.TSM_NprintHP = loopInfo.TSM_NHP/loopInfo.TSM_NdumpHP;
-    } else errorQuda("TSM_NdumpHP MUST divide TSM_NHP exactly! Exiting.\n");
-    
     if(loopInfo.TSM_NLP % loopInfo.TSM_NdumpLP==0) {
       loopInfo.TSM_NprintLP = loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP;
     } else errorQuda("Ndump MUST divide Nstoch exactly! Exiting.\n");
@@ -715,7 +710,7 @@ int main(int argc, char **argv)
   EVinv_param = inv_param;
   if(isEven) EVinv_param.matpc_type = QUDA_MATPC_EVEN_EVEN_ASYMMETRIC;
   else EVinv_param.matpc_type = QUDA_MATPC_ODD_ODD_ASYMMETRIC;
-
+  if(EVinv_param.mu > 0) EVinv_param.mu *= -1.0;
   EVinv_param.mass_normalization = QUDA_MASS_NORMALIZATION;
 
   setDims(gauge_param.X);

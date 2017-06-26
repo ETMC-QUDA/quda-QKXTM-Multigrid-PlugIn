@@ -22,6 +22,9 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/gauge_ape.cu
   ${QKXTM_QUDA_HOME}/lib/gauge_stout.cu
   ${QKXTM_QUDA_HOME}/lib/gauge_plaq.cu
+  #${QKXTM_QUDA_HOME}/lib/gauge_covdev.cpp
+  ${QKXTM_QUDA_HOME}/lib/covd.cpp
+  ${QKXTM_QUDA_HOME}/lib/covDev.cu
   ${QKXTM_QUDA_HOME}/lib/inv_cg3_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_cg3ne_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_gcr_quda.cpp
@@ -39,7 +42,6 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/cuda_color_spinor_field.cu
   ${QKXTM_QUDA_HOME}/lib/dirac.cpp
   ${QKXTM_QUDA_HOME}/lib/clover_field.cpp
-  ${QKXTM_QUDA_HOME}/lib/covd.cpp
   ${QKXTM_QUDA_HOME}/lib/lattice_field.cpp
   ${QKXTM_QUDA_HOME}/lib/gauge_field.cpp
   ${QKXTM_QUDA_HOME}/lib/cpu_gauge_field.cpp
@@ -65,7 +67,6 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/field_strength_tensor.cu
   ${QKXTM_QUDA_HOME}/lib/clover_quda.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_quda.cu
-  ${QKXTM_QUDA_HOME}/lib/covDev.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_wilson.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_clover.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_clover_asym.cu

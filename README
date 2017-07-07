@@ -1,7 +1,7 @@
-ETMC-QUDA production code base                        20th June 2017
+ETMC-QUDA production code base                        07th July 2017
 ------------------------------------------------------------------------
 
-This library is an extension to QUDA feature/multigrid: GIT hash c3320f8 
+This library is an extension to QUDA feature/multigrid
 
 This plug-in contains routines to calculate 2- and 3-point hadronic correlation functions,
 and an All-to-All propagator with a gauge covariant derivative, with a 
@@ -43,7 +43,7 @@ of the QUDA mainline source code against which you compile.
 For safe results, please use quda-QKXTM-Multigrid which has been thoroughly 
 tested. For more recent QUDA builds, use this plug-in with caution.
 
-LATEST SUCCESSFUL COMPILATION: 17 June 2017
+LATEST SUCCESSFUL COMPILATION: 07 July 2017
 
 If you have compilation issues, please @cpviolator
 
@@ -60,11 +60,11 @@ functions are contained in files prepended like so,
    qudaQKXTM_<some file>.suffix
 
 There is a single .cu file for kernels, a 'code_pieces' directory in lib/,
-a single qudaQKXTM_Kepler_utils.cpp and .h file for containers and general 
-functions, and a suite of qudaQKXTM_<CLASS>_Kepler.cpp files under a single
-header qudaQKXTM_Kepler.h. For clarity, we also have a file,
+a single qudaQKXTM_utils.cpp and .h file for containers and general 
+functions, and a suite of qudaQKXTM_<CLASS>.cpp files under a single
+header qudaQKXTM.h. For clarity, we also have a file,
 
-   qudaQKXTM_Loops_Kepler.cpp
+   qudaQKXTM_Loops.cpp
 
 that contains calculation and data write functions specific to All-to-All
 calculatons. These qudaQKXTM_<CLASS>.cpp (and Loops) files are NOT individually
@@ -72,9 +72,9 @@ compiled, rather included in qudaQKXTM_interface.cpp as,
 
 ... [end interface_quda.cpp code]
 
-#include <qudaQKXTM_Field_Kepler.cpp
+#include <qudaQKXTM_Field.cpp
 ...
-#include <qudaQKXTM_Deflation_Kepler.cpp
+#include <qudaQKXTM_Deflation.cpp
 
 ... [begin QKXTM calculation functions]
 

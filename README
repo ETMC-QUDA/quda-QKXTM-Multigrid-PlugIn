@@ -40,6 +40,10 @@ This lightweight version of quda-QKXTM-Multigrid is volatile in that
 succesful compilatin and execution of the code is depenedent on the stability
 of the QUDA mainline source code against which you compile.
 
+One can use Intel compilers by overriding CMake's choice of the
+`CUDA_HOST_COMPILER` variable. Simply set this explicily to g++ after
+you have properly configured via CMake.
+
 For safe results, please use quda-QKXTM-Multigrid which has been thoroughly 
 tested. For more recent QUDA builds, use this plug-in with caution.
 

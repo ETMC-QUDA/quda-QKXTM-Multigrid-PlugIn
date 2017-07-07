@@ -22,9 +22,8 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/gauge_ape.cu
   ${QKXTM_QUDA_HOME}/lib/gauge_stout.cu
   ${QKXTM_QUDA_HOME}/lib/gauge_plaq.cu
-  #${QKXTM_QUDA_HOME}/lib/gauge_covdev.cpp
-  ${QKXTM_QUDA_HOME}/lib/covd.cpp
-  ${QKXTM_QUDA_HOME}/lib/covDev.cu
+  ${QKXTM_QUDA_HOME}/lib/laplace.cu
+  ${QKXTM_QUDA_HOME}/lib/gauge_laplace.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_cg3_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_cg3ne_quda.cpp
   ${QKXTM_QUDA_HOME}/lib/inv_gcr_quda.cpp
@@ -40,8 +39,10 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/color_spinor_pack.cu
   ${QKXTM_QUDA_HOME}/lib/cpu_color_spinor_field.cpp
   ${QKXTM_QUDA_HOME}/lib/cuda_color_spinor_field.cu
+  ${QKXTM_QUDA_HOME}/lib/color_spinor_wuppertal.cu
   ${QKXTM_QUDA_HOME}/lib/dirac.cpp
   ${QKXTM_QUDA_HOME}/lib/clover_field.cpp
+  ${QKXTM_QUDA_HOME}/lib/covd.cpp
   ${QKXTM_QUDA_HOME}/lib/lattice_field.cpp
   ${QKXTM_QUDA_HOME}/lib/gauge_field.cpp
   ${QKXTM_QUDA_HOME}/lib/cpu_gauge_field.cpp
@@ -67,6 +68,7 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/field_strength_tensor.cu
   ${QKXTM_QUDA_HOME}/lib/clover_quda.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_quda.cu
+  ${QKXTM_QUDA_HOME}/lib/covDev.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_wilson.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_clover.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_clover_asym.cu
@@ -90,6 +92,7 @@ set (QUDA_OBJS
   ${COMM_OBJS} ${NUMA_AFFINITY_OBJS} ${QIO_UTIL}
   ${QKXTM_QUDA_HOME}/lib/clover_deriv_quda.cu
   ${QKXTM_QUDA_HOME}/lib/clover_invert.cu
+  ${QKXTM_QUDA_HOME}/lib/clover_rho.cu
   ${QKXTM_QUDA_HOME}/lib/copy_gauge_extended.cu
   ${QKXTM_QUDA_HOME}/lib/extract_gauge_ghost_extended.cu
   ${QKXTM_QUDA_HOME}/lib/copy_color_spinor.cu
@@ -221,6 +224,20 @@ if(QKXTM_ARPACK)
   LIST(APPEND QKXTMquda ${QKXTM_PARPACK_LIB})
   LIST(APPEND QKXTMquda ${QKXTM_ARPACK_LIB})
 endif(QKXTM_ARPACK)
+
+if(QKXTM_OPENBLAS)
+  LIST(APPEND QKXTMquda ${QKXTM_OPENBLAS_GOMP})
+  LIST(APPEND QKXTMquda ${QKXTM_OPENBLAS_LIB})
+endif(QKXTM_OPENBLAS)
+  
+if(QKXTM_MKL)
+  LIST(APPEND QKXTMquda ${QKXTM_MKL_LIB_IOMP5})
+  LIST(APPEND QKXTMquda ${QKXTM_MKL_LIB_GFORTRAN})
+  LIST(APPEND QKXTMquda ${QKXTM_MKL_LIB_LP64})
+  LIST(APPEND QKXTMquda ${QKXTM_MKL_LIB_THREAD})
+  LIST(APPEND QKXTMquda ${QKXTM_MKL_LIB_CORE})
+endif(QKXTM_MKL)
+
 #DMH
 
 # add dependencies for linking
@@ -262,6 +279,12 @@ endif()
 # So we need to find the CUDA_CUDA_LIBRARY (driver api) or the stub version
 find_library(CUDA_CUDA_LIBRARY cuda HINTS ${CUDA_TOOLKIT_ROOT_DIR}/lib/ ${CUDA_TOOLKIT_ROOT_DIR}/lib/stubs)
 target_link_libraries(QKXTMquda ${CUDA_CUDA_LIBRARY})
+
+# if we did not find Eigen but downloaded it we need to add it as dependency so the download is done first
+if (QUDA_DOWNLOAD_EIGEN)
+  add_dependencies(QKXTMquda_cpp Eigen)
+  add_dependencies(QKXTMquda Eigen)
+endif()
 
 # until we define an install step copy the include directory to the build directory
 ADD_CUSTOM_COMMAND(TARGET QKXTMquda POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/include ${CMAKE_BINARY_DIR}/include)

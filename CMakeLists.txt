@@ -49,7 +49,7 @@ endif()
 #
 # PROJECT is ETMC-QUDA
 #
-project("QUDA" VERSION 0.9.0)
+project("ETMC-QUDA" VERSION 0.1.0)
 
 if(NOT GITVERSION)
   set(GITVERSION ${CMAKE_VERSION})
@@ -69,7 +69,7 @@ if(NOT QUDA_GPU_ARCH)
   message ("-- Building QUDA for arch " "${QUDA_DEFAULT_GPU_ARCH}")
 endif()
 
-set(QUDA_GPU_ARCH sm_35 CACHE STRING "set the GPU architecture (sm_20, sm_21, sm_30, sm_35, sm_50, sm_52)")
+set(QUDA_GPU_ARCH ${QUDA_DEFAULT_GPU_ARCH} CACHE STRING "set the GPU architecture (sm_20, sm_21, sm_30, sm_35, sm_37, sm_50, sm_52, sm_60)")
 set_property(CACHE QUDA_GPU_ARCH PROPERTY STRINGS sm_20 sm_21 sm_30 sm_35 sm_37 sm_50 sm_52 sm_60)
 # build options
 set(QUDA_DIRAC_WILSON ON CACHE BOOL "build Wilson Dirac operators")
@@ -140,13 +140,14 @@ endif()
 
 #-C.K. In facts, it seems that these options do not really contribute something,
 # but may be useful for future iterations
-if(${QKXTM_INTEL-BUILD})
+if(${QKXTM_MKL})
   set(QKXTM_MKL_LIBDIR "" CACHE PATH "path to MKL library dir")
   set(QKXTM_MKL_INCDIR "" CACHE PATH "path to MKL include dir")
 endif()
 #-C.K.
 
 #QKXTM: DMH
+
 
 # QDPJIT
 set(QUDA_QDPJIT OFF CACHE BOOL "build QDP-JIT support?")
@@ -180,16 +181,14 @@ set(QUDA_INTERFACE_NVTX OFF CACHE BOOL "add nvtx markup to interface calls for t
 # GPUdirect options
 set(QUDA_GPU_DIRECT ON CACHE BOOL "set to 'yes' to allow GPU and NIC to shared pinned buffers")
 
-# Packing option
-set(QUDA_DEVICE_PACK ON CACHE BOOL "set to 'yes' to enable packing and unpacking on the device")
-
 # features in development
 set(QUDA_SSTEP OFF CACHE BOOL "build s-step linear solvers")
 set(QUDA_MULTIGRID OFF CACHE BOOL "build multigrid solvers")
 set(QUDA_BLOCKSOLVER OFF CACHE BOOL "build block solvers")
 set(QUDA_DEFLATEDSOLVER OFF CACHE BOOL "build deflated solvers")
 set(QUDA_ALTRELIABLE OFF CACHE BOOL "use alternative reliable updates in CG")
-set(QUDA_EIGEN OFF CACHE BOOL "build with EIGEN library")
+set(QUDA_USE_EIGEN OFF CACHE BOOL "use EIGEN library (where optional)")
+set(QUDA_DOWNLOAD_EIGEN ON CACHE BOOL "Download Eigen")
 
 mark_as_advanced(QUDA_BUILD_ALL_TESTS)
 mark_as_advanced(QUDA_BUILD_SHAREDLIB)
@@ -204,21 +203,19 @@ mark_as_advanced(QUDA_INTERFACE_NVTX)
 
 mark_as_advanced(QUDA_GPU_DIRECT)
 
-mark_as_advanced(QUDA_DEVICE_PACK)
-
 mark_as_advanced(QUDA_SSTEP)
-mark_as_advanced(QUDA_EIGEN)
+mark_as_advanced(QUDA_USE_EIGEN)
+mark_as_advanced(QUDA_BLOCKSOVER)
 mark_as_advanced(QUDA_ALTRELIABLE)
 
 #######################################################################
 # options that are not exposed at all because only one option exists
-set(CPU_ARCH x86_64)
+set(CPU_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
 
 
 #######################################################################
 # everything below here is processing the setup
 #######################################################################
-
 # we need to check for some packages
 find_package(PythonInterp)
 
@@ -234,6 +231,31 @@ else()
   set(USING_CUDA_LANG_SUPPORT False)
 endif()
 
+#######################################################################
+## QUDA depends on Eigen
+## this part makes sure we can download eigen if it is not found
+if (QUDA_DOWNLOAD_EIGEN)
+  include(ExternalProject)
+  ExternalProject_Add(Eigen
+    URL http://bitbucket.org/eigen/eigen/get/3.3.4.tar.bz2
+    URL_HASH SHA256=dd254beb0bafc695d0f62ae1a222ff85b52dbaa3a16f76e781dce22d0d20a4a6
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/eigen/
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND COMMAND ""
+    INSTALL_COMMAND ""
+  )
+  ExternalProject_Get_Property(Eigen source_dir)
+  set(EIGEN_INCLUDE_DIRS ${source_dir}/EIGEN)
+else()
+  find_package(Eigen QUIET)
+  if(NOT EIGEN_FOUND)
+    message(FATAL_ERROR "QUDA requires Eigen (http://eigen.tuxfamily.org). Please either set EIGEN_INCLUDE_DIRS to path to eigen3 include directory, e.g. /usr/local/include/eigen3 or set QUDA_DOWNLOAD_EIGEN to ON to enable automatic download of the necessary components.")
+  endif()
+endif()
+include_directories(${EIGEN_INCLUDE_DIRS})
+
+
+# We need threads
 find_package(Threads REQUIRED)
 
 # do all the build definitions
@@ -247,6 +269,9 @@ else()
 endif()
 
 if(QUDA_QDPJIT)
+  if(NOT QUDA_QMP)
+    message(WARNING "Specifying QUDA_QDPJIT requires use of QUDA_QMP. Please set QUDA_QMP=ON and set QUDA_QMPHOME.")
+  endif()
   add_definitions(-DUSE_QDPJIT)
   include_directories(SYSTEM ${QUDA_QDPJITHOME}/include)
   execute_process(COMMAND ${QUDA_QDPJITHOME}/bin/qdp\+\+-config --ldflags OUTPUT_VARIABLE QDP_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -271,11 +296,14 @@ if(QUDA_QMP)
     message( FATAL_ERROR "QUDA_QMPHOME must be defined if QUDA_QMP is set" )
   endif()
   add_definitions(-DQMP_COMMS)
-  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --cflags OUTPUT_VARIABLE QMP_CFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --ldflags OUTPUT_VARIABLE QMP_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --libs OUTPUT_VARIABLE QMP_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
-  FIND_LIBRARY(QMP_LIB qmp ${QUDA_QMPHOME}/lib)
+  set(QUDA_QMP_LDFLAGS  "" CACHE STRING "LDFLAGS for QMP - should be derived from qmp-config --ldflags")
+  set(QUDA_QMP_LIBS  "" CACHE STRING "LIBS for QMP - should be derived from qmp-config --libs")
+  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --cflags OUTPUT_VARIABLE QUDA_QMP_CFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --ldflags OUTPUT_VARIABLE QUDA_QMP_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --libs OUTPUT_VARIABLE QUDA_QMP_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #FIND_LIBRARY(QMP_LIB qmp ${QUDA_QMPHOME}/lib)
   include_directories(SYSTEM ${QUDA_QMPHOME}/include)
+  include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
   set(COMM_OBJS ${QKXTM_QUDA_HOME}/lib/comm_qmp.cpp)
 endif()
 
@@ -286,7 +314,7 @@ if(QUDA_QIO)
   add_definitions(-DHAVE_QIO)
   set(QIO_UTIL ${QKXTM_QUDA_HOME}/lib/qio_util.cpp ${QKXTM_QUDA_HOME}/lib/qio_field.cpp ${QKXTM_QUDA_HOME}/lib/layout_hyper.c)
   FIND_LIBRARY(QIO_LIB qio ${QUDA_QIOHOME}/lib/)
-  FIND_LIBRARY(LIME_LIB lime ${QUDA_QIOHOME}/lib/)
+  FIND_LIBRARY(LIME_LIB lime ${QUDA_LIMEHOME}/lib/)
   include_directories(SYSTEM ${QUDA_QIOHOME}/include)
   include_directories(SYSTEM ${QUDA_LIMEHOME}/include)
 endif()
@@ -342,12 +370,17 @@ endif(QUDA_ARPACK)
 if(${QKXTM_OPENBLAS})
   add_definitions(-DHAVE_OPENBLAS)
   FIND_LIBRARY(QKXTM_OPENBLAS_LIB openblas ${QKXTM_OPENBLAS_LIBDIR})
+  FIND_LIBRARY(QKXTM_OPENBLAS_GOMP gomp /opt/gcc/5.3.0/snos/lib64)
   include_directories(SYSTEM ${QKXTM_OPENBLASHOME})
 endif()
 
 if(${QKXTM_MKL})
   add_definitions(-DHAVE_MKL)
-  FIND_LIBRARY(QKXTM_MKL_LIB mkl_intel_lp64 ${QKXTM_MKL_LIBDIR})
+  FIND_LIBRARY(QKXTM_MKL_LIB_GFORTRAN gfortran /usr/lib64)
+  FIND_LIBRARY(QKXTM_MKL_LIB_IOMP5 iomp5 /opt/intel/lib/intel64)
+  FIND_LIBRARY(QKXTM_MKL_LIB_LP64 mkl_intel_lp64 ${QKXTM_MKL_LIBDIR})
+  FIND_LIBRARY(QKXTM_MKL_LIB_THREAD mkl_intel_thread ${QKXTM_MKL_LIBDIR})
+  FIND_LIBRARY(QKXTM_MKL_LIB_CORE mkl_core ${QKXTM_MKL_LIBDIR})  
   include_directories(SYSTEM ${QKXTM_MKL_INCDIR})
 endif()
 #-C.K.
@@ -395,8 +428,6 @@ endif(QUDA_MULTIGRID)
 
 if(QUDA_BLOCKSOLVER)
   add_definitions(-DBLOCKSOLVER)
-  find_package(Eigen REQUIRED)
-  include_directories(${EIGEN_INCLUDE_DIRS})
 endif()
 
 if(QUDA_DEFLATEDSOLVER)
@@ -409,10 +440,8 @@ if(QUDA_ALTRELIABLE)
   add_definitions(-DALTRELIABE)
 endif()
 
-if(QUDA_EIGEN)
+if(QUDA_USE_EIGEN)
   add_definitions(-DEIGEN)
-  find_package(Eigen REQUIRED)
-  include_directories(${EIGEN_INCLUDE_DIRS})
 endif()
 
 if(QUDA_POSIX_THREADS)
@@ -436,7 +465,7 @@ if(QUDA_DIRAC_CLOVER)
 endif(QUDA_DIRAC_CLOVER)
 
 if(QUDA_DIRAC_TWISTED_MASS)
-  add_definitions(-DGPU_TWISTED_MASS_DIRAC)
+  add_definitions(-DGPU_TWISTED_MASS_DIRAC -DGPU_WILSON_DIRAC)
 endif(QUDA_DIRAC_TWISTED_MASS)
 
 if(QUDA_DIRAC_TWISTED_CLOVER)
@@ -539,10 +568,6 @@ if(QUDA_INTERFACE_TIFR OR QUDA_INTERFACE_BQCD)
   enable_language(Fortran)
 endif()
 
-if(DEVICE_PACK)
-  add_definitions(-DDEVICE_PACK)
-endif(DEVICE_PACK)
-
 
 
 if(QUDA_NUMA_NVML)
@@ -561,20 +586,18 @@ endif(QUDA_CONTRACT)
 # COMPILER OPTIONS and BUILD types
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
-#QKXTM: Begin DMH Include mainline QUDA 
+#QKXTM: Begin DMH Include mainline QUDA
 include_directories(${QKXTM_QUDA_HOME}/include)
 include_directories(${QKXTM_QUDA_HOME}/lib)
-#QKXTM: End DMH
 include_directories(include)
 include_directories(lib)
-
 
 # QUDA_HASH for tunecache
 #file(STRINGS ${CUDA_TOOLKIT_INCLUDE}/cuda.h  CUDA_VERSIONLONG REGEX "\#define CUDA_VERSION" )
 #STRING(REPLACE "\#define CUDA_VERSION " ""  CUDA_VERSIONLONG ${CUDA_VERSIONLONG})
 #STRING(STRIP CUDA_VERSIONLONG ${CUDA_VERSIONLONG} )
-#set(HASH \"cpu_arch=${CPU_ARCH},gpu_arch=${QUDA_GPU_ARCH},cuda_version=${CUDA_VERSIONLONG}\")
-#add_definitions(-DQUDA_HASH=${HASH})
+#set(HASH cpu_arch=${CPU_ARCH},gpu_arch=${QUDA_GPU_ARCH},cuda_version=${CUDA_VERSIONLONG})
+
 
 string(REGEX MATCH [Dd][Ee][Bb][Uu][Gg] DEBUG_BUILD ${CMAKE_BUILD_TYPE})
 
@@ -663,7 +686,7 @@ set(CMAKE_CUDA_FLAGS_DEBUG "${QUDA_NVCC_FLAGS} -g -DHOST_DEBUG -G" CACHE STRING
 set(CMAKE_CXX_FLAGS_DEVEL  "${OpenMP_CXX_FLAGS} -O3 -Wall ${CLANG_FORCE_COLOR}" CACHE STRING
 "Flags used by the C++ compiler during regular development builds.")
 set(CMAKE_CXX_FLAGS_STRICT  "${OpenMP_CXX_FLAGS} -O3 -Wall -Werror ${CLANG_NOERROR}" CACHE STRING
-"Flags used by the C++ compiler during rstrict jenkins builds.")
+"Flags used by the C++ compiler during strict jenkins builds.")
 set(CMAKE_CXX_FLAGS_RELEASE "${OpenMP_CXX_FLAGS} -O3 -w" CACHE STRING
     "Flags used by the C++ compiler during release builds.")
 set(CMAKE_CXX_FLAGS_HOSTDEBUG "${OpenMP_CXX_FLAGS} -Wall -Wno-unknown-pragmas -g -fno-inline -DHOST_DEBUG ${CLANG_FORCE_COLOR}" CACHE STRING

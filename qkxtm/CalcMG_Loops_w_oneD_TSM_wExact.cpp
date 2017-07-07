@@ -125,11 +125,6 @@ extern int Ndump;
 extern char source_type[];
 extern int defl_steps;
 extern int defl_step_nEv[];;
-extern bool useTSM;
-extern int TSM_NHP;
-extern int TSM_NLP;
-extern int TSM_NdumpHP;
-extern int TSM_NdumpLP;
 extern int TSM_NLP_iters;
 extern int TSM_maxiter[];
 extern double TSM_tol[];
@@ -646,45 +641,29 @@ int main(int argc, char **argv)
   }
   
   //- TSM parameters
-  loopInfo.useTSM = useTSM;
-  if(useTSM){
-    
-    //How many LP criteria to calculate. Default is zero. If TSM is
-    //enabled, and TSM_LP_iters is not greater than zero, an error
-    //will be thrown.
-    loopInfo.TSM_NLP_iters = TSM_NLP_iters;
-    if(loopInfo.TSM_NLP_iters == 0)
-      errorQuda("TSM is enabled. Please specify at least one LP "
-		"iteration and stopping criterion.\n");
-    
-    //Number of HP solves to perform, in units of stochastic noise
-    //vectors. N.B. If Spin-colour dilution and/or probing is enabled,
-    //there will be many inversions per source.
-    loopInfo.TSM_NHP = TSM_NHP;
 
-    //How many HP stochastic vectors to include at each data dump.
-    loopInfo.TSM_NdumpHP = TSM_NdumpHP;
-
-    //If using TSM, one will always perform the full number of inversions
-    //in LP, these are same as the total number of vectors
-    //requested, and how many to dump. 
-    loopInfo.TSM_NLP = Nstoch;
-    loopInfo.TSM_NdumpLP = Ndump;
-
-    if(loopInfo.TSM_NLP % loopInfo.TSM_NdumpLP==0) {
-      loopInfo.TSM_NprintLP = loopInfo.TSM_NLP/loopInfo.TSM_NdumpLP;
-    } else errorQuda("Ndump MUST divide Nstoch exactly! Exiting.\n");
-    
-    //Populate LP criteria arrays    
-    for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
-      loopInfo.TSM_tol[a] = TSM_tol[a];
-      loopInfo.TSM_maxiter[a] = TSM_maxiter[a];
-      if( (TSM_maxiter[a]==0) && (TSM_tol[a]==0) ) {
-	errorQuda("Criterion for low-precision sources not set!\n");
-      }
+  //How many LP criteria to calculate. Default is 1 i.e.,
+  //a single high precision solve.
+  loopInfo.TSM_NLP_iters = TSM_NLP_iters;
+  if(loopInfo.TSM_NLP_iters == 0)
+    warningQuda("Overiding your choice of 0 LP iterations to 1.\n");
+  
+  //One will always perform the full number of inversions
+  //in LP, these are same as the total number of vectors
+  //requested, and how many to dump. 
+  loopInfo.TSM_NLP = Nstoch;
+  loopInfo.TSM_NdumpLP = Ndump;
+  
+  //Populate LP criteria arrays    
+  for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
+    loopInfo.TSM_tol[a] = TSM_tol[a];
+    loopInfo.TSM_maxiter[a] = TSM_maxiter[a];
+    if( (TSM_maxiter[a]==0) && (TSM_tol[a]==0) ) {
+      errorQuda("Criterion for low-precision solve %d not set!\n", a);
     }
   }
   
+
   // QUDA parameters begin here.
   //-----------------------------------------------------------------
   if ( dslash_type != QUDA_TWISTED_MASS_DSLASH && 

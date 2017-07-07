@@ -1673,17 +1673,12 @@ char *corr_write_space = "MOMENTUM";
 
 //-C.K. loop Parameters
 int Nstoch = 100;              // Number of stochastic noise vectors
-unsigned long int seed = 100;  // The seed for the stochastic vectors
 int Ndump  = 10;               // Write the loop every Ndump stoch. vectors
+unsigned long int seed = 100;  // The seed for the stochastic vectors
 char loop_fname[512] = "loop";
 char *loop_file_format = "ASCII";
 char source_type[257] = "random";
-bool useTSM = false;
-int TSM_NHP = 0;
-int TSM_NLP = 0;
-int TSM_NdumpHP = 0;
-int TSM_NdumpLP = 0;
-int TSM_NLP_iters = 0;
+int TSM_NLP_iters = 1;
 int TSM_maxiter[10] = { };
 double TSM_tol[10] = { };
 
@@ -1857,12 +1852,9 @@ void usage(char** argv )
   printf("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
   printf("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
   printf("    --useEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
-  printf("    --useTSM                                  # Use (or not) the truncated solver method for the Full Operator (yes/no, default: no\n");
-  printf("    --TSM-NHP                                 # Number of High-precision sources for TSM\n");
-  printf("    --TSM-NdumpHP                             # How many High-precision data sumps to print for TSM\n");
-  printf("    --TSM-NLP-iters                           # How many Low-precision criteria for TSM\n");
-  printf("    --TSM-maxiter <step> <n>                  # Set the iteration number as criterion for Low-precision sources for TSM\n");
-  printf("    --TSM-tol <step> <tol>                    # Set the solver tolerance as criterion for Low-precision sources for TSM\n");
+  printf("    --TSM-NLP-iters                               # How many Low-precision criteria for TSM\n");
+  printf("    --TSM-maxiter <step> <n>                  # Set the iteration number as criterion for Low-precision solves for TSM\n");
+  printf("    --TSM-tol <step> <tol>                    # Set the solver tolerance as criterion for Low-precision solves for TSM\n");
 #ifdef HAVE_ARPACK
   printf("    --pathEigenVectorsUp                      # Path where the eigenVectors for up flavor are (default ev_u.0000)\n");
   printf("    --pathEigenVectorsDown                    # Path where the eigenVectors for up flavor are (default ev_d.0000)\n");
@@ -3351,43 +3343,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-  if( strcmp(argv[i], "--useTSM") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-
-    if (strcmp(argv[i+1], "true") == 0){
-      useTSM = true;
-    }else if (strcmp(argv[i+1], "false") == 0){
-      useTSM = false;
-    } else {
-      fprintf(stderr, "ERROR: invalid value for useTSM (true/false)\n");
-      exit(1);
-    }
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--TSM-NHP") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    TSM_NHP = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
- 
-  if( strcmp(argv[i], "--TSM-NdumpHP") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    TSM_NdumpHP = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
  
   if( strcmp(argv[i], "--TSM-NLP-iters") ==0){
     if(i+1 >= argc){

@@ -562,6 +562,12 @@ int main(int argc, char **argv)
 	   strcmp(corr_file_format,"hdf5")==0 ) 
     info.CorrFileFormat = HDF5_FORM; 
   else fprintf(stderr,"Undefined option for --corr_file_format. Options are ASCII(ascii)/HDF5(hdf5)\n");
+
+  // KH: if we want to write in HDF5 we choose the HighMomForm
+  if(info.CorrFileFormat == HDF5_FORM)
+    info.HighMomForm = true;
+  else
+    info.HighMomForm = false;
    
   //-C.K: Determine for which source-positions to run for the 3pt
   if(strcmp(run3pt,"all")==0 || 

@@ -37,12 +37,13 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/color_spinor_field.cpp
   ${QKXTM_QUDA_HOME}/lib/color_spinor_util.cu
   ${QKXTM_QUDA_HOME}/lib/color_spinor_pack.cu
+  ${QKXTM_QUDA_HOME}/lib/color_spinor_wuppertal.cu
   ${QKXTM_QUDA_HOME}/lib/cpu_color_spinor_field.cpp
   ${QKXTM_QUDA_HOME}/lib/cuda_color_spinor_field.cu
-  ${QKXTM_QUDA_HOME}/lib/color_spinor_wuppertal.cu
   ${QKXTM_QUDA_HOME}/lib/dirac.cpp
   ${QKXTM_QUDA_HOME}/lib/clover_field.cpp
-  ${QKXTM_QUDA_HOME}/lib/covd.cpp
+  ${QKXTM_QUDA_HOME}/lib/covDev.cu
+  ${QKXTM_QUDA_HOME}/lib/gauge_covdev.cpp
   ${QKXTM_QUDA_HOME}/lib/lattice_field.cpp
   ${QKXTM_QUDA_HOME}/lib/gauge_field.cpp
   ${QKXTM_QUDA_HOME}/lib/cpu_gauge_field.cpp
@@ -68,7 +69,6 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/field_strength_tensor.cu
   ${QKXTM_QUDA_HOME}/lib/clover_quda.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_quda.cu
-  ${QKXTM_QUDA_HOME}/lib/covDev.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_wilson.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_clover.cu
   ${QKXTM_QUDA_HOME}/lib/dslash_clover_asym.cu
@@ -154,7 +154,7 @@ set (QUDA_OBJS
   ${QKXTM_QUDA_HOME}/lib/deflation.cpp
   ${QKXTM_QUDA_HOME}/lib/version.cpp
   qudaQKXTM_kernels.cu 
-  )
+)
 
 ## split source into cu and cpp files
 FOREACH(item ${QUDA_OBJS})

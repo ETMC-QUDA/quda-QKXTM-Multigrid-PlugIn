@@ -7194,7 +7194,7 @@ void calcLowModeProjection(void **gaugeToPlaquette,
 			   qudaQKXTM_arpackInfo arpackInfo, 
 			   qudaQKXTMinfo info){
   
-  double t1,t2,t3,t4;
+  double t1,t2,t3,t4,t5;
   char fname[256];
   sprintf(fname, "calcLowModeProjection");
   
@@ -7268,7 +7268,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 				  qudaQKXTM_loopInfo loopInfo, 
 				  qudaQKXTMinfo info){
 
-  double t1,t2,t3,t4;
+  double t1,t2,t3,t4,t5;
   char fname[256];
   sprintf(fname, "calcMG_loop_wOneD_TSM_wExact");
   
@@ -7925,6 +7925,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	  //solution as a guess for the next LP. 
 	  //If TSM_NLP_iters is set to 1, this loop,
 	  //runs once.
+
+	  t5 = 0.0;
 	  
 	  for(int LP_crit = 0; LP_crit<TSM_NLP_iters; LP_crit++) {
 	    
@@ -7949,16 +7951,23 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	    if(is == 0 && LP_crit == 0) saveTuneCache();
 	    delete solve_LP;
 	    t2 = MPI_Wtime();
+
+	    t5 += t2 - t1;
 	    
 	    //DMH: Experimental, attempt to reuse last result
 	    if(LP_crit < TSM_NLP_iters - 1) blas::copy(*x_LP[LP_crit + 1], *x_LP[LP_crit]);
 	    
 	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
 		       "TempDil = %02d, Spin-colour = %02d, LP_crit = %02d "
-		       "- Data Run Inversion Time: %f sec\n",
+		       "- Partial Inversion Time: %f sec\n",
 		       msg_str, is, ih, it, sc, LP_crit, t2-t1);
 	    
 	  }
+	  
+	  printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
+		     "TempDil = %02d, Spin-colour = %02d "
+		     "- Full Inversion Time: %f sec\n",
+		     msg_str, is, ih, it, sc, t5);
 	  
 	  // Revert to the original, high-precision values
 	  param->tol = orig_tol;           
@@ -8061,6 +8070,10 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	    }// Deflation steps
 	  }// LP criteria
 	  for(int a = 0; a<TSM_NLP_iters; a++) delete sol_LP[a];
+	  t5 = MPI_Wtime();
+	  printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, TempDil = %02d, Spin-colour = %02d"
+		     " - Total Processing Time %f sec\n",msg_str, is, ih, it, sc, t5-t3);
+	  
 	}// Spin-color dilution
       }//Temporal dilution
     }// Hadamard vectors

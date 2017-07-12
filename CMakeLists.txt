@@ -132,19 +132,21 @@ set(QKXTM_HDF5HOME "" CACHE PATH "path to HDF5")
 set(QKXTM_MKL OFF CACHE BOOL "build QKXTM with MKL")
 set(QKXTM_OPENBLAS OFF CACHE BOOL "build QKXTM with OENBLAS")
 
+if(QKXTM_MKL AND QKXTM_OPENBLAS)
+  message(SEND_ERROR "Please specify either MKL or OpenBLAS libraries, not both")
+endif()
+
 #-C.K. Locations for OPENBLAS or MKL
 if(${QKXTM_OPENBLAS})
   set(QKXTM_OPENBLASHOME "" CACHE PATH "path to OPENBLAS source")
   set(QKXTM_OPENBLAS_LIBDIR "" CACHE PATH "path to OPENBLAS lib")
 endif()
 
-#-C.K. In facts, it seems that these options do not really contribute something,
-# but may be useful for future iterations
 if(${QKXTM_MKL})
-  set(QKXTM_MKL_LIBDIR "" CACHE PATH "path to MKL library dir")
-  set(QKXTM_MKL_INCDIR "" CACHE PATH "path to MKL include dir")
+  set(QKXTM_MKL_LIBDIR "${MKLROOT}/lib/intel64" CACHE PATH "path to MKL library dir")
+  set(QKXTM_MKL_INCDIR "${MKLROOT}/include" CACHE PATH "path to MKL include dir")
 endif()
-#-C.K.
+
 
 #QKXTM: DMH
 

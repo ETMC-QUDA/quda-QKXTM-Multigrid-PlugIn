@@ -1724,86 +1724,86 @@ void __attribute__((weak)) usage_extra(char** argv){};
 
 void usage(char** argv )
 {  
-  printf("Usage: %s [options]\n", argv[0]);
-  printf("Common options: \n");
+  printfQuda("Usage: %s [options]\n", argv[0]);
+  printfQuda("Common options: \n");
 #ifndef MULTI_GPU
-  printf("    --device <n>                              # Set the CUDA device to use (default 0, single GPU only)\n");     
+  printfQuda("    --device <n>                              # Set the CUDA device to use (default 0, single GPU only)\n");     
 #endif
-  printf("    --prec <double/single/half>               # Precision in GPU\n");
-  printf("    --prec-sloppy <double/single/half>        # Sloppy precision in GPU\n");
-  printf("    --prec-precondition <double/single/half>  # Preconditioner precision in GPU\n");
-  printf("    --prec-null <double/single/half>          # Null vector precision in GPU\n");
-  printf("    --recon <8/9/12/13/18>                    # Link reconstruction type\n");
-  printf("    --recon-sloppy <8/9/12/13/18>             # Sloppy link reconstruction type\n");
-  printf("    --recon-precondition <8/9/12/13/18>       # Preconditioner link reconstruction type\n");
-  printf("    --dagger                                  # Set the dagger to 1 (default 0)\n"); 
-  printf("    --dim <n>                                 # Set space-time dimension (X Y Z T)\n"); 
-  printf("    --sdim <n>                                # Set space dimension(X/Y/Z) size\n"); 
-  printf("    --xdim <n>                                # Set X dimension size(default 24)\n");     
-  printf("    --ydim <n>                                # Set X dimension size(default 24)\n");     
-  printf("    --zdim <n>                                # Set X dimension size(default 24)\n");     
-  printf("    --tdim <n>                                # Set T dimension size(default 24)\n");  
-  printf("    --Lsdim <n>                               # Set Ls dimension size(default 16)\n");  
-  printf("    --gridsize <x y z t>                      # Set the grid size in all four dimension (default 1 1 1 1)\n");
-  printf("    --xgridsize <n>                           # Set grid size in X dimension (default 1)\n");
-  printf("    --ygridsize <n>                           # Set grid size in Y dimension (default 1)\n");
-  printf("    --zgridsize <n>                           # Set grid size in Z dimension (default 1)\n");
-  printf("    --tgridsize <n>                           # Set grid size in T dimension (default 1)\n");
-  printf("    --partition <mask>                        # Set the communication topology (X=1, Y=2, Z=4, T=8, and combinations of these)\n");
-  printf("    --kernel-pack-t                           # Set T dimension kernel packing to be true (default false)\n");
-  printf("    --dslash-type <type>                      # Set the dslash type, the following values are valid\n"
+  printfQuda("    --prec <double/single/half>               # Precision in GPU\n");
+  printfQuda("    --prec-sloppy <double/single/half>        # Sloppy precision in GPU\n");
+  printfQuda("    --prec-precondition <double/single/half>  # Preconditioner precision in GPU\n");
+  printfQuda("    --prec-null <double/single/half>          # Null vector precision in GPU\n");
+  printfQuda("    --recon <8/9/12/13/18>                    # Link reconstruction type\n");
+  printfQuda("    --recon-sloppy <8/9/12/13/18>             # Sloppy link reconstruction type\n");
+  printfQuda("    --recon-precondition <8/9/12/13/18>       # Preconditioner link reconstruction type\n");
+  printfQuda("    --dagger                                  # Set the dagger to 1 (default 0)\n"); 
+  printfQuda("    --dim <n>                                 # Set space-time dimension (X Y Z T)\n"); 
+  printfQuda("    --sdim <n>                                # Set space dimension(X/Y/Z) size\n"); 
+  printfQuda("    --xdim <n>                                # Set X dimension size(default 24)\n");     
+  printfQuda("    --ydim <n>                                # Set X dimension size(default 24)\n");     
+  printfQuda("    --zdim <n>                                # Set X dimension size(default 24)\n");     
+  printfQuda("    --tdim <n>                                # Set T dimension size(default 24)\n");  
+  printfQuda("    --Lsdim <n>                               # Set Ls dimension size(default 16)\n");  
+  printfQuda("    --gridsize <x y z t>                      # Set the grid size in all four dimension (default 1 1 1 1)\n");
+  printfQuda("    --xgridsize <n>                           # Set grid size in X dimension (default 1)\n");
+  printfQuda("    --ygridsize <n>                           # Set grid size in Y dimension (default 1)\n");
+  printfQuda("    --zgridsize <n>                           # Set grid size in Z dimension (default 1)\n");
+  printfQuda("    --tgridsize <n>                           # Set grid size in T dimension (default 1)\n");
+  printfQuda("    --partition <mask>                        # Set the communication topology (X=1, Y=2, Z=4, T=8, and combinations of these)\n");
+  printfQuda("    --kernel-pack-t                           # Set T dimension kernel packing to be true (default false)\n");
+  printfQuda("    --dslash-type <type>                      # Set the dslash type, the following values are valid\n"
 	 "                                                  wilson/clover/twisted-mass/twisted-clover/staggered\n"
          "                                                  /asqtad/domain-wall/domain-wall-4d/mobius\n");
-  printf("    --flavor <type>                           # Set the twisted mass flavor type (singlet (default), deg-doublet, nondeg-doublet)\n");
-  printf("    --load-gauge file                         # Load gauge field \"file\" for the test (requires QIO)\n");
-  printf("    --niter <n>                               # The number of iterations to perform (default 10)\n");
-  printf("    --ngcrkrylov <n>                          # The number of inner iterations to use for GCR, BiCGstab-l (default 10)\n");
-  printf("    --pipeline <n>                            # The pipeline length for fused operations in GCR, BiCGstab-l (default 0, no pipelining)\n");
-  printf("    --solution-pipeline <n>                   # The pipeline length for fused solution accumulation (default 0, no pipelining)\n");
-  printf("    --inv-type <cg/bicgstab/gcr>              # The type of solver to use (default cg)\n");
-  printf("    --precon-type <mr/ (unspecified)>         # The type of solver to use (default none (=unspecified)).\n");
-  printf("    --multishift <true/false>                 # Whether to do a multi-shift solver test or not (default false)\n");
-  printf("    --mass                                    # Mass of Dirac operator (default 0.1)\n");
-  printf("    --kappa                                   # Kappa of Dirac operator (default -1.0)\n");
-  printf("    --mu                                      # Twisted-Mass of Dirac operator (default 0.1)\n");
-  printf("    --compute-clover                          # Compute the clover field or use random numbers (default false)\n");
-  printf("    --clover-coeff                            # Clover coefficient (default 1.0)\n");
-  printf("    --anisotropy                              # Temporal anisotropy factor (default 1.0)\n");
-  printf("    --mass-normalization                      # Mass normalization (kappa (default) / mass / asym-mass)\n");
-  printf("    --matpc                                   # Matrix preconditioning type (even-even, odd-odd, even-even-asym, odd-odd-asym) \n");
-  printf("    --solve-type                              # The type of solve to do (direct, direct-pc, normop, normop-pc, normerr, normerr-pc) \n");
-  printf("    --tol  <resid_tol>                        # Set L2 residual tolerance\n");
-  printf("    --tolhq  <resid_hq_tol>                   # Set heavy-quark residual tolerance\n");
-  printf("    --test                                    # Test method (different for each test)\n");
-  printf("    --verify <true/false>                     # Verify the GPU results using CPU results (default true)\n");
-  printf("    --mg-nvec <level nvec>                    # Number of null-space vectors to define the multigrid transfer operator on a given level\n");
-  printf("    --mg-gpu-prolongate <true/false>          # Whether to do the multigrid transfer operators on the GPU (default false)\n");
-  printf("    --mg-levels <2+>                          # The number of multigrid levels to do (default 2)\n");
-  printf("    --mg-nu-pre  <1-20>                       # The number of pre-smoother applications to do at each multigrid level (default 2)\n");
-  printf("    --mg-nu-post <1-20>                       # The number of post-smoother applications to do at each multigrid level (default 2)\n");
-  printf("    --mg-setup-inv <level inv>                # The inverter to use for the setup of multigrid (default bicgstab)\n");
-  printf("    --mg-setup-iters <level iter>             # The number of setup iterations to use for the multigrid (default 1)\n");
-  printf("    --mg-setup-tol                            # The tolerance to use for the setup of multigrid (default 5e-6)\n");
-  printf("    --mg-setup-type <null/test>               # The type of setup to use for the multigrid (default null)\n");
-  printf("    --mg-pre-orth <true/false>                # If orthonormalize the vector before inverting in the setup of multigrid (default false)\n");
-  printf("    --mg-post-orth <true/false>               # If orthonormalize the vector after inverting in the setup of multigrid (default true)\n");
-  printf("    --mg-omega                                # The over/under relaxation factor for the smoother of multigrid (default 0.85)\n");
-  printf("    --mg-coarse-solver <level gcr/etc.>       # The solver to wrap the V cycle on each level (default gcr, only for levels 1+)\n");
-  printf("    --mg-coarse-solver-tol <level gcr/etc.>   # The coarse solver tolerance for each level (default 0.25, only for levels 1+)\n");
-  printf("    --mg-coarse-solver-maxiter <level n>      # The coarse solver maxiter for each level (default 100)\n");
-  printf("    --mg-smoother <level mr/etc.>             # The smoother to use for multigrid (default mr)\n");
-  printf("    --mg-smoother-tol <level resid_tol>       # The smoother tolerance to use for each multigrid (default 0.25)\n");
-  printf("    --mg-schwarz-type <level false/add/mul>   # Whether to use Schwarz preconditioning (requires MR smoother and GCR setup solver) (default false)\n");
-  printf("    --mg-schwarz-cycle <level cycle>          # The number of Schwarz cycles to apply per smoother application (default=1)\n");
-  printf("    --mg-block-size <level x y z t>           # Set the geometric block size for the each multigrid level's transfer operator (default 4 4 4 4)\n");
-  printf("    --mg-mu-factor <level factor>             # Set the multiplicative factor for the twisted mass mu parameter on each level (default 1)\n");
-  printf("    --mg-generate-nullspace <true/false>      # Generate the null-space vector dynamically (default true)\n");
-  printf("    --mg-generate-all-levels <true/talse>     # true=generate nul space on all levels, false=generate on level 0 and create other levels from that (default true)\n");
-  printf("    --mg-load-vec file                        # Load the vectors \"file\" for the multigrid_test (requires QIO)\n");
-  printf("    --mg-save-vec file                        # Save the generated null-space vectors \"file\" from the multigrid_test (requires QIO)\n");
-  printf("    --mg-vebosity <level verb>                # The verbosity to use on each level of the multigrid (default silent)\n");
-  printf("    --nsrc <n>                                # How many spinors to apply the dslash to simultaneusly (experimental for staggered only)\n");
-  printf("    --msrc <n>                                # Used for testing non-square block blas routines where nsrc defines the other dimension\n");
+  printfQuda("    --flavor <type>                           # Set the twisted mass flavor type (singlet (default), deg-doublet, nondeg-doublet)\n");
+  printfQuda("    --load-gauge file                         # Load gauge field \"file\" for the test (requires QIO)\n");
+  printfQuda("    --niter <n>                               # The number of iterations to perform (default 10)\n");
+  printfQuda("    --ngcrkrylov <n>                          # The number of inner iterations to use for GCR, BiCGstab-l (default 10)\n");
+  printfQuda("    --pipeline <n>                            # The pipeline length for fused operations in GCR, BiCGstab-l (default 0, no pipelining)\n");
+  printfQuda("    --solution-pipeline <n>                   # The pipeline length for fused solution accumulation (default 0, no pipelining)\n");
+  printfQuda("    --inv-type <cg/bicgstab/gcr>              # The type of solver to use (default cg)\n");
+  printfQuda("    --precon-type <mr/ (unspecified)>         # The type of solver to use (default none (=unspecified)).\n");
+  printfQuda("    --multishift <true/false>                 # Whether to do a multi-shift solver test or not (default false)\n");
+  printfQuda("    --mass                                    # Mass of Dirac operator (default 0.1)\n");
+  printfQuda("    --kappa                                   # Kappa of Dirac operator (default -1.0)\n");
+  printfQuda("    --mu                                      # Twisted-Mass of Dirac operator (default 0.1)\n");
+  printfQuda("    --compute-clover                          # Compute the clover field or use random numbers (default false)\n");
+  printfQuda("    --clover-coeff                            # Clover coefficient (default 1.0)\n");
+  printfQuda("    --anisotropy                              # Temporal anisotropy factor (default 1.0)\n");
+  printfQuda("    --mass-normalization                      # Mass normalization (kappa (default) / mass / asym-mass)\n");
+  printfQuda("    --matpc                                   # Matrix preconditioning type (even-even, odd-odd, even-even-asym, odd-odd-asym) \n");
+  printfQuda("    --solve-type                              # The type of solve to do (direct, direct-pc, normop, normop-pc, normerr, normerr-pc) \n");
+  printfQuda("    --tol  <resid_tol>                        # Set L2 residual tolerance\n");
+  printfQuda("    --tolhq  <resid_hq_tol>                   # Set heavy-quark residual tolerance\n");
+  printfQuda("    --test                                    # Test method (different for each test)\n");
+  printfQuda("    --verify <true/false>                     # Verify the GPU results using CPU results (default true)\n");
+  printfQuda("    --mg-nvec <level nvec>                    # Number of null-space vectors to define the multigrid transfer operator on a given level\n");
+  printfQuda("    --mg-gpu-prolongate <true/false>          # Whether to do the multigrid transfer operators on the GPU (default false)\n");
+  printfQuda("    --mg-levels <2+>                          # The number of multigrid levels to do (default 2)\n");
+  printfQuda("    --mg-nu-pre  <1-20>                       # The number of pre-smoother applications to do at each multigrid level (default 2)\n");
+  printfQuda("    --mg-nu-post <1-20>                       # The number of post-smoother applications to do at each multigrid level (default 2)\n");
+  printfQuda("    --mg-setup-inv <level inv>                # The inverter to use for the setup of multigrid (default bicgstab)\n");
+  printfQuda("    --mg-setup-iters <level iter>             # The number of setup iterations to use for the multigrid (default 1)\n");
+  printfQuda("    --mg-setup-tol                            # The tolerance to use for the setup of multigrid (default 5e-6)\n");
+  printfQuda("    --mg-setup-type <null/test>               # The type of setup to use for the multigrid (default null)\n");
+  printfQuda("    --mg-pre-orth <true/false>                # If orthonormalize the vector before inverting in the setup of multigrid (default false)\n");
+  printfQuda("    --mg-post-orth <true/false>               # If orthonormalize the vector after inverting in the setup of multigrid (default true)\n");
+  printfQuda("    --mg-omega                                # The over/under relaxation factor for the smoother of multigrid (default 0.85)\n");
+  printfQuda("    --mg-coarse-solver <level gcr/etc.>       # The solver to wrap the V cycle on each level (default gcr, only for levels 1+)\n");
+  printfQuda("    --mg-coarse-solver-tol <level gcr/etc.>   # The coarse solver tolerance for each level (default 0.25, only for levels 1+)\n");
+  printfQuda("    --mg-coarse-solver-maxiter <level n>      # The coarse solver maxiter for each level (default 100)\n");
+  printfQuda("    --mg-smoother <level mr/etc.>             # The smoother to use for multigrid (default mr)\n");
+  printfQuda("    --mg-smoother-tol <level resid_tol>       # The smoother tolerance to use for each multigrid (default 0.25)\n");
+  printfQuda("    --mg-schwarz-type <level false/add/mul>   # Whether to use Schwarz preconditioning (requires MR smoother and GCR setup solver) (default false)\n");
+  printfQuda("    --mg-schwarz-cycle <level cycle>          # The number of Schwarz cycles to apply per smoother application (default=1)\n");
+  printfQuda("    --mg-block-size <level x y z t>           # Set the geometric block size for the each multigrid level's transfer operator (default 4 4 4 4)\n");
+  printfQuda("    --mg-mu-factor <level factor>             # Set the multiplicative factor for the twisted mass mu parameter on each level (default 1)\n");
+  printfQuda("    --mg-generate-nullspace <true/false>      # Generate the null-space vector dynamically (default true)\n");
+  printfQuda("    --mg-generate-all-levels <true/talse>     # true=generate nul space on all levels, false=generate on level 0 and create other levels from that (default true)\n");
+  printfQuda("    --mg-load-vec file                        # Load the vectors \"file\" for the multigrid_test (requires QIO)\n");
+  printfQuda("    --mg-save-vec file                        # Save the generated null-space vectors \"file\" from the multigrid_test (requires QIO)\n");
+  printfQuda("    --mg-vebosity <level verb>                # The verbosity to use on each level of the multigrid (default silent)\n");
+  printfQuda("    --nsrc <n>                                # How many spinors to apply the dslash to simultaneusly (experimental for staggered only)\n");
+  printfQuda("    --msrc <n>                                # Used for testing non-square block blas routines where nsrc defines the other dimension\n");
 
 
   /////////////////////
@@ -1812,86 +1812,86 @@ void usage(char** argv )
 
 
   //-C.K. Generic INPUT
-  printf("    --traj                                    # Trajectory of the configuration\n");
-  printf("    --csw                                     # Clover csw coefficient (default 1.57551)\n");
-  printf("    --load-gauge-smeared                      # Load smeared gauge field \"file\" (in LIME format)\n");
-  printf("    --verbosity-level                         # Verbosity level (verbose/summarize/silent, default: summarize)\n");
+  printfQuda("    --traj                                    # Trajectory of the configuration\n");
+  printfQuda("    --csw                                     # Clover csw coefficient (default 1.57551)\n");
+  printfQuda("    --load-gauge-smeared                      # Load smeared gauge field \"file\" (in LIME format)\n");
+  printfQuda("    --verbosity-level                         # Verbosity level (verbose/summarize/silent, default: summarize)\n");
 
 
   //-C.K. Correlation function INPUT
-  printf("    --x_source                                # Source position in x direction (default 0)\n");
-  printf("    --y_source                                # Source position in y direction (default 0)\n");
-  printf("    --z_source                                # Source position in z direction (default 0)\n");
-  printf("    --t_source                                # Source position in t direction (default 0)\n");
-  printf("    --pathListSinkSource                      # Path to sink-source separations (default \" list_tsinksource.txt \")\n");
-  printf("    --pathListRun3pt                          # Path to source positions to run for 2pt- and 3pt- functions (default \" listrun3pt.txt \")\n");
-  printf("    --run3pt                                  # Option to choose whether to run for all (=all/ALL) source-positions, for none (=none/NONE)\n"
+  printfQuda("    --x_source                                # Source position in x direction (default 0)\n");
+  printfQuda("    --y_source                                # Source position in y direction (default 0)\n");
+  printfQuda("    --z_source                                # Source position in z direction (default 0)\n");
+  printfQuda("    --t_source                                # Source position in t direction (default 0)\n");
+  printfQuda("    --pathListSinkSource                      # Path to sink-source separations (default \" list_tsinksource.txt \")\n");
+  printfQuda("    --pathListRun3pt                          # Path to source positions to run for 2pt- and 3pt- functions (default \" listrun3pt.txt \")\n");
+  printfQuda("    --run3pt                                  # Option to choose whether to run for all (=all/ALL) source-positions, for none (=none/NONE)\n"
 	 "                                                  or only some (=file/FILE, given in --pathListRun3pt) (default \" all \")\n");
-  printf("    --Ntsink                                  # Number of sink-source separations (default \" list_tsinksource.txt \")\n");
-  printf("    --Q-sqMax                                 # The maximum Q^2 momentum (loop/correlators) (default 0)\n");
-  printf("    --nsmearAPE                               # Number of APE smearing iterations (default 20)\n");
-  printf("    --alphaAPE                                # APE smearing parameter (default 0.5)\n");
-  printf("    --nsmearGauss                             # Number of Gauss smearing iterations (default 50)\n");
-  printf("    --alphaGauss                              # Gauss smearing parameter (default 4.0)\n");
-  printf("    --twop-filename                           # File name to save twopoint function (default \"twop\")\n");
-  printf("    --threep-filename                         # File name to save threepoint function (default \"threep\")\n");
-  printf("    --prop_path                               # File name to save propagators is (default \"prop_path\")\n");
-  printf("    --numSourcePositions                      # The number of source positions we want to calculate (default 1)\n");
-  printf("    --pathListSourcePositions                 # Path where the list with the source positions is (default \" listSourcePositions.txt \")\n");
-  printf("    --corr-file-format                        # file format for the 2pt-3pt functions, ASCII/HDF5 (default \"ASCII_format\")\n");
-  printf("    --check-corr-files                        # check if 2pt-functions exist to avoid reproducing (default \"no\")\n");
-  printf("    --proj-list                               # path to a file-list of projectors for 3pt function (default: only G4)\n");
-  printf("    --corr-write-space                        # write the correlation functions in position space (MOMENTUM/POSITION, default: MOMENTUM)\n");
+  printfQuda("    --Ntsink                                  # Number of sink-source separations (default \" list_tsinksource.txt \")\n");
+  printfQuda("    --Q-sqMax                                 # The maximum Q^2 momentum (loop/correlators) (default 0)\n");
+  printfQuda("    --nsmearAPE                               # Number of APE smearing iterations (default 20)\n");
+  printfQuda("    --alphaAPE                                # APE smearing parameter (default 0.5)\n");
+  printfQuda("    --nsmearGauss                             # Number of Gauss smearing iterations (default 50)\n");
+  printfQuda("    --alphaGauss                              # Gauss smearing parameter (default 4.0)\n");
+  printfQuda("    --twop-filename                           # File name to save twopoint function (default \"twop\")\n");
+  printfQuda("    --threep-filename                         # File name to save threepoint function (default \"threep\")\n");
+  printfQuda("    --prop_path                               # File name to save propagators is (default \"prop_path\")\n");
+  printfQuda("    --numSourcePositions                      # The number of source positions we want to calculate (default 1)\n");
+  printfQuda("    --pathListSourcePositions                 # Path where the list with the source positions is (default \" listSourcePositions.txt \")\n");
+  printfQuda("    --corr-file-format                        # file format for the 2pt-3pt functions, ASCII/HDF5 (default \"ASCII_format\")\n");
+  printfQuda("    --check-corr-files                        # check if 2pt-functions exist to avoid reproducing (default \"no\")\n");
+  printfQuda("    --proj-list                               # path to a file-list of projectors for 3pt function (default: only G4)\n");
+  printfQuda("    --corr-write-space                        # write the correlation functions in position space (MOMENTUM/POSITION, default: MOMENTUM)\n");
 
   //-C.K. Loop INPUT
-  printf("    --Q-sqMax-loop                            # The maximum Q^2 momentum (loop) (default 0)\n");
-  printf("    --seed                                    # Seed for ranlux random number generator (default 100)\n");
-  printf("    --Nstoch                                  # Number of stochastic noise vectors for loop (default 100)\n");
-  printf("    --NdumpStep                               # Every how many noise vectors it will dump the data (default 10)\n");
-  printf("    --loop-filename                           # File name to save loops (default \"loop\")\n");
-  printf("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
-  printf("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
-  printf("    --useEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
-  printf("    --TSM-NLP-iters                               # How many Low-precision criteria for TSM\n");
-  printf("    --TSM-maxiter <step> <n>                  # Set the iteration number as criterion for Low-precision solves for TSM\n");
-  printf("    --TSM-tol <step> <tol>                    # Set the solver tolerance as criterion for Low-precision solves for TSM\n");
+  printfQuda("    --Q-sqMax-loop                            # The maximum Q^2 momentum (loop) (default 0)\n");
+  printfQuda("    --seed                                    # Seed for ranlux random number generator (default 100)\n");
+  printfQuda("    --Nstoch                                  # Number of stochastic noise vectors for loop (default 100)\n");
+  printfQuda("    --NdumpStep                               # Every how many noise vectors it will dump the data (default 10)\n");
+  printfQuda("    --loop-filename                           # File name to save loops (default \"loop\")\n");
+  printfQuda("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
+  printfQuda("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
+  printfQuda("    --useEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
+  printfQuda("    --TSM-NLP-iters                               # How many Low-precision criteria for TSM\n");
+  printfQuda("    --TSM-maxiter <step> <n>                  # Set the iteration number as criterion for Low-precision solves for TSM\n");
+  printfQuda("    --TSM-tol <step> <tol>                    # Set the solver tolerance as criterion for Low-precision solves for TSM\n");
 #ifdef HAVE_ARPACK
-  printf("    --pathEigenVectorsUp                      # Path where the eigenVectors for up flavor are (default ev_u.0000)\n");
-  printf("    --pathEigenVectorsDown                    # Path where the eigenVectors for up flavor are (default ev_d.0000)\n");
-  printf("    --pathEigenValuesUp                       # Path where the eigenVectors for up flavor are (default evals_u.dat)\n");
-  printf("    --pathEigenValuesDown                     # Path where the eigenVectors for up flavor are (default evals_d.dat)\n");
+  printfQuda("    --pathEigenVectorsUp                      # Path where the eigenVectors for up flavor are (default ev_u.0000)\n");
+  printfQuda("    --pathEigenVectorsDown                    # Path where the eigenVectors for up flavor are (default ev_d.0000)\n");
+  printfQuda("    --pathEigenValuesUp                       # Path where the eigenVectors for up flavor are (default evals_u.dat)\n");
+  printfQuda("    --pathEigenValuesDown                     # Path where the eigenVectors for up flavor are (default evals_d.dat)\n");
 
   //-C.K. ARPACK EXACT INPUT
-  printf("    --PolyDeg                                 # The degree of the polynomial Acceleration (default 100)\n");
-  printf("    --nEv                                     # Number of eigenvalues requested by ARPACK (default 100)\n");
-  printf("    --nKv                                     # Total size of the Krylov space used by ARPACK (default 200)\n");
-  printf("    --spectrumPart                            # Which part of the spectrum we need (Options: SR,LR,SM,LM,SI,LI, default SR)\n");
-  printf("    --isACC                                   # Whether we want to use polynomial acceleration (yes/no, default yes)\n");
-  printf("    --tolARPACK                               # Tolerance for convergence, used by ARPACK (default 1.0e-5)\n");
-  printf("    --maxIterARPACK                           # Maximum iterations number for ARPACK (default 100000)\n");
-  printf("    --modeARPACK                              # MODE for ARPACK soluton (default 1)\n");
-  printf("    --pathArpackLogfile                       # Path to the ARPACK log file (default  \"arpack.log\")\n");
-  printf("    --aminARPACK                              # amin parameter used in Cheb. Poly. Acc. (default 3.0e-4)\n");
-  printf("    --amaxARPACK                              # amax parameter used in Cheb. Poly. Acc. (default 3.5)\n");
-  printf("    --useFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
-  printf("    --defl-steps <steps>                      # Number of deflation steps (default: 1, the total requested NeV)\n");
-  printf("    --defl-step-NeV <step> <NeV_at_step>      # Number of eigenvectors to deflate at step <step> (default: the total requested NeV)\n");
+  printfQuda("    --PolyDeg                                 # The degree of the polynomial Acceleration (default 100)\n");
+  printfQuda("    --nEv                                     # Number of eigenvalues requested by ARPACK (default 100)\n");
+  printfQuda("    --nKv                                     # Total size of the Krylov space used by ARPACK (default 200)\n");
+  printfQuda("    --spectrumPart                            # Which part of the spectrum we need (Options: SR,LR,SM,LM,SI,LI, default SR)\n");
+  printfQuda("    --isACC                                   # Whether we want to use polynomial acceleration (yes/no, default yes)\n");
+  printfQuda("    --tolARPACK                               # Tolerance for convergence, used by ARPACK (default 1.0e-5)\n");
+  printfQuda("    --maxIterARPACK                           # Maximum iterations number for ARPACK (default 100000)\n");
+  printfQuda("    --modeARPACK                              # MODE for ARPACK soluton (default 1)\n");
+  printfQuda("    --pathArpackLogfile                       # Path to the ARPACK log file (default  \"arpack.log\")\n");
+  printfQuda("    --aminARPACK                              # amin parameter used in Cheb. Poly. Acc. (default 3.0e-4)\n");
+  printfQuda("    --amaxARPACK                              # amax parameter used in Cheb. Poly. Acc. (default 3.5)\n");
+  printfQuda("    --useFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
+  printfQuda("    --defl-steps <steps>                      # Number of deflation steps (default: 1, the total requested NeV)\n");
+  printfQuda("    --defl-step-NeV <step> <NeV_at_step>      # Number of eigenvectors to deflate at step <step> (default: the total requested NeV)\n");
 #endif
-  printf("    --k-probing <n>                           # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
-  printf("    --tDilution <n>                           # Populate every nth timeslice in stochastic routines (default 1: No temporal dilution)\n");
-  printf("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
-  printf("    --loopCovDev <true/false>                 # Whether we want to compute loop covariant derivatives (default false)\n");
+  printfQuda("    --k-probing <n>                           # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
+  printfQuda("    --tDilution <n>                           # Populate every nth timeslice in stochastic routines (default 1: No temporal dilution)\n");
+  printfQuda("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
+  printfQuda("    --loopCovDev <true/false>                 # Whether we want to compute loop covariant derivatives (default false)\n");
   
   //--------//
 
-  printf("    --help                                    # Print out this message\n"); 
+  printfQuda("    --help                                    # Print out this message\n"); 
   usage_extra(argv); 
 #ifdef MULTI_GPU
   char msg[]="multi";
 #else
   char msg[]="single";
 #endif  
-  printf("Note: this program is %s GPU build\n", msg);
+  printfQuda("Note: this program is %s GPU build\n", msg);
   exit(1);
   return ;
 }

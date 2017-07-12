@@ -7281,7 +7281,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   // parameters related to Probing and spinColorDil
   unsigned short int* Vc = NULL;
   int k_probing = loopInfo.k_probing;
-  int tDil = loopInfo.tDilution;
   bool spinColorDil = loopInfo.spinColorDil;
   bool isProbing;
   int Nc; // number of Hadamard vectors, if not enabled then it is one
@@ -7498,7 +7497,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   //----------------------------------------------------------------------//
   
   //-Allocate memory for the write buffers
-  //int Nprt = ( useTSM ? TSM_NprintLP*TSM_NLP_iters : Nprint );
   int Nprt = TSM_NprintLP*TSM_NLP_iters;
 
   double *buf_std_uloc[deflSteps*TSM_NLP_iters];
@@ -7830,11 +7828,9 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   x    = new cudaColorSpinorField(cudaParam);
   tmp3 = new cudaColorSpinorField(cudaParam);
   tmp4 = new cudaColorSpinorField(cudaParam);
-  //if(useTSM) {
   for(int a=0; a<TSM_NLP_iters; a++) 
     x_LP[a] = new cudaColorSpinorField(cudaParam);
-  //}
-
+  
   profileInvert.TPSTOP(QUDA_PROFILE_H2D);
 
   QKXTM_Vector<double> *K_vector = 
@@ -7853,7 +7849,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   int Nrun = Nstoch;
   int Nd   = Ndump;
   char *msg_str;
-  if(useTSM == true ? asprintf(&msg_str,"TSM") : asprintf(&msg_str,"Stoch.") );
+  if(useTSM == true ? asprintf(&msg_str,"TSM") : asprintf(&msg_str,"NO_TSM") );
 
   //- Prepare the accumulation buffers for the stochastic part
   cudaMemset(tmp_loop, 0, sizeof(double)*2*16*GK_localVolume);
@@ -7888,57 +7884,51 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 
     //Loop over probing iterations
     for( int ih = 0 ; ih < Nc ; ih++) {
-      //Loop over Temporal dilution 
-      for( int it = 0 ; it < tDil ; it++) {
-	//Loop over spin-colour dilution
-	for(int sc = 0 ; sc < Nsc ; sc++){
-	  t3 = MPI_Wtime();
+      //Loop over spin-colour dilution
+      for(int sc = 0 ; sc < Nsc ; sc++){
+	t3 = MPI_Wtime();
 	
-	  if(spinColorDil){
-	    if(isProbing) {
-	      if(tDil > 1) {
-		get_probing4D_spinColor_temporal_dilution<double>(temp_input_vector, input_vector, Vc, ih, sc, it, tDil);
-	      } else {
-		get_probing4D_spinColor_dilution<double>(temp_input_vector, input_vector, Vc, ih, sc);
-	      }
-	    }
-	    else
-	      get_spinColor_dilution<double>(temp_input_vector, input_vector, sc);
+	if(spinColorDil){
+	  if(isProbing) {
+	    get_probing4D_spinColor_dilution<double>(temp_input_vector, input_vector, Vc, ih, sc);
 	  }
-	  else{
-	    if(isProbing)
-	      get_probing4D_dilution<double>(temp_input_vector, input_vector, Vc, ih);
-	    else
-	      temp_input_vector = input_vector;
-	  }
-
-	  K_vector->packVector((double*) temp_input_vector);
-	  K_vector->loadVector();
-	  K_vector->uploadToCuda(b,flag_eo);
-      
-	  double orig_tol = param->tol;
-	  long int orig_maxiter = param->maxiter;
+	  else
+	    get_spinColor_dilution<double>(temp_input_vector, input_vector, sc);
+	}
+	else{
+	  if(isProbing)
+	    get_probing4D_dilution<double>(temp_input_vector, input_vector, Vc, ih);
+	  else
+	    temp_input_vector = input_vector;
+	}
+	
+	K_vector->packVector((double*) temp_input_vector);
+	K_vector->loadVector();
+	K_vector->uploadToCuda(b,flag_eo);
+	
+	double orig_tol = param->tol;
+	long int orig_maxiter = param->maxiter;
+	
+	//If we are using the TSM, we need the LP
+	//solves for bias estimation. We loop over
+	//the LP stopping criteria, and store each 
+	//solution as a guess for the next LP. 
+	//If TSM_NLP_iters is set to 1, this loop,
+	//runs once.
+	
+	t5 = 0.0;
+	
+	for(int LP_crit = 0; LP_crit<TSM_NLP_iters; LP_crit++) {
 	  
-	  //If we are using the TSM, we need the LP
-	  //solves for bias estimation. We loop over
-	  //the LP stopping criteria, and store each 
-	  //solution as a guess for the next LP. 
-	  //If TSM_NLP_iters is set to 1, this loop,
-	  //runs once.
-
-	  t5 = 0.0;
-	  
-	  for(int LP_crit = 0; LP_crit<TSM_NLP_iters; LP_crit++) {
+	  t1 = MPI_Wtime();
+	  // Set the low-precision criterion
+	  if(TSM_maxiter[0]==0) param->tol = TSM_tol[LP_crit];
+	  else if(TSM_tol[0]==0) param->maxiter = TSM_maxiter[LP_crit];  
 	    
-	    t1 = MPI_Wtime();
-	    // Set the low-precision criterion
-	    if(TSM_maxiter[0]==0) param->tol = TSM_tol[LP_crit];
-	    else if(TSM_tol[0]==0) param->maxiter = TSM_maxiter[LP_crit];  
-	    
-	    dirac.prepare(in,out,*x_LP[LP_crit],*b,param->solution_type); 
+	  dirac.prepare(in,out,*x_LP[LP_crit],*b,param->solution_type); 
 
-	    // Create the low-precision solver
-	    if(LP_crit > 0) param->use_init_guess = QUDA_USE_INIT_GUESS_YES;
+	  // Create the low-precision solver
+	  if(LP_crit > 0) param->use_init_guess = QUDA_USE_INIT_GUESS_YES;
 	    SolverParam solverParam_LP(*param);
 	    Solver *solve_LP = Solver::create(solverParam_LP, m, mSloppy, 
 					      mPre, profileInvert);
@@ -7951,137 +7941,136 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	    if(is == 0 && LP_crit == 0) saveTuneCache();
 	    delete solve_LP;
 	    t2 = MPI_Wtime();
-
+	    
 	    t5 += t2 - t1;
 	    
 	    //DMH: Experimental, attempt to reuse last result
 	    if(LP_crit < TSM_NLP_iters - 1) blas::copy(*x_LP[LP_crit + 1], *x_LP[LP_crit]);
 	    
 	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-		       "TempDil = %02d, Spin-colour = %02d, LP_crit = %02d "
+		       "Spin-colour = %02d, LP_crit = %02d "
 		       "- Partial Inversion Time: %f sec\n",
-		       msg_str, is, ih, it, sc, LP_crit, t2-t1);
+		       msg_str, is, ih, sc, LP_crit, t2-t1);
 	    
-	  }
+	}
+	
+	printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
+		   "Spin-colour = %02d "
+		   "- Full Inversion Time: %f sec\n",
+		   msg_str, is, ih, sc, t5);
+	
+	// Revert to the original, high-precision values
+	param->tol = orig_tol;           
+	param->maxiter = orig_maxiter;
+	
+	
+	//Loop over LP criteria slowest to preserve data structure
+	//in the HDf5 write routines, with deflation steps running the 
+	//fastest. If TSM_NLP_iters is set to 1, this 
+	//loop runs once.
+	for(int LP_crit=0; LP_crit<TSM_NLP_iters; LP_crit++){
 	  
-	  printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-		     "TempDil = %02d, Spin-colour = %02d "
-		     "- Full Inversion Time: %f sec\n",
-		     msg_str, is, ih, it, sc, t5);
-	  
-	  // Revert to the original, high-precision values
-	  param->tol = orig_tol;           
-	  param->maxiter = orig_maxiter;
-	  
-	  
-	  //Loop over LP criteria slowest to preserve data structure
-	  //in the HDf5 write routines, with deflation steps running the 
-	  //fastest. If TSM_NLP_iters is set to 1, this 
-	  //loop runs once.
-	  for(int LP_crit=0; LP_crit<TSM_NLP_iters; LP_crit++){
+	  // Loop over the number of deflation steps
+	  for(int dstep=0;dstep<deflSteps;dstep++){
+	    int NeV_defl = nDefl[dstep];
 	    
-	    // Loop over the number of deflation steps
-	    for(int dstep=0;dstep<deflSteps;dstep++){
-	      int NeV_defl = nDefl[dstep];
-	      
-	      t1 = MPI_Wtime();	
-	      K_vector->downloadFromCuda(sol_LP[LP_crit],flag_eo);
-	      K_vector->download();
-	      
-	      // Solution is projected and put into x, x <- (1-UU^dag) x
-	      deflation->projectVector(*K_vecdef,*K_vector,is+1,NeV_defl);
-	      K_vecdef->uploadToCuda(x_LP[LP_crit], flag_eo);              
-	      
-	      t2 = MPI_Wtime();
-	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-			 "TempDil = %02d, Spin-colour = %02d, NeV = %04d, "
-			 "LP crit = %02d - Solution projection: %f sec\n",
-			 msg_str, is, ih, it, sc, NeV_defl, LP_crit, t2-t1);
-	      
-	      
-	      //Index to point to correct part of accumulation array and 
-	      //write buffer
-	      int idx = LP_crit*deflSteps + dstep;
+	    t1 = MPI_Wtime();	
+	    K_vector->downloadFromCuda(sol_LP[LP_crit],flag_eo);
+	    K_vector->download();
+	    
+	    // Solution is projected and put into x, x <- (1-UU^dag) x
+	    deflation->projectVector(*K_vecdef,*K_vector,is+1,NeV_defl);
+	    K_vecdef->uploadToCuda(x_LP[LP_crit], flag_eo);              
+	    
+	    t2 = MPI_Wtime();
+	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
+		       "Spin-colour = %02d, NeV = %04d, "
+		       "LP crit = %02d - Solution projection: %f sec\n",
+		       msg_str, is, ih, sc, NeV_defl, LP_crit, t2-t1);
+	    
+	    
+	    //Index to point to correct part of accumulation array and 
+	    //write buffer
+	    int idx = LP_crit*deflSteps + dstep;
+	    
+	    t1 = MPI_Wtime();
+	    oneEndTrick_w_One_Der<double>(*x_LP[LP_crit], *tmp3, *tmp4, param, loopCovDev,
+					  gen_uloc[idx], std_uloc[idx], 
+					  gen_oneD[idx], std_oneD[idx], 
+					  gen_csvC[idx], std_csvC[idx]);
+	    t2 = MPI_Wtime();
+	    
+	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
+		       "Spin-colour = %02d, NeV = %04d, "
+		       "LP crit = %02d - oneEndTrick: %f sec\n",
+		       msg_str,is, ih, sc, NeV_defl, LP_crit, t2-t1);
+	    
+	    //Condition to assert if we are dumping at this stochastic source
+	    //and if we have completed a loop over Hadamard vectors. If true,
+	    //dump the data.
+	    if( ((is+1)%Nd == 0)&&(ih*Nsc+sc == Nc*Nsc-1)){
+	      //iPrint increments the starting points in the write buffers.
+	      if(idx==0) iPrint++;
 	      
 	      t1 = MPI_Wtime();
-	      oneEndTrick_w_One_Der<double>(*x_LP[LP_crit], *tmp3, *tmp4, param, loopCovDev,
-					    gen_uloc[idx], std_uloc[idx], 
-					    gen_oneD[idx], std_oneD[idx], 
-					    gen_csvC[idx], std_csvC[idx]);
-	      t2 = MPI_Wtime();
-	      
-	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, "
-			 "TempDil = %02d, Spin-colour = %02d, NeV = %04d, "
-			 "LP crit = %02d - oneEndTrick: %f sec\n",
-			 msg_str,is, ih, it, sc, NeV_defl, LP_crit, t2-t1);
-	      
-	      //Condition to assert if we are dumping at this stochastic source
-	      //and if we have completed a loop over Hadamard vectors. If true,
-	      //dump the data.
-	      if( ((is+1)%Nd == 0)&&((ih*tDil+it)*Nsc+sc == Nc*tDil*Nsc-1)){
-		//iPrint increments the starting points in the write buffers.
-		if(idx==0) iPrint++;
+	      if(GK_nProc[2]==1){      
+		doCudaFFT_v2<double>(std_uloc[idx], tmp_loop); // Scalar
+		copyLoopToWriteBuf(buf_std_uloc[idx], tmp_loop, 
+				   iPrint, info.Q_sq, Nmoms, mom);
+		doCudaFFT_v2<double>(gen_uloc[idx], tmp_loop); // dOp
+		copyLoopToWriteBuf(buf_gen_uloc[idx], tmp_loop, 
+				   iPrint, info.Q_sq, Nmoms, mom);
 		
-		t1 = MPI_Wtime();
-		if(GK_nProc[2]==1){      
-		  doCudaFFT_v2<double>(std_uloc[idx], tmp_loop); // Scalar
-		  copyLoopToWriteBuf(buf_std_uloc[idx], tmp_loop, 
+		for(int mu = 0 ; mu < 4 ; mu++){
+		  doCudaFFT_v2<double>(std_oneD[idx][mu], tmp_loop); // Loops
+		  copyLoopToWriteBuf(buf_std_oneD[idx][mu], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom);
-		  doCudaFFT_v2<double>(gen_uloc[idx], tmp_loop); // dOp
-		  copyLoopToWriteBuf(buf_gen_uloc[idx], tmp_loop, 
+		  doCudaFFT_v2<double>(std_csvC[idx][mu], tmp_loop); // LoopsCv
+		  copyLoopToWriteBuf(buf_std_csvC[idx][mu], tmp_loop, 
+				     iPrint, info.Q_sq, Nmoms, mom);	      
+		  doCudaFFT_v2<double>(gen_oneD[idx][mu],tmp_loop); // LpsDw
+		  copyLoopToWriteBuf(buf_gen_oneD[idx][mu], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom);
-		  
-		  for(int mu = 0 ; mu < 4 ; mu++){
-		    doCudaFFT_v2<double>(std_oneD[idx][mu], tmp_loop); // Loops
-		    copyLoopToWriteBuf(buf_std_oneD[idx][mu], tmp_loop, 
-				       iPrint, info.Q_sq, Nmoms, mom);
-		    doCudaFFT_v2<double>(std_csvC[idx][mu], tmp_loop); // LoopsCv
-		    copyLoopToWriteBuf(buf_std_csvC[idx][mu], tmp_loop, 
-				       iPrint, info.Q_sq, Nmoms, mom);	      
-		    doCudaFFT_v2<double>(gen_oneD[idx][mu],tmp_loop); // LpsDw
-		    copyLoopToWriteBuf(buf_gen_oneD[idx][mu], tmp_loop, 
-				       iPrint, info.Q_sq, Nmoms, mom);
-		    doCudaFFT_v2<double>(gen_csvC[idx][mu], tmp_loop); // LpsDwCv
-		    copyLoopToWriteBuf(buf_gen_csvC[idx][mu], tmp_loop, 
-				       iPrint, info.Q_sq, Nmoms, mom);
-		  }
+		  doCudaFFT_v2<double>(gen_csvC[idx][mu], tmp_loop); // LpsDwCv
+		  copyLoopToWriteBuf(buf_gen_csvC[idx][mu], tmp_loop, 
+				     iPrint, info.Q_sq, Nmoms, mom);
 		}
-		else if(GK_nProc[2]>1){
-		  performFFT<double>(buf_std_uloc[idx], std_uloc[idx], 
+	      }
+	      else if(GK_nProc[2]>1){
+		performFFT<double>(buf_std_uloc[idx], std_uloc[idx], 
+				   iPrint, Nmoms, momQsq);
+		performFFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
+				   iPrint, Nmoms, momQsq);
+		
+		for(int mu=0;mu<4;mu++){
+		  performFFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
 				     iPrint, Nmoms, momQsq);
-		  performFFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
+		  performFFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
 				     iPrint, Nmoms, momQsq);
-		  
-		  for(int mu=0;mu<4;mu++){
-		    performFFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
-				       iPrint, Nmoms, momQsq);
-		    performFFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
-				       iPrint, Nmoms, momQsq);
-		    performFFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
-				       iPrint, Nmoms, momQsq);
-		    performFFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
-				       iPrint, Nmoms, momQsq);
-		  }
+		  performFFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
+				     iPrint, Nmoms, momQsq);
+		  performFFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
+				     iPrint, Nmoms, momQsq);
 		}
-		t2 = MPI_Wtime();
-		printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, TempDil = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
-			   " - Loops FFT and copy %f sec\n",msg_str, is, ih, it, sc, NeV_defl, LP_crit, t2-t1);
-	      }// Dump conditonal
-	    }// Deflation steps
-	  }// LP criteria
-	  for(int a = 0; a<TSM_NLP_iters; a++) delete sol_LP[a];
-	  t5 = MPI_Wtime();
-	  printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, TempDil = %02d, Spin-colour = %02d"
-		     " - Total Processing Time %f sec\n",msg_str, is, ih, it, sc, t5-t3);
-	  
-	}// Spin-color dilution
-      }//Temporal dilution
+	      }
+	      t2 = MPI_Wtime();
+	      printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
+			 " - Loops FFT and copy %f sec\n",msg_str, is, ih, sc, NeV_defl, LP_crit, t2-t1);
+	    }// Dump conditonal
+	  }// Deflation steps
+	}// LP criteria
+	for(int a = 0; a<TSM_NLP_iters; a++) delete sol_LP[a];
+	t5 = MPI_Wtime();
+	printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, Spin-colour = %02d"
+		   " - Total Processing Time %f sec\n",msg_str, is, ih, sc, t5-t3);
+	
+      }// Spin-color dilution
     }// Hadamard vectors
   }// Nstoch
   
   //----------- Dump data at Nth NeV and LP criteria ---------------------//
   //======================================================================//
-
+  
   //Loop over LP criteria first to preserve data structure
   //in the HDf5 write routines
   for(int LP_crit=0; LP_crit<TSM_NLP_iters; LP_crit++){
@@ -8094,8 +8083,8 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       int idx = LP_crit*deflSteps + dstep;
       
       t1 = MPI_Wtime();
-      sprintf(loop_stoch_fname,"%s_stoch_TSM_LP-crit-%d_NeV%d-tDil%d",
-	      loopInfo.loop_fname, LP_crit, NeV_defl, tDil);
+      sprintf(loop_stoch_fname,"%s_stoch_TSM_LP-crit-%d_NeV%d",
+	      loopInfo.loop_fname, LP_crit, NeV_defl);
       
       if(LoopFileFormat==ASCII_FORM){ 
 	// Write the loops in ASCII format
@@ -8130,14 +8119,14 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       }
       t2 = MPI_Wtime();
       printfQuda("TIME_REPORT: Writing the Stochastic part of the loops for NeV = %d, LP crit %d: completed in %f sec.\n",NeV_defl,LP_crit,t2-t1);
-    }// LP criteria
-  } //
+    }//N defl 
+  } //LP criteria
   
   
   gsl_rng_free(rNum);
   
   printfQuda("\n ### Stochastic part calculation Done ###\n");
-
+  
   //======================================================================//
   //================ M E M O R Y   C L E A N - U P =======================// 
   //======================================================================//
@@ -8193,8 +8182,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   if(isProbing)
     free(Vc);
 
-  printfQuda("Flag 1\n");
-
   delete deflation;
   delete d;
   delete dSloppy;
@@ -8209,20 +8196,11 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   delete tmp3;
   delete tmp4;
 
-  printfQuda("Flag 2\n");
-
-  //if(useTSM){
   for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
     delete x_LP[a];
-    //delete sol_LP[a];
   }
   
   
-  printfQuda("Flag 3\n");
-  //free(x_LP);
-  printfQuda("Flag 4\n");
-  //free(sol_LP);
-  printfQuda("Flag 5\n");
   printfQuda("...Done\n");
   popVerbosity();
   saveTuneCache();

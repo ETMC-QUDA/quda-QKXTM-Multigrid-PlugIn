@@ -1708,7 +1708,6 @@ bool isFullOp = false;
 #endif
 
 int k_probing = 0; // default is without probing
-int tDilution = 1;
 bool spinColorDil = false;
 bool loopCovDev = false;
 //===========//
@@ -1878,7 +1877,6 @@ void usage(char** argv )
   printfQuda("    --defl-step-NeV <step> <NeV_at_step>      # Number of eigenvectors to deflate at step <step> (default: the total requested NeV)\n");
 #endif
   printfQuda("    --k-probing <n>                           # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
-  printfQuda("    --tDilution <n>                           # Populate every nth timeslice in stochastic routines (default 1: No temporal dilution)\n");
   printfQuda("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
   printfQuda("    --loopCovDev <true/false>                 # Whether we want to compute loop covariant derivatives (default false)\n");
   
@@ -3629,17 +3627,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
     ret = 0;
     goto out;
   }
-
-  if( strcmp(argv[i], "--tDilution") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }	    
-    tDilution = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
 
   if( strcmp(argv[i], "--spinColorDil") == 0){
     if (i+1 >= argc){

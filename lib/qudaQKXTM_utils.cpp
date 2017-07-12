@@ -622,6 +622,45 @@ int HadamardElements(int i, int j){
 
 
 template <typename Float>
+void get_probing4D_spinColor_dilution(void *temp_input_vector, void *input_vector, unsigned short int *Vc, int ih, int sc){
+  memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));
+  int c;
+  int signProbing;
+  for(int i = 0 ; i < GK_localVolume ; i++){
+    c = Vc[i];
+    int signProbing = HadamardElements(c,ih);
+    for(int ri = 0 ; ri < 2 ; ri++)
+      ((Float*)temp_input_vector)[i*12*2+sc*2+ri] = signProbing * ((Float*)input_vector)[i*12*2+sc*2+ri];
+  }
+}
+
+template <typename Float>
+void get_spinColor_dilution(void *temp_input_vector, void *input_vector, int sc){
+  memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));
+  for(int i = 0 ; i < GK_localVolume ; i++){
+    for(int ri = 0 ; ri < 2 ; ri++)
+      ((Float*)temp_input_vector)[i*12*2+sc*2+ri] = ((Float*)input_vector)[i*12*2+sc*2+ri];
+  }
+}
+
+template <typename Float>
+void get_probing4D_dilution(void *temp_input_vector, void *input_vector, unsigned short int *Vc, int ih){
+  memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));
+  int c;
+  int signProbing;
+  for(int i = 0 ; i < GK_localVolume ; i++){
+    c = Vc[i];
+    int signProbing = HadamardElements(c,ih);
+    for(int sc = 0 ; sc < 12 ; sc++)
+      for(int ri = 0 ; ri < 2 ; ri++)
+	((Float*)temp_input_vector)[i*12*2+sc*2+ri] = signProbing * ((Float*)input_vector)[i*12*2+sc*2+ri];
+  }
+}
+
+
+/* Quarantined code
+
+template <typename Float>
 void get_probing4D_spinColor_temporal_dilution(void *temp_input_vector, void *input_vector, unsigned short int *Vc, int ih, int sc, int it, int tDil){
   
   //Zero out temp vector
@@ -664,44 +703,7 @@ void get_probing4D_spinColor_temporal_dilution(void *temp_input_vector, void *in
 }
 
 
-template <typename Float>
-void get_probing4D_spinColor_dilution(void *temp_input_vector, void *input_vector, unsigned short int *Vc, int ih, int sc){
-  memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));
-  int c;
-  int signProbing;
-  for(int i = 0 ; i < GK_localVolume ; i++){
-    c = Vc[i];
-    int signProbing = HadamardElements(c,ih);
-    for(int ri = 0 ; ri < 2 ; ri++)
-      ((Float*)temp_input_vector)[i*12*2+sc*2+ri] = signProbing * ((Float*)input_vector)[i*12*2+sc*2+ri];
-  }
-}
 
-template <typename Float>
-void get_spinColor_dilution(void *temp_input_vector, void *input_vector, int sc){
-  memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));
-  for(int i = 0 ; i < GK_localVolume ; i++){
-    for(int ri = 0 ; ri < 2 ; ri++)
-      ((Float*)temp_input_vector)[i*12*2+sc*2+ri] = ((Float*)input_vector)[i*12*2+sc*2+ri];
-  }
-}
-
-template <typename Float>
-void get_probing4D_dilution(void *temp_input_vector, void *input_vector, unsigned short int *Vc, int ih){
-  memset(temp_input_vector,0,GK_localVolume*12*2*sizeof(Float));
-  int c;
-  int signProbing;
-  for(int i = 0 ; i < GK_localVolume ; i++){
-    c = Vc[i];
-    int signProbing = HadamardElements(c,ih);
-    for(int sc = 0 ; sc < 12 ; sc++)
-      for(int ri = 0 ; ri < 2 ; ri++)
-	((Float*)temp_input_vector)[i*12*2+sc*2+ri] = signProbing * ((Float*)input_vector)[i*12*2+sc*2+ri];
-  }
-}
-
-
-/* Quarantined code
 template <typename Float>
 void getStochasticRandomSource(void *spinorIn, gsl_rng *rNum){
   memset(spinorIn,0,GK_localVolume*12*2*sizeof(Float));

@@ -20,7 +20,7 @@
 #include <mpi.h>
 #endif
 
-#include <gauge_qio.h>
+#include <qio_field.h>
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
@@ -29,14 +29,14 @@
 #include <contractQuda.h>
 #include <qudaQKXTM.h>
 
-
 //========================================================================//
 //====== P A R A M E T E R   S E T T I N G S   A N D   C H E C K S =======//
 //========================================================================//
 
-// Wilson, clover-improved Wilson, twisted mass, and domain wall are supported.
+//-----------------//
+// QUDA Parameters //
+//-----------------//
 extern QudaDslashType dslash_type;
-extern bool tune;
 extern int device;
 extern int xdim;
 extern int ydim;

@@ -9,10 +9,15 @@
 #include <errno.h>
 #include <mpi.h>
 #include <limits>
-//#include <mkl.h> //QXKTM: FIXME
+#ifdef QKXTM_MKL
+#include <mkl.h>
+#endif
+#ifdef QKXTM_OPENBLAS
 #include <cblas.h>
 #include <common.h>
 #include <omp.h>
+#endif
+
 #include <hdf5.h>
  
 #define PI 3.141592653589793

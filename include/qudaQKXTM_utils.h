@@ -19,6 +19,7 @@
 #define MAX_NMOMENTA 5000
 #define MAX_TSINK 10
 #define MAX_DEFLSTEPS 10
+#define MAX_LP_CRIT 10
 #define MAX_PROJS 5
 
 #define LEXIC(it,iz,iy,ix,L) ( (it)*L[0]*L[1]*L[2] + (iz)*L[0]*L[1] + (iy)*L[0] + (ix) )
@@ -74,7 +75,6 @@ namespace quda {
     double inv_tol;
   } qudaQKXTMinfo;
   
-  
 #ifdef HAVE_ARPACK  
   enum WHICHSPECTRUM{SR,LR,SM,LM,SI,LI};
   
@@ -93,7 +93,7 @@ namespace quda {
     bool isFullOp;
     int modeArpack;
   }qudaQKXTM_arpackInfo;
-#endif  
+#endif
 
   typedef struct{
     int Nstoch;
@@ -107,7 +107,7 @@ namespace quda {
     int traj;
     int Nprint;
     int Nmoms;
-    int Qsq;
+    int Qsq = 0;
     FILE_WRITE_FORMAT FileFormat;
     // = {"Scalar", "dOp", "Loops", "LoopsCv", "LpsDw", "LpsDwCv"}
     char *loop_type[6];
@@ -120,10 +120,14 @@ namespace quda {
     int TSM_NdumpLP;
     int TSM_NprintHP;
     int TSM_NprintLP;
-    long int TSM_maxiter;
-    double TSM_tol;
-  }qudaQKXTM_loopInfo;
-
+    int TSM_NLP_iters = 1;
+    int TSM_maxiter[MAX_LP_CRIT] = {0,0,0,0,0,0,0,0,0,0};
+    double TSM_tol[MAX_LP_CRIT]  = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};
+    int k_probing;     // if its value <=0 then probing is switched off
+    bool spinColorDil; // enables spin color dilution
+    bool loopCovDev;   // enables covariant derivate calculations in loops.
+  } qudaQKXTM_loopInfo;
+  
   enum ALLOCATION_FLAG{NONE,HOST,DEVICE,BOTH,BOTH_EXTRA};
   enum CLASS_ENUM{FIELD,GAUGE,VECTOR,PROPAGATOR,PROPAGATOR3D,VECTOR3D};
   enum WHICHPARTICLE{PROTON,NEUTRON};

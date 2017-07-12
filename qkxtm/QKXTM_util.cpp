@@ -1561,13 +1561,82 @@ int device = -1;
 int device = 0;
 #endif
 
+QudaReconstructType link_recon = QUDA_RECONSTRUCT_NO;
+QudaReconstructType link_recon_sloppy = QUDA_RECONSTRUCT_INVALID;
+QudaReconstructType link_recon_precondition = QUDA_RECONSTRUCT_INVALID;
+QudaPrecision prec = QUDA_SINGLE_PRECISION;
+QudaPrecision  prec_sloppy = QUDA_INVALID_PRECISION;
+QudaPrecision  prec_precondition = QUDA_INVALID_PRECISION;
+QudaPrecision prec_null = QUDA_INVALID_PRECISION;
+int xdim = 24;
+int ydim = 24;
+int zdim = 24;
+int tdim = 24;
+int Lsdim = 16;
+QudaDagType dagger = QUDA_DAG_NO;
+int gridsize_from_cmdline[4] = {1,1,1,1};
+QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
+char latfile[256] = "";
+int Nsrc = 1;
+int Msrc = 1;
+int niter = 100;
+int gcrNkrylov = 10;
+int pipeline = 0;
+int solution_accumulator_pipeline = 0;
+int test_type = 0;
+int nvec[QUDA_MAX_MG_LEVEL] = { };
+char vec_infile[256] = "";
+char vec_outfile[256] = "";
+QudaInverterType inv_type;
+QudaInverterType precon_type = QUDA_INVALID_INVERTER;
+int multishift = 0;
+bool verify_results = true;
+double mass = 0.1;
+double kappa = -1.0;
+double mu = 0.1;
+double anisotropy = 1.0;
+double clover_coeff = 0.1;
+bool compute_clover = false;
+double tol = 1e-7;
+double tol_hq = 0.1;
+QudaTwistFlavorType twist_flavor = QUDA_TWIST_SINGLET;
+bool kernel_pack_t = false;
+QudaMassNormalization normalization = QUDA_KAPPA_NORMALIZATION;
+QudaMatPCType matpc_type = QUDA_MATPC_EVEN_EVEN;
+QudaSolveType solve_type = QUDA_DIRECT_PC_SOLVE;
+
+int mg_levels = 2;
+
+int nu_pre = 2;
+int nu_post = 2;
+double mu_factor[QUDA_MAX_MG_LEVEL] = { };
+QudaVerbosity mg_verbosity[QUDA_MAX_MG_LEVEL] = { };
+QudaInverterType setup_inv[QUDA_MAX_MG_LEVEL] = { };
+int num_setup_iter[QUDA_MAX_MG_LEVEL] = { };//
+double setup_tol = 5e-6;
+QudaSetupType setup_type = QUDA_NULL_VECTOR_SETUP;//
+bool pre_orthonormalize = false;//
+bool post_orthonormalize = true;//
+double omega = 0.85;
+QudaInverterType coarse_solver[QUDA_MAX_MG_LEVEL] = { };
+double coarse_solver_tol[QUDA_MAX_MG_LEVEL] = { };
+QudaInverterType smoother_type[QUDA_MAX_MG_LEVEL] = { };
+double smoother_tol[QUDA_MAX_MG_LEVEL] = { };
+int coarse_solver_maxiter[QUDA_MAX_MG_LEVEL] = { };
+bool generate_nullspace = true;
+bool generate_all_levels = true;
+QudaSchwarzType schwarz_type[QUDA_MAX_MG_LEVEL] = { };
+int schwarz_cycle[QUDA_MAX_MG_LEVEL] = { };
+
+int geo_block_size[QUDA_MAX_MG_LEVEL][QUDA_MAX_DIM] = { };
+
+static int dim_partitioned[4] = {0,0,0,0};
 
 /////////////////////
 // QKXTM additions //
 /////////////////////
 
 //-C.K. Generic Input parameters
-double kappa = 0.161231;
 int traj;
 char latfile_smeared[257] = "";
 double csw = 1.57551;
@@ -1603,23 +1672,20 @@ char proj_list_file[257] = "default";
 char *corr_write_space = "MOMENTUM";
 
 //-C.K. loop Parameters
-int Nstoch = 100;     // Number of stochastic noise vectors
-unsigned long int seed   = 100;  // The seed for the stochastic vectors
-int Ndump  = 10;      // Write the loop every Ndump stoch. vectors
+int Nstoch = 100;              // Number of stochastic noise vectors
+int Ndump  = 10;               // Write the loop every Ndump stoch. vectors
+unsigned long int seed = 100;  // The seed for the stochastic vectors
 char loop_fname[512] = "loop";
 char *loop_file_format = "ASCII";
 char source_type[257] = "random";
-bool useTSM = false;
-int TSM_NHP = 0;
-int TSM_NLP = 0;
-int TSM_NdumpHP = 0;
-int TSM_NdumpLP = 0;
-long int TSM_maxiter = 0;
-double TSM_tol = 0;
+int TSM_NLP_iters = 1;
+int TSM_maxiter[10] = { };
+double TSM_tol[10] = { };
+
 #ifdef HAVE_ARPACK
 //- Loop params with ARPACK enabled
-char filename_dSteps[512]="none";
-
+int defl_steps = 1;
+int defl_step_nEv[10] = { };
 
 //-C.K. ARPACK Parameters
 char pathEigenVectorsUp[257] = "ev_u.0000";
@@ -1627,9 +1693,9 @@ char pathEigenVectorsDown[257] = "ev_d.0000";
 char pathEigenValuesUp[257] = "evals_u.dat";
 char pathEigenValuesDown[257] = "evals_d.dat";
 
-int PolyDeg = 100;     // degree of the Chebysev polynomial
-int nEv = 100;         // Number of the eigenvectors we want
-int nKv = 200;         // total size of Krylov space
+int PolyDeg = 100;         // degree of the Chebysev polynomial
+int nEv = 100;             // Number of the eigenvectors we want
+int nKv = 200;             // total size of Krylov space
 char *spectrumPart = "SR"; // for which part of the spectrum we want to solve
 bool isACC = true;
 double tolArpack = 1.0e-5;
@@ -1639,75 +1705,14 @@ char arpack_logfile[512] = "arpack.log";
 double amin = 3.0e-4;
 double amax = 3.5;
 bool isFullOp = false;
-
 #endif
 
+int k_probing = 0; // default is without probing
+bool spinColorDil = false;
+bool loopCovDev = false;
 //===========//
 
-QudaReconstructType link_recon = QUDA_RECONSTRUCT_NO;
-QudaReconstructType link_recon_sloppy = QUDA_RECONSTRUCT_INVALID;
-QudaReconstructType link_recon_precondition = QUDA_RECONSTRUCT_INVALID;
-QudaPrecision prec = QUDA_SINGLE_PRECISION;
-QudaPrecision  prec_sloppy = QUDA_INVALID_PRECISION;
-QudaPrecision  prec_precondition = QUDA_INVALID_PRECISION;
-int xdim = 24;
-int ydim = 24;
-int zdim = 24;
-int tdim = 24;
-int Lsdim = 16;
-QudaDagType dagger = QUDA_DAG_NO;
-int gridsize_from_cmdline[4] = {1,1,1,1};
-QudaDslashType dslash_type = QUDA_WILSON_DSLASH;
-char latfile[256] = "";
-int Nsrc = 1;
-int Msrc = 1;
-bool tune = true;
-int niter = 100;
-int test_type = 0;
-int nvec[QUDA_MAX_MG_LEVEL] = { };
-char vec_infile[256] = "";
-char vec_outfile[256] = "";
-QudaInverterType inv_type;
-QudaInverterType precon_type = QUDA_INVALID_INVERTER;
-int multishift = 0;
-bool verify_results = true;
-double mass = 0.1;
-double mu = 0.085;
-//QKXTM: DMH Experimental MG additions
-double delta_muPR = 1.0;
-double delta_kappaPR = 1.0;
-double delta_cswPR = 1.0;
-double delta_muCG = 1.0;
-double delta_kappaCG = 1.0;
-double delta_cswCG = 1.0;
 
-double anisotropy = 1.0;
-double clover_coeff = 0.1;
-bool compute_clover = false;
-double tol = 1e-7;
-double tol_hq = 0.;
-QudaTwistFlavorType twist_flavor = QUDA_TWIST_SINGLET;
-bool kernel_pack_t = false;
-QudaMassNormalization normalization = QUDA_KAPPA_NORMALIZATION;
-QudaMatPCType matpc_type = QUDA_MATPC_EVEN_EVEN;
-QudaSolveType solve_type = QUDA_DIRECT_PC_SOLVE;
-
-int mg_levels = 2;
-
-int nu_pre = 2;
-int nu_post = 2;
-double mu_factor[QUDA_MAX_MG_LEVEL] = { };
-QudaVerbosity mg_verbosity[QUDA_MAX_MG_LEVEL] = { };
-QudaInverterType setup_inv[QUDA_MAX_MG_LEVEL] = { };
-double setup_tol = 5e-6;
-double omega = 0.85;
-QudaInverterType smoother_type = QUDA_MR_INVERTER;
-bool generate_nullspace = true;
-bool generate_all_levels = true;
-
-int geo_block_size[QUDA_MAX_MG_LEVEL][QUDA_MAX_DIM] = { };
-
-static int dim_partitioned[4] = {0,0,0,0};
 
 int dimPartitioned(int dim)
 {
@@ -1717,167 +1722,174 @@ int dimPartitioned(int dim)
 void __attribute__((weak)) usage_extra(char** argv){};
 
 void usage(char** argv )
-{
-  printf("Usage: %s [options]\n", argv[0]);
-  printf("Common options: \n");
+{  
+  printfQuda("Usage: %s [options]\n", argv[0]);
+  printfQuda("Common options: \n");
 #ifndef MULTI_GPU
-  printf("    --device <n>                              # Set the CUDA device to use (default 0, single GPU only)\n");     
+  printfQuda("    --device <n>                              # Set the CUDA device to use (default 0, single GPU only)\n");     
 #endif
-  printf("    --prec <double/single/half>               # Precision in GPU\n");
-  printf("    --prec-sloppy <double/single/half>        # Sloppy precision in GPU\n");
-  printf("    --prec-precondition <double/single/half>  # Preconditioner precision in GPU\n");
-  printf("    --recon <8/9/12/13/18>                    # Link reconstruction type\n");
-  printf("    --recon-sloppy <8/9/12/13/18>             # Sloppy link reconstruction type\n");
-  printf("    --recon-precondition <8/9/12/13/18>       # Preconditioner link reconstruction type\n");
-  printf("    --dagger                                  # Set the dagger to 1 (default 0)\n"); 
-  printf("    --dim <n>                                 # Set space-time dimension (X Y Z T)\n"); 
-  printf("    --sdim <n>                                # Set space dimension(X/Y/Z) size\n"); 
-  printf("    --xdim <n>                                # Set X dimension size(default 24)\n");     
-  printf("    --ydim <n>                                # Set X dimension size(default 24)\n");     
-  printf("    --zdim <n>                                # Set X dimension size(default 24)\n");     
-  printf("    --tdim <n>                                # Set T dimension size(default 24)\n");  
-  printf("    --Lsdim <n>                               # Set Ls dimension size(default 16)\n");  
-  printf("    --gridsize <x y z t>                      # Set the grid size in all four dimension (default 1 1 1 1)\n");
-  printf("    --xgridsize <n>                           # Set grid size in X dimension (default 1)\n");
-  printf("    --ygridsize <n>                           # Set grid size in Y dimension (default 1)\n");
-  printf("    --zgridsize <n>                           # Set grid size in Z dimension (default 1)\n");
-  printf("    --tgridsize <n>                           # Set grid size in T dimension (default 1)\n");
-  printf("    --partition <mask>                        # Set the communication topology (X=1, Y=2, Z=4, T=8, and combinations of these)\n");
-  printf("    --kernel-pack-t                           # Set T dimension kernel packing to be true (default false)\n");
-  printf("    --dslash-type <type>                      # Set the dslash type, the following values are valid\n"
+  printfQuda("    --prec <double/single/half>               # Precision in GPU\n");
+  printfQuda("    --prec-sloppy <double/single/half>        # Sloppy precision in GPU\n");
+  printfQuda("    --prec-precondition <double/single/half>  # Preconditioner precision in GPU\n");
+  printfQuda("    --prec-null <double/single/half>          # Null vector precision in GPU\n");
+  printfQuda("    --recon <8/9/12/13/18>                    # Link reconstruction type\n");
+  printfQuda("    --recon-sloppy <8/9/12/13/18>             # Sloppy link reconstruction type\n");
+  printfQuda("    --recon-precondition <8/9/12/13/18>       # Preconditioner link reconstruction type\n");
+  printfQuda("    --dagger                                  # Set the dagger to 1 (default 0)\n"); 
+  printfQuda("    --dim <n>                                 # Set space-time dimension (X Y Z T)\n"); 
+  printfQuda("    --sdim <n>                                # Set space dimension(X/Y/Z) size\n"); 
+  printfQuda("    --xdim <n>                                # Set X dimension size(default 24)\n");     
+  printfQuda("    --ydim <n>                                # Set X dimension size(default 24)\n");     
+  printfQuda("    --zdim <n>                                # Set X dimension size(default 24)\n");     
+  printfQuda("    --tdim <n>                                # Set T dimension size(default 24)\n");  
+  printfQuda("    --Lsdim <n>                               # Set Ls dimension size(default 16)\n");  
+  printfQuda("    --gridsize <x y z t>                      # Set the grid size in all four dimension (default 1 1 1 1)\n");
+  printfQuda("    --xgridsize <n>                           # Set grid size in X dimension (default 1)\n");
+  printfQuda("    --ygridsize <n>                           # Set grid size in Y dimension (default 1)\n");
+  printfQuda("    --zgridsize <n>                           # Set grid size in Z dimension (default 1)\n");
+  printfQuda("    --tgridsize <n>                           # Set grid size in T dimension (default 1)\n");
+  printfQuda("    --partition <mask>                        # Set the communication topology (X=1, Y=2, Z=4, T=8, and combinations of these)\n");
+  printfQuda("    --kernel-pack-t                           # Set T dimension kernel packing to be true (default false)\n");
+  printfQuda("    --dslash-type <type>                      # Set the dslash type, the following values are valid\n"
 	 "                                                  wilson/clover/twisted-mass/twisted-clover/staggered\n"
          "                                                  /asqtad/domain-wall/domain-wall-4d/mobius\n");
-  printf("    --flavor <type>                           # Set the twisted mass flavor type (singlet (default), deg-doublet, nondeg-doublet)\n");
-  printf("    --niter <n>                               # The number of iterations to perform (default 10)\n");
-  printf("    --inv-type <cg/bicgstab/gcr>              # The type of solver to use (default cg)\n");
-  printf("    --precon-type <mr/ (unspecified)>         # The type of solver to use (default none (=unspecified)).\n"
-	 "                                                  For multigrid this sets the smoother type.\n");
-  printf("    --multishift <true/false>                 # Whether to do a multi-shift solver test or not (default false)\n");     
-  printf("    --mass                                    # Mass of Dirac operator (default 0.1)\n");
-  printf("    --mu                                      # Twisted-Mass of Dirac operator (default 0.0085)\n");
-  printf("    --compute-clover                          # Compute the clover field or use random numbers (default false)\n");
-  printf("    --clover-coeff                            # Clover coefficient (default 1.0)\n");
-  printf("    --anisotropy                              # Temporal anisotropy factor (default 1.0)\n");
-  printf("    --mass-normalization                      # Mass normalization (kappa (default) / mass / asym-mass)\n");
-  printf("    --matpc                                   # Matrix preconditioning type (even-even, odd-odd, even-even-asym, odd-odd-asym) \n");
-  printf("    --solve-type                              # The type of solve to do (direct, direct-pc, normop, normop-pc, normerr, normerr-pc) \n");
-  printf("    --tol  <resid_tol>                        # Set L2 residual tolerance\n");
-  printf("    --tolhq  <resid_hq_tol>                   # Set heavy-quark residual tolerance\n");
-  printf("    --tune <true/false>                       # Whether to autotune or not (default true)\n");     
-  printf("    --test                                    # Test method (different for each test)\n");
-  printf("    --verify <true/false>                     # Verify the GPU results using CPU results (default true)\n");
-  printf("    --mg-nvec <level nvec>                    # Number of null-space vectors to define the multigrid transfer operator on a given level\n");
-  printf("    --mg-gpu-prolongate <true/false>          # Whether to do the multigrid transfer operators on the GPU (default false)\n");
-  printf("    --mg-levels <2+>                          # The number of multigrid levels to do (default 2)\n");
-  printf("    --mg-nu-pre  <1-20>                       # The number of pre-smoother applications to do at each multigrid level (default 2)\n");
-  printf("    --mg-nu-post <1-20>                       # The number of post-smoother applications to do at each multigrid level (default 2)\n");
-  printf("    --mg-setup-inv <level inv>                # The inverter to use for the setup of multigrid (default bicgstab)\n");
-  printf("    --mg-setup-tol                            # The tolerance to use for the setup of multigrid (default 5e-6)\n");
-  printf("    --mg-omega                                # The over/under relaxation factor for the smoother of multigrid (default 0.85)\n");
-  printf("    --mg-smoother                             # The smoother to use for multigrid (default mr)\n");
-  printf("    --mg-block-size <level x y z t>           # Set the geometric block size for the each multigrid level's transfer operator(default 4 4 4 4)\n");
-  printf("    --mg-mu-factor <level factor >            # Set the multiplicative factor for the twisted mass mu parameter on each level (default 1)\n");
-  printf("    --mg-generate-nullspace <true/false>      # Generate the null-space vector dynamically (default true)\n");
-  printf("    --mg-generate-all-levels <true/talse>     # true=generate nul space on all levels, false=generate on level 0 "
-	 "                                                  and create other levels from that (default true)\n");
-  printf("    --mg-load-vec file                        # Load the vectors \"file\" for the multigrid_test (requires QIO)\n");
-  printf("    --mg-verbosity <level verb>               # The verbosity to use on each level of the multigrid (default silent)\n");
-  printf("    --mg-save-vec file                        # Save the generated null-space vectors \"file\" from the multigrid_test (requires QIO)\n");
-  printf("    --nsrc <n>                                # How many spinors to apply the dslash to simultaneusly (experimental for staggered only)\n");
-  printf("    --msrc <n>                                # Used for testing non-square block blas routines where nsrc defines the other dimension\n");
+  printfQuda("    --flavor <type>                           # Set the twisted mass flavor type (singlet (default), deg-doublet, nondeg-doublet)\n");
+  printfQuda("    --load-gauge file                         # Load gauge field \"file\" for the test (requires QIO)\n");
+  printfQuda("    --niter <n>                               # The number of iterations to perform (default 10)\n");
+  printfQuda("    --ngcrkrylov <n>                          # The number of inner iterations to use for GCR, BiCGstab-l (default 10)\n");
+  printfQuda("    --pipeline <n>                            # The pipeline length for fused operations in GCR, BiCGstab-l (default 0, no pipelining)\n");
+  printfQuda("    --solution-pipeline <n>                   # The pipeline length for fused solution accumulation (default 0, no pipelining)\n");
+  printfQuda("    --inv-type <cg/bicgstab/gcr>              # The type of solver to use (default cg)\n");
+  printfQuda("    --precon-type <mr/ (unspecified)>         # The type of solver to use (default none (=unspecified)).\n");
+  printfQuda("    --multishift <true/false>                 # Whether to do a multi-shift solver test or not (default false)\n");
+  printfQuda("    --mass                                    # Mass of Dirac operator (default 0.1)\n");
+  printfQuda("    --kappa                                   # Kappa of Dirac operator (default -1.0)\n");
+  printfQuda("    --mu                                      # Twisted-Mass of Dirac operator (default 0.1)\n");
+  printfQuda("    --compute-clover                          # Compute the clover field or use random numbers (default false)\n");
+  printfQuda("    --clover-coeff                            # Clover coefficient (default 1.0)\n");
+  printfQuda("    --anisotropy                              # Temporal anisotropy factor (default 1.0)\n");
+  printfQuda("    --mass-normalization                      # Mass normalization (kappa (default) / mass / asym-mass)\n");
+  printfQuda("    --matpc                                   # Matrix preconditioning type (even-even, odd-odd, even-even-asym, odd-odd-asym) \n");
+  printfQuda("    --solve-type                              # The type of solve to do (direct, direct-pc, normop, normop-pc, normerr, normerr-pc) \n");
+  printfQuda("    --tol  <resid_tol>                        # Set L2 residual tolerance\n");
+  printfQuda("    --tolhq  <resid_hq_tol>                   # Set heavy-quark residual tolerance\n");
+  printfQuda("    --test                                    # Test method (different for each test)\n");
+  printfQuda("    --verify <true/false>                     # Verify the GPU results using CPU results (default true)\n");
+  printfQuda("    --mg-nvec <level nvec>                    # Number of null-space vectors to define the multigrid transfer operator on a given level\n");
+  printfQuda("    --mg-gpu-prolongate <true/false>          # Whether to do the multigrid transfer operators on the GPU (default false)\n");
+  printfQuda("    --mg-levels <2+>                          # The number of multigrid levels to do (default 2)\n");
+  printfQuda("    --mg-nu-pre  <1-20>                       # The number of pre-smoother applications to do at each multigrid level (default 2)\n");
+  printfQuda("    --mg-nu-post <1-20>                       # The number of post-smoother applications to do at each multigrid level (default 2)\n");
+  printfQuda("    --mg-setup-inv <level inv>                # The inverter to use for the setup of multigrid (default bicgstab)\n");
+  printfQuda("    --mg-setup-iters <level iter>             # The number of setup iterations to use for the multigrid (default 1)\n");
+  printfQuda("    --mg-setup-tol                            # The tolerance to use for the setup of multigrid (default 5e-6)\n");
+  printfQuda("    --mg-setup-type <null/test>               # The type of setup to use for the multigrid (default null)\n");
+  printfQuda("    --mg-pre-orth <true/false>                # If orthonormalize the vector before inverting in the setup of multigrid (default false)\n");
+  printfQuda("    --mg-post-orth <true/false>               # If orthonormalize the vector after inverting in the setup of multigrid (default true)\n");
+  printfQuda("    --mg-omega                                # The over/under relaxation factor for the smoother of multigrid (default 0.85)\n");
+  printfQuda("    --mg-coarse-solver <level gcr/etc.>       # The solver to wrap the V cycle on each level (default gcr, only for levels 1+)\n");
+  printfQuda("    --mg-coarse-solver-tol <level gcr/etc.>   # The coarse solver tolerance for each level (default 0.25, only for levels 1+)\n");
+  printfQuda("    --mg-coarse-solver-maxiter <level n>      # The coarse solver maxiter for each level (default 100)\n");
+  printfQuda("    --mg-smoother <level mr/etc.>             # The smoother to use for multigrid (default mr)\n");
+  printfQuda("    --mg-smoother-tol <level resid_tol>       # The smoother tolerance to use for each multigrid (default 0.25)\n");
+  printfQuda("    --mg-schwarz-type <level false/add/mul>   # Whether to use Schwarz preconditioning (requires MR smoother and GCR setup solver) (default false)\n");
+  printfQuda("    --mg-schwarz-cycle <level cycle>          # The number of Schwarz cycles to apply per smoother application (default=1)\n");
+  printfQuda("    --mg-block-size <level x y z t>           # Set the geometric block size for the each multigrid level's transfer operator (default 4 4 4 4)\n");
+  printfQuda("    --mg-mu-factor <level factor>             # Set the multiplicative factor for the twisted mass mu parameter on each level (default 1)\n");
+  printfQuda("    --mg-generate-nullspace <true/false>      # Generate the null-space vector dynamically (default true)\n");
+  printfQuda("    --mg-generate-all-levels <true/talse>     # true=generate nul space on all levels, false=generate on level 0 and create other levels from that (default true)\n");
+  printfQuda("    --mg-load-vec file                        # Load the vectors \"file\" for the multigrid_test (requires QIO)\n");
+  printfQuda("    --mg-save-vec file                        # Save the generated null-space vectors \"file\" from the multigrid_test (requires QIO)\n");
+  printfQuda("    --mg-vebosity <level verb>                # The verbosity to use on each level of the multigrid (default silent)\n");
+  printfQuda("    --nsrc <n>                                # How many spinors to apply the dslash to simultaneusly (experimental for staggered only)\n");
+  printfQuda("    --msrc <n>                                # Used for testing non-square block blas routines where nsrc defines the other dimension\n");
+
 
   /////////////////////
   // QKXTM additions //
   /////////////////////
 
-  //QKXTM: DMH Experimental MG additions
-  printf("    --delta-kappaPR                           # Multiplicative kappa factor for P,R (default 1.0)\n");
-  printf("    --delta-muPR                              # Multiplicative mu factor for P,R (default 1.0)\n");
-  printf("    --delta-cswPR                             # Multiplicative Csw factor for P,R (default 1.0)\n");
-  printf("    --delta-kappaCG                           # Multiplicative kappa factor for coarse grid (default 1.0)\n");
-  printf("    --delta-muCG                              # Multiplicative mu factor for coarse grid (default 1.0)\n");
-  printf("    --delta-cswCG                             # Multiplicative Csw factor for coarse grid (default 1.0)\n");
 
   //-C.K. Generic INPUT
-  printf("    --traj                                    # Trajectory of the configuration\n");
-  printf("    --kappa                                   # Kappa value for a specific enseble (default 0.161231)\n");
-  printf("    --csw                                     # Clover csw coefficient (default 1.57551)\n");
-  printf("    --load-gauge-smeared                      # Load smeared gauge field \"file\" (in LIME format)\n");
-  printf("    --verbosity-level                         # Verbosity level (verbose/summarize/silent, default: summarize)\n");
+  printfQuda("    --traj                                    # Trajectory of the configuration\n");
+  printfQuda("    --csw                                     # Clover csw coefficient (default 1.57551)\n");
+  printfQuda("    --load-gauge-smeared                      # Load smeared gauge field \"file\" (in LIME format)\n");
+  printfQuda("    --verbosity-level                         # Verbosity level (verbose/summarize/silent, default: summarize)\n");
+
 
   //-C.K. Correlation function INPUT
-  printf("    --x_source                                # Source position in x direction (default 0)\n");
-  printf("    --y_source                                # Source position in y direction (default 0)\n");
-  printf("    --z_source                                # Source position in z direction (default 0)\n");
-  printf("    --t_source                                # Source position in t direction (default 0)\n");
-  printf("    --pathListSinkSource                      # Path to sink-source separations (default \" list_tsinksource.txt \")\n");
-  printf("    --pathListRun3pt                          # Path to source positions to run for 2pt- and 3pt- functions (default \" listrun3pt.txt \")\n");
-  printf("    --run3pt                                  # Option to choose whether to run for all (=all/ALL) source-positions, for none (=none/NONE)\n"
+  printfQuda("    --x_source                                # Source position in x direction (default 0)\n");
+  printfQuda("    --y_source                                # Source position in y direction (default 0)\n");
+  printfQuda("    --z_source                                # Source position in z direction (default 0)\n");
+  printfQuda("    --t_source                                # Source position in t direction (default 0)\n");
+  printfQuda("    --pathListSinkSource                      # Path to sink-source separations (default \" list_tsinksource.txt \")\n");
+  printfQuda("    --pathListRun3pt                          # Path to source positions to run for 2pt- and 3pt- functions (default \" listrun3pt.txt \")\n");
+  printfQuda("    --run3pt                                  # Option to choose whether to run for all (=all/ALL) source-positions, for none (=none/NONE)\n"
 	 "                                                  or only some (=file/FILE, given in --pathListRun3pt) (default \" all \")\n");
-  printf("    --Ntsink                                  # Number of sink-source separations (default \" list_tsinksource.txt \")\n");
-  printf("    --Q-sqMax                                 # The maximum Q^2 momentum (loop/correlators) (default 0)\n");
-  printf("    --nsmearAPE                               # Number of APE smearing iterations (default 20)\n");
-  printf("    --alphaAPE                                # APE smearing parameter (default 0.5)\n");
-  printf("    --nsmearGauss                             # Number of Gauss smearing iterations (default 50)\n");
-  printf("    --alphaGauss                              # Gauss smearing parameter (default 4.0)\n");
-  printf("    --twop-filename                           # File name to save twopoint function (default \"twop\")\n");
-  printf("    --threep-filename                         # File name to save threepoint function (default \"threep\")\n");
-  printf("    --prop_path                               # File name to save propagators is (default \"prop_path\")\n");
-  printf("    --numSourcePositions                      # The number of source positions we want to calculate (default 1)\n");
-  printf("    --pathListSourcePositions                 # Path where the list with the source positions is (default \" listSourcePositions.txt \")\n");
-  printf("    --corr-file-format                        # file format for the 2pt-3pt functions, ASCII/HDF5 (default \"ASCII_format\")\n");
-  printf("    --check-corr-files                        # check if 2pt-functions exist to avoid reproducing (default \"no\")\n");
-  printf("    --proj-list                               # path to a file-list of projectors for 3pt function (default: only G4)\n");
-  printf("    --corr-write-space                        # write the correlation functions in position space (MOMENTUM/POSITION, default: MOMENTUM)\n");
+  printfQuda("    --Ntsink                                  # Number of sink-source separations (default \" list_tsinksource.txt \")\n");
+  printfQuda("    --Q-sqMax                                 # The maximum Q^2 momentum (loop/correlators) (default 0)\n");
+  printfQuda("    --nsmearAPE                               # Number of APE smearing iterations (default 20)\n");
+  printfQuda("    --alphaAPE                                # APE smearing parameter (default 0.5)\n");
+  printfQuda("    --nsmearGauss                             # Number of Gauss smearing iterations (default 50)\n");
+  printfQuda("    --alphaGauss                              # Gauss smearing parameter (default 4.0)\n");
+  printfQuda("    --twop-filename                           # File name to save twopoint function (default \"twop\")\n");
+  printfQuda("    --threep-filename                         # File name to save threepoint function (default \"threep\")\n");
+  printfQuda("    --prop_path                               # File name to save propagators is (default \"prop_path\")\n");
+  printfQuda("    --numSourcePositions                      # The number of source positions we want to calculate (default 1)\n");
+  printfQuda("    --pathListSourcePositions                 # Path where the list with the source positions is (default \" listSourcePositions.txt \")\n");
+  printfQuda("    --corr-file-format                        # file format for the 2pt-3pt functions, ASCII/HDF5 (default \"ASCII_format\")\n");
+  printfQuda("    --check-corr-files                        # check if 2pt-functions exist to avoid reproducing (default \"no\")\n");
+  printfQuda("    --proj-list                               # path to a file-list of projectors for 3pt function (default: only G4)\n");
+  printfQuda("    --corr-write-space                        # write the correlation functions in position space (MOMENTUM/POSITION, default: MOMENTUM)\n");
 
   //-C.K. Loop INPUT
-  printf("    --Q-sqMax-loop                            # The maximum Q^2 momentum (loop) (default 0)\n");
-  printf("    --seed                                    # Seed for ranlux random number generator (default 100)\n");
-  printf("    --Nstoch                                  # Number of stochastic noise vectors for loop (default 100)\n");
-  printf("    --NdumpStep                               # Every how many noise vectors it will dump the data (default 10)\n");
-  printf("    --loop-filename                           # File name to save loops (default \"loop\")\n");
-  printf("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
-  printf("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
-  printf("    --UseEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
-  printf("    --useTSM                                  # Use (or not) the truncated solver method for the Full Operator (yes/no, default: no\n");
-  printf("    --TSM-NHP                                 # Number of High-precision sources for TSM\n");
-  printf("    --TSM-NLP                                 # Number of Low-precision sources for TSM\n");
-  printf("    --TSM-NdumpHP                             # Every how many High-precision sources to print for TSM\n");
-  printf("    --TSM-NdumpLP                             # Every how many Low-precision sources to print for TSM\n");
-  printf("    --TSM-maxiter                             # Set the iteration number as criterion for Low-precision sources for TSM\n");
-  printf("    --TSM-tol                                 # Set the CG tolerance as criterion for Low-precision sources for TSM\n");
+  printfQuda("    --Q-sqMax-loop                            # The maximum Q^2 momentum (loop) (default 0)\n");
+  printfQuda("    --seed                                    # Seed for ranlux random number generator (default 100)\n");
+  printfQuda("    --Nstoch                                  # Number of stochastic noise vectors for loop (default 100)\n");
+  printfQuda("    --NdumpStep                               # Every how many noise vectors it will dump the data (default 10)\n");
+  printfQuda("    --loop-filename                           # File name to save loops (default \"loop\")\n");
+  printfQuda("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
+  printfQuda("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
+  printfQuda("    --useEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
+  printfQuda("    --TSM-NLP-iters                               # How many Low-precision criteria for TSM\n");
+  printfQuda("    --TSM-maxiter <step> <n>                  # Set the iteration number as criterion for Low-precision solves for TSM\n");
+  printfQuda("    --TSM-tol <step> <tol>                    # Set the solver tolerance as criterion for Low-precision solves for TSM\n");
 #ifdef HAVE_ARPACK
-  printf("    --pathEigenVectorsUp                      # Path where the eigenVectors for up flavor are (default ev_u.0000)\n");
-  printf("    --pathEigenVectorsDown                    # Path where the eigenVectors for up flavor are (default ev_d.0000)\n");
-  printf("    --pathEigenValuesUp                       # Path where the eigenVectors for up flavor are (default evals_u.dat)\n");
-  printf("    --pathEigenValuesDown                     # Path where the eigenVectors for up flavor are (default evals_d.dat)\n");
+  printfQuda("    --pathEigenVectorsUp                      # Path where the eigenVectors for up flavor are (default ev_u.0000)\n");
+  printfQuda("    --pathEigenVectorsDown                    # Path where the eigenVectors for up flavor are (default ev_d.0000)\n");
+  printfQuda("    --pathEigenValuesUp                       # Path where the eigenVectors for up flavor are (default evals_u.dat)\n");
+  printfQuda("    --pathEigenValuesDown                     # Path where the eigenVectors for up flavor are (default evals_d.dat)\n");
 
   //-C.K. ARPACK EXACT INPUT
-  printf("    --PolyDeg                                 # The degree of the polynomial Acceleration (default 100)\n");
-  printf("    --nEv                                     # Number of eigenvalues requested by ARPACK (default 100)\n");
-  printf("    --nKv                                     # Total size of the Krylov space used by ARPACK (default 200)\n");
-  printf("    --spectrumPart                            # Which part of the spectrum we need (Options: SR,LR,SM,LM,SI,LI, default SR)\n");
-  printf("    --isACC                                   # Whether we want to use polynomial acceleration (yes/no, default yes)\n");
-  printf("    --tolARPACK                               # Tolerance for convergence, used by ARPACK (default 1.0e-5)\n");
-  printf("    --maxIterARPACK                           # Maximum iterations number for ARPACK (default 100000)\n");
-  printf("    --modeARPACK                              # MODE for ARPACK soluton (default 1)\n");
-  printf("    --pathArpackLogfile                       # Path to the ARPACK log file (default  \"arpack.log\")\n");
-  printf("    --aminARPACK                              # amin parameter used in Cheb. Poly. Acc. (default 3.0e-4)\n");
-  printf("    --amaxARPACK                              # amax parameter used in Cheb. Poly. Acc. (default 3.5)\n");
-  printf("    --UseFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
-  printf("    --defl_steps                              # File to deflation steps (default none)\n");
-
+  printfQuda("    --PolyDeg                                 # The degree of the polynomial Acceleration (default 100)\n");
+  printfQuda("    --nEv                                     # Number of eigenvalues requested by ARPACK (default 100)\n");
+  printfQuda("    --nKv                                     # Total size of the Krylov space used by ARPACK (default 200)\n");
+  printfQuda("    --spectrumPart                            # Which part of the spectrum we need (Options: SR,LR,SM,LM,SI,LI, default SR)\n");
+  printfQuda("    --isACC                                   # Whether we want to use polynomial acceleration (yes/no, default yes)\n");
+  printfQuda("    --tolARPACK                               # Tolerance for convergence, used by ARPACK (default 1.0e-5)\n");
+  printfQuda("    --maxIterARPACK                           # Maximum iterations number for ARPACK (default 100000)\n");
+  printfQuda("    --modeARPACK                              # MODE for ARPACK soluton (default 1)\n");
+  printfQuda("    --pathArpackLogfile                       # Path to the ARPACK log file (default  \"arpack.log\")\n");
+  printfQuda("    --aminARPACK                              # amin parameter used in Cheb. Poly. Acc. (default 3.0e-4)\n");
+  printfQuda("    --amaxARPACK                              # amax parameter used in Cheb. Poly. Acc. (default 3.5)\n");
+  printfQuda("    --useFullOp                               # Whether to use the Full Operator (yes,no, default no)\n");
+  printfQuda("    --defl-steps <steps>                      # Number of deflation steps (default: 1, the total requested NeV)\n");
+  printfQuda("    --defl-step-NeV <step> <NeV_at_step>      # Number of eigenvectors to deflate at step <step> (default: the total requested NeV)\n");
 #endif
+  printfQuda("    --k-probing <n>                           # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
+  printfQuda("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
+  printfQuda("    --loopCovDev <true/false>                 # Whether we want to compute loop covariant derivatives (default false)\n");
+  
   //--------//
 
-  printf("    --help                                    # Print out this message\n"); 
+  printfQuda("    --help                                    # Print out this message\n"); 
   usage_extra(argv); 
 #ifdef MULTI_GPU
   char msg[]="multi";
 #else
   char msg[]="single";
 #endif  
-  printf("Note: this program is %s GPU build\n", msg);
+  printfQuda("Note: this program is %s GPU build\n", msg);
   exit(1);
   return ;
 }
@@ -1961,6 +1973,16 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
+  if( strcmp(argv[i], "--prec-null") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    prec_null =  get_prec(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
   if( strcmp(argv[i], "--recon") == 0){
     if (i+1 >= argc){
       usage(argv);
@@ -1992,7 +2014,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--dim") == 0){
-    if (i+1 >= argc){
+    if (i+4 >= argc){
       usage(argv);
     }
     xdim= atoi(argv[i+1]);
@@ -2156,25 +2178,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
 
-  if( strcmp(argv[i], "--tune") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }	    
-
-    if (strcmp(argv[i+1], "true") == 0){
-      tune = true;
-    }else if (strcmp(argv[i+1], "false") == 0){
-      tune = false;
-    }else{
-      fprintf(stderr, "ERROR: invalid tuning type\n");	
-      exit(1);
-    }
-
-    i++;
-    ret = 0;
-    goto out;
-  }
-
   if( strcmp(argv[i], "--multishift") == 0){
     if (i+1 >= argc){
       usage(argv);
@@ -2195,7 +2198,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--gridsize") == 0){
-    if (i+1 >= argc){ 
+    if (i+4 >= argc){
       usage(argv);
     }     
     int xsize =  atoi(argv[i+1]);
@@ -2339,6 +2342,16 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }
     mass = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--kappa") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    kappa = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -2491,7 +2504,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
     
   if( strcmp(argv[i], "--mg-nvec") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2523,7 +2536,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     i++;
     ret = 0;
     goto out;
-  }  
+  }
 
   if( strcmp(argv[i], "--mg-nu-pre") == 0){
     if (i+1 >= argc){
@@ -2554,7 +2567,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--mg-setup-inv") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2570,12 +2583,86 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
+  if( strcmp(argv[i], "--mg-setup-iters") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    num_setup_iter[level] = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
   if( strcmp(argv[i], "--mg-setup-tol") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
 
     setup_tol = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-setup-type") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+
+    if( strcmp(argv[i+1], "test") == 0)
+      setup_type = QUDA_TEST_VECTOR_SETUP;
+    else if( strcmp(argv[i+1], "null")==0)
+      setup_type = QUDA_NULL_VECTOR_SETUP;
+    else {
+      fprintf(stderr, "ERROR: invalid setup type\n");
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-pre-orth") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+
+    if (strcmp(argv[i+1], "true") == 0){
+      pre_orthonormalize = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      pre_orthonormalize = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid pre orthogonalize type\n");
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-post-orth") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+
+    if (strcmp(argv[i+1], "true") == 0){
+      post_orthonormalize = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      post_orthonormalize = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid post orthogonalize type\n");
+      exit(1);
+    }
+
     i++;
     ret = 0;
     goto out;
@@ -2593,7 +2680,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
   }
 
   if( strcmp(argv[i], "--mg-verbosity") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2609,18 +2696,135 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-  if( strcmp(argv[i], "--mg-smoother") == 0){
-    if (i+1 >= argc){
+  if( strcmp(argv[i], "--mg-coarse-solver") == 0){
+    if (i+2 >= argc){
       usage(argv);
     }
-    smoother_type = get_solver_type(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 1 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d for coarse solver", level);
+      usage(argv);
+    }
+    i++;
+
+    coarse_solver[level] = get_solver_type(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-smoother") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    smoother_type[level] = get_solver_type(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-smoother-tol") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    smoother_tol[level] = atof(argv[i+1]);
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-coarse-solver-tol") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 1 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d for coarse solver", level);
+      usage(argv);
+    }
+    i++;
+
+    coarse_solver_tol[level] = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-coarse-solver-maxiter") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+
+    int level = atoi(argv[i+1]);
+    if (level < 1 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d for coarse solver", level);
+      usage(argv);
+    }
+    i++;
+
+    coarse_solver_maxiter[level] = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+
+  if( strcmp(argv[i], "--mg-schwarz-type") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    schwarz_type[level] = get_schwarz_type(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mg-schwarz-cycle") == 0){
+    if (i+2 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level >= QUDA_MAX_MG_LEVEL) {
+      printf("ERROR: invalid multigrid level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    schwarz_cycle[level] = atoi(argv[i+1]);
+    if (schwarz_cycle[level] < 0 || schwarz_cycle[level] >= 128) {
+      printf("ERROR: invalid Schwarz cycle value requested %d for level %d",
+	     level, schwarz_cycle[level]);
+      usage(argv);
+    }
     i++;
     ret = 0;
     goto out;
   }
 
   if( strcmp(argv[i], "--mg-block-size") == 0){
-    if (i+1 >= argc){ 
+    if (i+5 >= argc){
       usage(argv);
     }     
     int level = atoi(argv[i+1]);
@@ -2666,18 +2870,8 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-  if( strcmp(argv[i], "--mass") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }
-    mass= atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
   if( strcmp(argv[i], "--mg-mu-factor") == 0){
-    if (i+1 >= argc){
+    if (i+2 >= argc){
       usage(argv);
     }
     int level = atoi(argv[i+1]);
@@ -2765,71 +2959,53 @@ int process_command_line_option(int argc, char** argv, int* idx)
     ret = 0;
     goto out;
   }
-
-  /////////////////////
-  // QKXTM additions //
-  /////////////////////
-
-  //QKXTM: DMH Experimental MG additions
-  if( strcmp(argv[i], "--delta-muPR") == 0){
+  
+  if( strcmp(argv[i], "--ngcrkrylov") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    delta_muPR = atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--delta-kappaPR") == 0){
-    if (i+1 >= argc){
+    gcrNkrylov = atoi(argv[i+1]);
+    if (gcrNkrylov < 1 || gcrNkrylov > 1e6){
+      printf("ERROR: invalid number of gcrkrylov iterations (%d)\n", gcrNkrylov);
       usage(argv);
     }
-    delta_kappaPR = atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--delta-cswPR") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }
-    delta_cswPR = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
   }
   
-  if( strcmp(argv[i], "--delta-muCG") == 0){
+  if( strcmp(argv[i], "--pipeline") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    delta_muCG = atof(argv[i+1]);
+    pipeline = atoi(argv[i+1]);
+    if (pipeline < 0 || pipeline > 8){
+      printf("ERROR: invalid pipeline length (%d)\n", pipeline);
+      usage(argv);
+    }
     i++;
     ret = 0;
     goto out;
   }
 
-  if( strcmp(argv[i], "--delta-kappaCG") == 0){
+  if( strcmp(argv[i], "--solution-pipeline") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    delta_kappaCG = atof(argv[i+1]);
+    solution_accumulator_pipeline = atoi(argv[i+1]);
+    if (solution_accumulator_pipeline < 0 || solution_accumulator_pipeline > 16){
+      printf("ERROR: invalid solution pipeline length (%d)\n", solution_accumulator_pipeline);
+      usage(argv);
+    }
     i++;
     ret = 0;
     goto out;
   }
 
-  if( strcmp(argv[i], "--delta-cswCG") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }
-    delta_cswCG = atof(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
+
+  /////////////////////
+  // QKXTM additions //
+  /////////////////////
 
   //-C.K. Generic INPUT
   if( strcmp(argv[i], "--traj") == 0){
@@ -2858,16 +3034,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }     
     strcpy(verbosity_level, argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--kappa") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    kappa = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -3175,63 +3341,30 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-  if( strcmp(argv[i], "--useTSM") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    if( strcmp(argv[i+1],"yes")==0 || strcmp(argv[i+1],"YES")==0 ) useTSM = true;
-    else if ( strcmp(argv[i+1],"no")==0 || strcmp(argv[i+1],"NO")==0 ) useTSM = false;
-    else usage(argv);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  if( strcmp(argv[i], "--TSM-NHP") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    TSM_NHP = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
  
-  if( strcmp(argv[i], "--TSM-NLP") ==0){
+  if( strcmp(argv[i], "--TSM-NLP-iters") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    TSM_NLP = atoi(argv[i+1]);
+    TSM_NLP_iters = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;
   }
- 
-  if( strcmp(argv[i], "--TSM-NdumpHP") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    TSM_NdumpHP = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
- 
-  if( strcmp(argv[i], "--TSM-NdumpLP") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    TSM_NdumpLP = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
+  
  
   if( strcmp(argv[i], "--TSM-maxiter") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    TSM_maxiter = atoi(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level > 10) {
+      printf("ERROR: invalid TSM maxiter level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    TSM_maxiter[level] = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -3241,32 +3374,65 @@ int process_command_line_option(int argc, char** argv, int* idx)
     if(i+1 >= argc){
       usage(argv);
     }
-    TSM_tol = atof(argv[i+1]);
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level > 10) {
+      printf("ERROR: invalid TSM tol level %d", level);
+      usage(argv);
+    }
+    i++;
+    double tol = atof(argv[i+1]);
+    TSM_tol[level] = tol;
     i++;
     ret = 0;
     goto out;
   }
  
-  if( strcmp(argv[i], "--UseEven") ==0){
+  if( strcmp(argv[i], "--useEven") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    if( strcmp(argv[i+1],"yes")==0 || 
-	strcmp(argv[i+1],"YES")==0 ) isEven = true;
-    else if ( strcmp(argv[i+1],"no")==0 || 
-	      strcmp(argv[i+1],"NO")==0 ) isEven = false;
-    else usage(argv);
+    if (strcmp(argv[i+1], "true") == 0){
+      isEven = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      isEven = false;
+    } else {
+      fprintf(stderr, "ERROR: invalid value for useEven (true/false)\n");
+      exit(1);
+    }
+    
     i++;
     ret = 0;
     goto out;
   }
 #ifdef HAVE_ARPACK
   //-Loop info with ARPACK enabled
+
   if( strcmp(argv[i], "--defl-steps") == 0){
     if (i+1 >= argc){
       usage(argv);
     }
-    strcpy(filename_dSteps, argv[i+1]);
+    defl_steps = atoi(argv[i+1]);
+    if (defl_steps < 0 || defl_steps > 10){
+      printf("ERROR: invalid number of defl steps (%d): \n", defl_steps);
+      usage(argv);
+    }
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--defl-step-NeV") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    int level = atoi(argv[i+1]);
+    if (level < 0 || level > 10) {
+      printf("ERROR: invalid defl step level %d", level);
+      usage(argv);
+    }
+    i++;
+
+    defl_step_nEv[level] = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;
@@ -3358,11 +3524,14 @@ int process_command_line_option(int argc, char** argv, int* idx)
     if(i+1 >= argc){
       usage(argv);
     }
-    if( strcmp(argv[i+1],"yes")==0 || 
-	strcmp(argv[i+1],"YES")==0 ) isACC = true;
-    else if ( strcmp(argv[i+1],"no")==0 || 
-	      strcmp(argv[i+1],"NO")==0 ) isACC = false;
-    else usage(argv);
+    if (strcmp(argv[i+1], "true") == 0){
+      isACC = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      isACC = false;
+    } else {
+      fprintf(stderr, "ERROR: invalid value for issACC (true/false)\n");
+      exit(1);
+    }
     i++;
     ret = 0;
     goto out;
@@ -3429,21 +3598,75 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
  
-  if( strcmp(argv[i], "--UseFullOp") ==0){
+  if( strcmp(argv[i], "--useFullOp") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
-    if( strcmp(argv[i+1],"yes")==0 || strcmp(argv[i+1],"YES")==0 ) isFullOp = true;
-    else if ( strcmp(argv[i+1],"no")==0 || strcmp(argv[i+1],"NO")==0 ) isFullOp = false;
-    else usage(argv);
+    if (strcmp(argv[i+1], "true") == 0){
+      isFullOp = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      isFullOp = false;
+    } else {
+      fprintf(stderr, "ERROR: invalid value for useFullOp (true/false)\n");
+      exit(1);
+    }
+    
     i++;
     ret = 0;
     goto out;
   }
 
 #endif
+
+  if( strcmp(argv[i], "--k-probing") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+    k_probing = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--spinColorDil") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+
+    if (strcmp(argv[i+1], "true") == 0){
+      spinColorDil = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      spinColorDil = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid spinColorDil type\n");	
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--loopCovDev") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+
+    if (strcmp(argv[i+1], "true") == 0){
+      loopCovDev = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      loopCovDev = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid loopCovDev type\n");	
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
  
-  //-----------------------------------------------------------
+  //-----//
 
   if( strcmp(argv[i], "--version") == 0){
     printf("This program is linked with QUDA library, version %s,", 
@@ -3451,11 +3674,11 @@ int process_command_line_option(int argc, char** argv, int* idx)
     printf(" %s GPU build\n", msg);
     exit(0);
   }
-
+  
  out:
   *idx = i;
   return ret ;
-
+  
 }
 
 

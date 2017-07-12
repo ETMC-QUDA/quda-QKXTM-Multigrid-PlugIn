@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.1 FATAL_ERROR)
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 set(CMAKE_INCLUDE_DIRECTORIES_PROJECT_BEFORE ON)
 set(CMAKE_COLOR_MAKEFILE ON)
-set(CMAKE_CXX_STANDARD_REQUIRED 11)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 set(CMAKE_CXX_STANDARD 11)
 # disable in source builds
 # this is only a temporary fix, but for now we need it as cmake will
@@ -13,17 +13,19 @@ set(CMAKE_DISABLE_IN_SOURCE_BUILD ON)
 # add a directory for cmake modules
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-
+#QKXTM: DMH
+#Set QUDA source dir here and use QUDA's git hash for profiling
+set(QKXTM_QUDA_HOME "" CACHE PATH "path to QUDA")
 
 find_package(Git)
 SET(DEFBUILD "RELEASE")
 IF(GIT_FOUND)
-execute_process(COMMAND ${GIT_EXECUTABLE} show WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} RESULT_VARIABLE IS_GIT_REPOSIITORY OUTPUT_QUIET ERROR_QUIET)
+execute_process(COMMAND ${GIT_EXECUTABLE} show WORKING_DIRECTORY ${QKXTM_QUDA_HOME} RESULT_VARIABLE IS_GIT_REPOSIITORY OUTPUT_QUIET ERROR_QUIET)
   IF(${IS_GIT_REPOSIITORY} EQUAL 0)
-    execute_process(COMMAND ${GIT_EXECUTABLE} describe --abbrev=0 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} OUTPUT_VARIABLE GITTAG OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${GIT_EXECUTABLE} describe --abbrev=0 WORKING_DIRECTORY ${QKXTM_QUDA_HOME} OUTPUT_VARIABLE GITTAG OUTPUT_STRIP_TRAILING_WHITESPACE)
 # we use git rev-list and pipe that through wc here. Newer git versions support --count as option to rev-list but that might not always be available
-    execute_process(COMMAND ${GIT_EXECUTABLE} rev-list ${GITTAG}..HEAD WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} COMMAND wc -l OUTPUT_VARIABLE GITCOUNT OUTPUT_STRIP_TRAILING_WHITESPACE)
-    execute_process(COMMAND ${GIT_EXECUTABLE}  describe --long --dirty WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} OUTPUT_VARIABLE GITVERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${GIT_EXECUTABLE} rev-list ${GITTAG}..HEAD WORKING_DIRECTORY ${QKXTM_QUDA_HOME} COMMAND wc -l OUTPUT_VARIABLE GITCOUNT OUTPUT_STRIP_TRAILING_WHITESPACE)
+    execute_process(COMMAND ${GIT_EXECUTABLE}  describe --long --dirty WORKING_DIRECTORY ${QKXTM_QUDA_HOME} OUTPUT_VARIABLE GITVERSION OUTPUT_STRIP_TRAILING_WHITESPACE)
     IF(GITCOUNT EQUAL 0)
       SET(DEFBUILD "RELEASE")
     ELSE()
@@ -47,7 +49,7 @@ endif()
 #
 # PROJECT is ETMC-QUDA
 #
-project("QUDA" VERSION 0.9.0)
+project("ETMC-QUDA" VERSION 0.1.0)
 
 if(NOT GITVERSION)
   set(GITVERSION ${CMAKE_VERSION})
@@ -67,7 +69,7 @@ if(NOT QUDA_GPU_ARCH)
   message ("-- Building QUDA for arch " "${QUDA_DEFAULT_GPU_ARCH}")
 endif()
 
-set(QUDA_GPU_ARCH sm_35 CACHE STRING "set the GPU architecture (sm_20, sm_21, sm_30, sm_35, sm_50, sm_52)")
+set(QUDA_GPU_ARCH ${QUDA_DEFAULT_GPU_ARCH} CACHE STRING "set the GPU architecture (sm_20, sm_21, sm_30, sm_35, sm_37, sm_50, sm_52, sm_60)")
 set_property(CACHE QUDA_GPU_ARCH PROPERTY STRINGS sm_20 sm_21 sm_30 sm_35 sm_37 sm_50 sm_52 sm_60)
 # build options
 set(QUDA_DIRAC_WILSON ON CACHE BOOL "build Wilson Dirac operators")
@@ -109,48 +111,57 @@ set(QUDA_INTERFACE_BQCD OFF CACHE BOOL "build bqcd interface")
 set(QUDA_INTERFACE_TIFR OFF CACHE BOOL "build tifr interface")
 
 #QKXTM: DMH
-set(QUDA_INTERFACE_QKXTM ON CACHE BOOL "build QKXTM interface")
+
 set(QKXTM_ARPACK OFF CACHE BOOL "enable QKXTM ARPACK")
+if(QKXTM_ARPACK)
+  add_definitions(-DHAVE_ARPACK)
+  set(QKXTM_ARPACKHOME "" CACHE PATH "path to ARPACK")
+endif(QKXTM_ARPACK)
 
-if(QUDA_INTERFACE_QKXTM)
+set(QKXTM_2FLAVMG OFF CACHE BOOL "compile 2-flavour MG routines. This requires modification of QUDA to add extra preconditioner pointers")
+if(QKXTM_2FLAVMG)
+  add_definitions(-DQKXTM_2FLAVMG)
+endif()
 
-  # Locations for QUDA GSL HDF5 LIME
-  set(QKXTM_QUDA_HOME "" CACHE PATH "path to QUDA")
-  set(QKXTM_GSLHOME "" CACHE PATH "path to GSL")
-  set(QKXTM_LIMEHOME "" CACHE PATH "path to LIME")
-  set(QKXTM_HDF5HOME "" CACHE PATH "path to HDF5")
+# Locations for GSL HDF5 LIME
+set(QKXTM_GSLHOME "" CACHE PATH "path to GSL")
+set(QKXTM_LIMEHOME "" CACHE PATH "path to LIME")
+set(QKXTM_HDF5HOME "" CACHE PATH "path to HDF5")
 
-  #-C.K. Switch between Intel/MKL and GNU/OpenBlas
-  set(QKXTM_INTEL-BUILD OFF CACHE BOOL "build QKXTM with Intel")
-  set(QKXTM_GNU-BUILD OFF CACHE BOOL "build QKXTM with GNU")
-  
-  #-C.K. Locations for OPENBLAS or MKL, depending on GNU/OpenBlas, Intel/MKL switches
-  if(${QKXTM_GNU-BUILD})
-    set(QKXTM_OPENBLAS_LIBDIR "" CACHE PATH "path to OPENBLAS_BUILD")
-    set(QKXTM_OPENBLAS_INCDIR "" CACHE PATH "path to OPENBLAS_SRC")
-  endif()
+#-C.K. Switch between MKL and OpenBlas BLAS
+set(QKXTM_MKL OFF CACHE BOOL "build QKXTM with MKL")
+set(QKXTM_OPENBLAS OFF CACHE BOOL "build QKXTM with OENBLAS")
 
-#-C.K. In facts, it seems that these options do not really contribute something,
-# but may be useful for future iterations
-  if(${QKXTM_INTEL-BUILD})
-    set(QKXTM_MKL_LIBDIR "" CACHE PATH "path to MKL library dir")
-    set(QKXTM_MKL_INCDIR "" CACHE PATH "path to MKL include dir")
-  endif()
-#-C.K.
+if(QKXTM_MKL AND QKXTM_OPENBLAS)
+  message(SEND_ERROR "Please specify either MKL or OpenBLAS libraries, not both")
+endif()
 
-  if(QKXTM_ARPACK)
-    set(QKXTM_ARPACKHOME "" CACHE PATH "path to ARPACK")
-  endif(QKXTM_ARPACK)
-endif(QUDA_INTERFACE_QKXTM)
+#-C.K. Locations for OPENBLAS or MKL
+if(${QKXTM_OPENBLAS})
+  set(QKXTM_OPENBLASHOME "" CACHE PATH "path to OPENBLAS source")
+  set(QKXTM_OPENBLAS_LIBDIR "" CACHE PATH "path to OPENBLAS lib")
+endif()
+
+if(${QKXTM_MKL})
+  set(QKXTM_MKL_LIBDIR "${MKLROOT}/lib/intel64" CACHE PATH "path to MKL library dir")
+  set(QKXTM_MKL_INCDIR "${MKLROOT}/include" CACHE PATH "path to MKL include dir")
+endif()
+
+
 #QKXTM: DMH
+
 
 # QDPJIT
 set(QUDA_QDPJIT OFF CACHE BOOL "build QDP-JIT support?")
+set(QUDA_QDPJITHOME "" CACHE PATH "path to QDPJIT installation")
 
 # Locations for QIO / QMP
 set(QUDA_QIOHOME "" CACHE PATH "path to QIO")
 set(QUDA_QMPHOME "" CACHE PATH "path to QMP")
+set(QUDA_LIMEHOME "" CACHE PATH "path to LIME")
 set(QUDA_ARPACK_HOME "" CACHE PATH "path to arpack / parpack")
+set(QUDA_MAGMAHOME "" CACHE PATH "path to MAGMA, if not set, pkg-config will be attempted")
+set(QUDA_MAGMA_LIBS "" CACHE STRING "additional linker flags required to link against magma")
 
 #######################################################################
 #QUDA ADVANCED OPTIONS
@@ -162,6 +173,8 @@ set(QUDA_BLAS_TEX ON CACHE BOOL "enable texture reads in BLAS?")
 set(QUDA_FERMI_DBLE_TEX ON CACHE BOOL "enable double-precision texture reads on Fermi?")
 set(QUDA_NUMA_NVML OFF CACHE BOOL "experimental use of NVML to set numa affinity" )
 set(QUDA_VERBOSE_BUILD OFF CACHE BOOL "display kernel register useage")
+set(QUDA_MAX_MULTI_BLAS_N  "4" CACHE STRING "maximum value to intizlize template for multi-blas /-reduce")
+
 
 # NVTX options
 set(QUDA_MPI_NVTX OFF CACHE BOOL "add nvtx markup to MPI API calls for the visual profiler")
@@ -169,16 +182,15 @@ set(QUDA_INTERFACE_NVTX OFF CACHE BOOL "add nvtx markup to interface calls for t
 
 # GPUdirect options
 set(QUDA_GPU_DIRECT ON CACHE BOOL "set to 'yes' to allow GPU and NIC to shared pinned buffers")
-set(QUDA_GPU_COMMS OFF CACHE BOOL "set to 'yes' to allow GPU and NIC to communicate using RDMA")
-
-# Packing option
-set(QUDA_DEVICE_PACK ON CACHE BOOL "set to 'yes' to enable packing and unpacking on the device")
 
 # features in development
 set(QUDA_SSTEP OFF CACHE BOOL "build s-step linear solvers")
 set(QUDA_MULTIGRID OFF CACHE BOOL "build multigrid solvers")
 set(QUDA_BLOCKSOLVER OFF CACHE BOOL "build block solvers")
-set(QUDA_EIGEN OFF CACHE BOOL "build with EIGEN library")
+set(QUDA_DEFLATEDSOLVER OFF CACHE BOOL "build deflated solvers")
+set(QUDA_ALTRELIABLE OFF CACHE BOOL "use alternative reliable updates in CG")
+set(QUDA_USE_EIGEN OFF CACHE BOOL "use EIGEN library (where optional)")
+set(QUDA_DOWNLOAD_EIGEN ON CACHE BOOL "Download Eigen")
 
 mark_as_advanced(QUDA_BUILD_ALL_TESTS)
 mark_as_advanced(QUDA_BUILD_SHAREDLIB)
@@ -186,29 +198,26 @@ mark_as_advanced(QUDA_BLAS_TEX)
 mark_as_advanced(QUDA_FERMI_DBLE_TEX)
 mark_as_advanced(QUDA_NUMA_NVML)
 mark_as_advanced(QUDA_VERBOSE_BUILD)
+mark_as_advanced(QUDA_MAX_MULTI_BLAS_N)
 
 mark_as_advanced(QUDA_MPI_NVTX)
 mark_as_advanced(QUDA_INTERFACE_NVTX)
 
 mark_as_advanced(QUDA_GPU_DIRECT)
-mark_as_advanced(QUDA_GPU_COMMS)
-
-mark_as_advanced(QUDA_DEVICE_PACK)
 
 mark_as_advanced(QUDA_SSTEP)
-mark_as_advanced(QUDA_EIGEN)
+mark_as_advanced(QUDA_USE_EIGEN)
 mark_as_advanced(QUDA_BLOCKSOVER)
-mark_as_advanced(QUDA_MULTIGRID)
+mark_as_advanced(QUDA_ALTRELIABLE)
 
 #######################################################################
 # options that are not exposed at all because only one option exists
-set(CPU_ARCH x86_64)
+set(CPU_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
 
 
 #######################################################################
 # everything below here is processing the setup
 #######################################################################
-
 # we need to check for some packages
 find_package(PythonInterp)
 
@@ -224,6 +233,31 @@ else()
   set(USING_CUDA_LANG_SUPPORT False)
 endif()
 
+#######################################################################
+## QUDA depends on Eigen
+## this part makes sure we can download eigen if it is not found
+if (QUDA_DOWNLOAD_EIGEN)
+  include(ExternalProject)
+  ExternalProject_Add(Eigen
+    URL http://bitbucket.org/eigen/eigen/get/3.3.4.tar.bz2
+    URL_HASH SHA256=dd254beb0bafc695d0f62ae1a222ff85b52dbaa3a16f76e781dce22d0d20a4a6
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/eigen/
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND COMMAND ""
+    INSTALL_COMMAND ""
+  )
+  ExternalProject_Get_Property(Eigen source_dir)
+  set(EIGEN_INCLUDE_DIRS ${source_dir}/EIGEN)
+else()
+  find_package(Eigen QUIET)
+  if(NOT EIGEN_FOUND)
+    message(FATAL_ERROR "QUDA requires Eigen (http://eigen.tuxfamily.org). Please either set EIGEN_INCLUDE_DIRS to path to eigen3 include directory, e.g. /usr/local/include/eigen3 or set QUDA_DOWNLOAD_EIGEN to ON to enable automatic download of the necessary components.")
+  endif()
+endif()
+include_directories(${EIGEN_INCLUDE_DIRS})
+
+
+# We need threads
 find_package(Threads REQUIRED)
 
 # do all the build definitions
@@ -233,7 +267,20 @@ if(QUDA_MPI OR QUDA_QMP)
   add_definitions(-DMULTI_GPU)
   find_package(MPI)
 else()
-  set(COMM_OBJS comm_single.cpp)
+  set(COMM_OBJS ${QKXTM_QUDA_HOME}/lib/comm_single.cpp)
+endif()
+
+if(QUDA_QDPJIT)
+  if(NOT QUDA_QMP)
+    message(WARNING "Specifying QUDA_QDPJIT requires use of QUDA_QMP. Please set QUDA_QMP=ON and set QUDA_QMPHOME.")
+  endif()
+  add_definitions(-DUSE_QDPJIT)
+  include_directories(SYSTEM ${QUDA_QDPJITHOME}/include)
+  execute_process(COMMAND ${QUDA_QDPJITHOME}/bin/qdp\+\+-config --ldflags OUTPUT_VARIABLE QDP_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND ${QUDA_QDPJITHOME}/bin/qdp\+\+-config --libs OUTPUT_VARIABLE QDP_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  FIND_LIBRARY(QDP_LIB qdp PATH ${QUDA_QDPJITHOME}/lib)
+  FIND_LIBRARY(QIO_LIB qio ${QUDA_QDPJITHOME}/lib/)
+  FIND_LIBRARY(LIME_LIB lime ${QUDA_QDPJITHOME}/lib/)
 endif()
 
 if(QUDA_MPI AND QUDA_QMP)
@@ -242,36 +289,58 @@ endif()
 
 if(QUDA_MPI)
   add_definitions(-DMPI_COMMS)
-  set(COMM_OBJS comm_mpi.cpp)
+  set(COMM_OBJS ${QKXTM_QUDA_HOME}/lib/comm_mpi.cpp)
   include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
 endif()
 
 if(QUDA_QMP)
+  if("${QUDA_QMPHOME}" STREQUAL "")
+    message( FATAL_ERROR "QUDA_QMPHOME must be defined if QUDA_QMP is set" )
+  endif()
   add_definitions(-DQMP_COMMS)
-  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --cflags OUTPUT_VARIABLE QMP_CFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --ldflags OUTPUT_VARIABLE QMP_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
-  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --libs OUTPUT_VARIABLE QMP_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
-  FIND_LIBRARY(QMP_LIB qmp ${QUDA_QMPHOME}/lib)
+  set(QUDA_QMP_LDFLAGS  "" CACHE STRING "LDFLAGS for QMP - should be derived from qmp-config --ldflags")
+  set(QUDA_QMP_LIBS  "" CACHE STRING "LIBS for QMP - should be derived from qmp-config --libs")
+  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --cflags OUTPUT_VARIABLE QUDA_QMP_CFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --ldflags OUTPUT_VARIABLE QUDA_QMP_LDFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND ${QUDA_QMPHOME}/bin/qmp-config --libs OUTPUT_VARIABLE QUDA_QMP_LIBS OUTPUT_STRIP_TRAILING_WHITESPACE)
+  #FIND_LIBRARY(QMP_LIB qmp ${QUDA_QMPHOME}/lib)
   include_directories(SYSTEM ${QUDA_QMPHOME}/include)
-  set(COMM_OBJS comm_qmp.cpp)
+  include_directories(SYSTEM ${MPI_CXX_INCLUDE_PATH})
+  set(COMM_OBJS ${QKXTM_QUDA_HOME}/lib/comm_qmp.cpp)
 endif()
 
 if(QUDA_QIO)
+  if("${QUDA_QIOHOME}" STREQUAL "" OR "${QUDA_LIMEHOME}" STREQUAL "")
+    message( FATAL_ERROR "QUDA_QIOHOME and QUDA_LIMEHOME must be defined when QUDA_QIO is set" )
+  endif()
   add_definitions(-DHAVE_QIO)
-  set(QIO_UTIL qio_util.cpp qio_field.cpp layout_hyper.c)
+  set(QIO_UTIL ${QKXTM_QUDA_HOME}/lib/qio_util.cpp ${QKXTM_QUDA_HOME}/lib/qio_field.cpp ${QKXTM_QUDA_HOME}/lib/layout_hyper.c)
   FIND_LIBRARY(QIO_LIB qio ${QUDA_QIOHOME}/lib/)
-  FIND_LIBRARY(LIME_LIB lime ${QUDA_QIOHOME}/lib/)
+  FIND_LIBRARY(LIME_LIB lime ${QUDA_LIMEHOME}/lib/)
   include_directories(SYSTEM ${QUDA_QIOHOME}/include)
+  include_directories(SYSTEM ${QUDA_LIMEHOME}/include)
 endif()
 
 if(QUDA_MAGMA)
   add_definitions(-DMAGMA_LIB -DADD_ -DMAGMA_SETAFFINITY -DGPUSHMEM=300 -DHAVE_CUBLAS -DMAGMA_LIB)
-  find_package(PkgConfig REQUIRED)
-  pkg_check_modules(MAGMA  magma)
-  include_directories(SYSTEM ${MAGMA_INCLUDEDIR})
-  message("${MAGMA_INCLUDEDIR}")
   find_package(OpenMP)
-  find_library(MAGMA ${MAGMA_LIBRARIES} PATH ${MAGMA_LIBRARY_DIRS})
+  if("${QUDA_MAGMAHOME}" STREQUAL "")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(MAGMA magma)
+    include_directories(SYSTEM ${MAGMA_INCLUDEDIR})
+    message("${MAGMA_INCLUDEDIR}")
+    find_library(MAGMA ${MAGMA_LIBRARIES} PATH ${MAGMA_LIBRARY_DIRS})
+  else()
+    # prefer static library
+    find_library(MAGMA libmagma.a magma ${QUDA_MAGMAHOME}/lib/)
+    # append additional libraries required by magma
+    LIST(APPEND MAGMA ${CUDA_cublas_LIBRARY})
+    LIST(APPEND MAGMA ${CUDA_cusparse_LIBRARY})
+    LIST(APPEND MAGMA ${QUDA_MAGMA_LIBS})
+    # and any additional OpenMP linker flags
+    SET( CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}" )
+    include_directories(SYSTEM ${QUDA_MAGMAHOME}/include)
+  endif()  
 endif(QUDA_MAGMA)
 
 # This selects arpack or parpack for Multi GPU
@@ -298,71 +367,83 @@ if(QUDA_ARPACK)
 endif(QUDA_ARPACK)
 
 #QKXTM: DMH
-if(QUDA_INTERFACE_QKXTM)
   
-  #-C.K. Modified here to take OpenBlas and MKL switches into account  
-  if(${QKXTM_GNU-BUILD})
-    add_definitions(-DHAVE_OPENBLAS)
-    FIND_LIBRARY(QKXTM_OPENBLAS_LIB openblas ${QKXTM_OPENBLAS_LIBDIR})
-    include_directories(SYSTEM ${QKXTM_OPENBLAS_INCDIR})
-  endif()
+#-C.K. Modified here to take OpenBlas and MKL switches into account  
+if(${QKXTM_OPENBLAS})
+  add_definitions(-DHAVE_OPENBLAS)
+  FIND_LIBRARY(QKXTM_OPENBLAS_LIB openblas ${QKXTM_OPENBLAS_LIBDIR})
+  FIND_LIBRARY(QKXTM_OPENBLAS_GOMP gomp /opt/gcc/5.3.0/snos/lib64)
+  include_directories(SYSTEM ${QKXTM_OPENBLASHOME})
+endif()
 
-  if(${QKXTM_INTEL-BUILD})
-    add_definitions(-DHAVE_MKL)
-    FIND_LIBRARY(QKXTM_MKL_LIB mkl_intel_lp64 ${QKXTM_MKL_LIBDIR})
-    include_directories(SYSTEM ${QKXTM_MKL_INCDIR})
-  endif()
+if(${QKXTM_MKL})
+  add_definitions(-DHAVE_MKL)
+  FIND_LIBRARY(QKXTM_MKL_LIB_GFORTRAN gfortran /usr/lib64)
+  FIND_LIBRARY(QKXTM_MKL_LIB_IOMP5 iomp5 /opt/intel/lib/intel64)
+  FIND_LIBRARY(QKXTM_MKL_LIB_LP64 mkl_intel_lp64 ${QKXTM_MKL_LIBDIR})
+  FIND_LIBRARY(QKXTM_MKL_LIB_THREAD mkl_intel_thread ${QKXTM_MKL_LIBDIR})
+  FIND_LIBRARY(QKXTM_MKL_LIB_CORE mkl_core ${QKXTM_MKL_LIBDIR})  
+  include_directories(SYSTEM ${QKXTM_MKL_INCDIR})
+endif()
 #-C.K.
 
-  if(QKXTM_ARPACK)
-    add_definitions(-DHAVE_ARPACK)
-    FIND_LIBRARY(QKXTM_PARPACK_LIB parpack  ${QKXTM_ARPACKHOME})
-    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
-    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
-    
-    FIND_LIBRARY(QKXTM_ARPACK_LIB arpack ${QKXTM_ARPACKHOME})
-    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/SRC)
-    include_directories(SYSTEM ${QKXTM_ARPACKHOME}/UTIL)
-  endif(QKXTM_ARPACK)
-
-  add_definitions(-DHAVE_GSL)
-  FIND_LIBRARY(QKXTM_GSL_LIB gsl ${QKXTM_GSLHOME}/lib)
-  include_directories(SYSTEM ${QKXTM_GSLHOME}/include)
-
-  add_definitions(-DHAVE_HDF5)
-  FIND_LIBRARY(QKXTM_HDF5_LIB hdf5 ${QKXTM_HDF5HOME}/GNU/5.1/lib)
-  include_directories(SYSTEM ${QKXTM_HDF5HOME}/GNU/5.1/include)
-
-  add_definitions(-DHAVE_LIME)
-  FIND_LIBRARY(QKXTM_LIME_LIB lime ${QKXTM_LIMEHOME}/lib)
-  include_directories(SYSTEM ${QKXTM_LIMEHOME}/include)
-
-  include_directories(lib/code_pieces_Kepler)
+if(QKXTM_ARPACK)
+  FIND_LIBRARY(QKXTM_PARPACK_LIB parpack  ${QKXTM_ARPACKHOME})
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/SRC/MPI)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/PARPACK/UTIL/MPI)
   
-  LIST(APPEND QUDA_LIBS ${CUDA_cufft_LIBRARY} ${CUDA_curand_LIBRARY})
+  FIND_LIBRARY(QKXTM_ARPACK_LIB arpack ${QKXTM_ARPACKHOME})
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/SRC)
+  include_directories(SYSTEM ${QKXTM_ARPACKHOME}/UTIL)
+endif(QKXTM_ARPACK)
 
-endif(QUDA_INTERFACE_QKXTM)
+add_definitions(-DHAVE_GSL)
+FIND_LIBRARY(QKXTM_GSL_LIB gsl ${QKXTM_GSLHOME}/lib)
+include_directories(SYSTEM ${QKXTM_GSLHOME}/include)
+
+add_definitions(-DHAVE_HDF5)
+FIND_LIBRARY(QKXTM_HDF5_LIB hdf5 ${QKXTM_HDF5HOME}//lib)
+include_directories(SYSTEM ${QKXTM_HDF5HOME}/include)
+
+add_definitions(-DHAVE_LIME)
+FIND_LIBRARY(QKXTM_LIME_LIB lime ${QKXTM_LIMEHOME}/lib)
+include_directories(SYSTEM ${QKXTM_LIMEHOME}/include)
+
+include_directories(lib/code_pieces_Kepler)
+
+LIST(APPEND QUDA_LIBS ${CUDA_cufft_LIBRARY} ${CUDA_curand_LIBRARY})
+
 #QKXTM: DMH
+
+# MAX_MULTI_BLAS_N
+add_definitions(-DMAX_MULTI_BLAS_N=${QUDA_MAX_MULTI_BLAS_N})
 
 if(QUDA_SSTEP)
   add_definitions(-DSSTEP)
 endif()
 
 if (QUDA_MULTIGRID)
+  add_definitions(-DCUBLAS_LIB)
   add_definitions(-DGPU_MULTIGRID)
+  LIST(APPEND QUDA_LIBS ${CUDA_cublas_LIBRARY})
 endif(QUDA_MULTIGRID)
 
 if(QUDA_BLOCKSOLVER)
   add_definitions(-DBLOCKSOLVER)
-  find_package(Eigen REQUIRED)
-  include_directories(${EIGEN_INCLUDE_DIRS})
-  set(QUDA_NVTX ON)
 endif()
 
-if(QUDA_EIGEN)
-  add_definitions(-DEIGEN)
+if(QUDA_DEFLATEDSOLVER)
+  add_definitions(-DDEFLATEDSOLVER)
   find_package(Eigen REQUIRED)
   include_directories(${EIGEN_INCLUDE_DIRS})
+endif()
+
+if(QUDA_ALTRELIABLE)
+  add_definitions(-DALTRELIABE)
+endif()
+
+if(QUDA_USE_EIGEN)
+  add_definitions(-DEIGEN)
 endif()
 
 if(QUDA_POSIX_THREADS)
@@ -386,7 +467,7 @@ if(QUDA_DIRAC_CLOVER)
 endif(QUDA_DIRAC_CLOVER)
 
 if(QUDA_DIRAC_TWISTED_MASS)
-  add_definitions(-DGPU_TWISTED_MASS_DIRAC)
+  add_definitions(-DGPU_TWISTED_MASS_DIRAC -DGPU_WILSON_DIRAC)
 endif(QUDA_DIRAC_TWISTED_MASS)
 
 if(QUDA_DIRAC_TWISTED_CLOVER)
@@ -433,7 +514,7 @@ if(QUDA_DYNAMIC_CLOVER)
 endif(QUDA_DYNAMIC_CLOVER)
 
 if(QUDA_MPI_NVTX)
-  LIST(APPEND COMM_OBJS nvtx_pmpi.c)
+  LIST(APPEND COMM_OBJS ${QKXTM_QUDA_HOME}/lib/nvtx_pmpi.c)
   set(QUDA_NVTX ON)
 endif(QUDA_MPI_NVTX)
 
@@ -458,10 +539,6 @@ endif(NOT QUDA_FERMI_DBLE_TEX)
 if(GPU_DIRECT)
   add_definitions(-DGPU_DIRECT)
 endif(GPU_DIRECT)
-
-if(GPU_COMMS)
-  add_definitions(-DGPU_COMMS)
-endif(GPU_COMMS)
 
 if(QUDA_INTERFACE_QDP)
   add_definitions(-DBUILD_QDP_INTERFACE)
@@ -493,15 +570,11 @@ if(QUDA_INTERFACE_TIFR OR QUDA_INTERFACE_BQCD)
   enable_language(Fortran)
 endif()
 
-if(DEVICE_PACK)
-  add_definitions(-DDEVICE_PACK)
-endif(DEVICE_PACK)
-
 
 
 if(QUDA_NUMA_NVML)
   add_definitions(-DNUMA_NVML)
-  set(NUMA_AFFINITY_OBJS numa_affinity.cpp)
+  set(NUMA_AFFINITY_OBJS ${QKXTM_QUDA_HOME}/lib/numa_affinity.cpp)
   find_package(NVML REQUIRED)
   include_directories(NVML_INCLUDE_DIR)
 endif(QUDA_NUMA_NVML)
@@ -515,21 +588,19 @@ endif(QUDA_CONTRACT)
 # COMPILER OPTIONS and BUILD types
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 include_directories(SYSTEM ${CUDA_INCLUDE_DIRS})
-#QKXTM: Begin DMH Include mainline QUDA 
+#QKXTM: Begin DMH Include mainline QUDA
 include_directories(${QKXTM_QUDA_HOME}/include)
 include_directories(${QKXTM_QUDA_HOME}/lib)
-#QKXTM: End DMH
 include_directories(include)
 include_directories(lib)
-
 
 # QUDA_HASH for tunecache
 #file(STRINGS ${CUDA_TOOLKIT_INCLUDE}/cuda.h  CUDA_VERSIONLONG REGEX "\#define CUDA_VERSION" )
 #STRING(REPLACE "\#define CUDA_VERSION " ""  CUDA_VERSIONLONG ${CUDA_VERSIONLONG})
 #STRING(STRIP CUDA_VERSIONLONG ${CUDA_VERSIONLONG} )
-#set(HASH \"cpu_arch=${CPU_ARCH},gpu_arch=${QUDA_GPU_ARCH},cuda_version=${CUDA_VERSIONLONG}\")
-#add_definitions(-DQUDA_HASH=${HASH})
-#
+#set(HASH cpu_arch=${CPU_ARCH},gpu_arch=${QUDA_GPU_ARCH},cuda_version=${CUDA_VERSIONLONG})
+
+
 string(REGEX MATCH [Dd][Ee][Bb][Uu][Gg] DEBUG_BUILD ${CMAKE_BUILD_TYPE})
 
 # build up git version
@@ -553,7 +624,7 @@ add_definitions(-D__COMPUTE_CAPABILITY__=${COMP_CAP})
 
 # NVCC FLAGS independet off build type
 if(NOT USING_CUDA_LANG_SUPPORT)
-  set(QUDA_NVCC_FLAGS -std c++11 -arch=${QUDA_GPU_ARCH} -ftz=true -prec-div=false -prec-sqrt=false)
+  set(QUDA_NVCC_FLAGS "-std c++11 -arch=${QUDA_GPU_ARCH} -ftz=true -prec-div=false -prec-sqrt=false")
 else()
   set(QUDA_NVCC_FLAGS "-ftz=true -prec-div=false -prec-sqrt=false")
   set(CMAKE_CUDA_FLAGS "-arch=${QUDA_GPU_ARCH}" CACHE STRING "Flags used by the CUDA compiler" FORCE)
@@ -574,7 +645,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 ## define CUDA flags when CMake < 3.8
-set(CUDA_NVCC_FLAGS_DEVEL ${QUDA_NVCC_FLAGS} -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo CACHE STRING
+set(CUDA_NVCC_FLAGS_DEVEL ${QUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo CACHE STRING
     "Flags used by the CUDA compiler during regular development builds."
     FORCE )
 set(CUDA_NVCC_FLAGS_STRICT ${CUDA_NVCC_FLAGS_DEVEL} CACHE STRING
@@ -594,7 +665,7 @@ set(CUDA_NVCC_FLAGS_DEBUG ${QUDA_NVCC_FLAGS} -g -DHOST_DEBUG -G CACHE STRING
     FORCE )
 
 ## define CUDA flags when CMake >= 3.8
-set(CMAKE_CUDA_FLAGS_DEVEL "${QUDA_NVCC_FLAGS} -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo" CACHE STRING
+set(CMAKE_CUDA_FLAGS_DEVEL "${QUDA_NVCC_FLAGS} -Wno-deprecated-gpu-targets -Xcompiler -Wno-unknown-pragmas,-Wno-unused-function,-Wno-unused-local-typedef,-Wno-unused-private-field -O3 -lineinfo" CACHE STRING
     "Flags used by the CUDA compiler during regular development builds."
     FORCE )
 set(CMAKE_CUDA_FLAGS_STRICT "${CMAKE_CUDA_FLAGS_DEVEL}" CACHE STRING
@@ -617,7 +688,7 @@ set(CMAKE_CUDA_FLAGS_DEBUG "${QUDA_NVCC_FLAGS} -g -DHOST_DEBUG -G" CACHE STRING
 set(CMAKE_CXX_FLAGS_DEVEL  "${OpenMP_CXX_FLAGS} -O3 -Wall ${CLANG_FORCE_COLOR}" CACHE STRING
 "Flags used by the C++ compiler during regular development builds.")
 set(CMAKE_CXX_FLAGS_STRICT  "${OpenMP_CXX_FLAGS} -O3 -Wall -Werror ${CLANG_NOERROR}" CACHE STRING
-"Flags used by the C++ compiler during rstrict jenkins builds.")
+"Flags used by the C++ compiler during strict jenkins builds.")
 set(CMAKE_CXX_FLAGS_RELEASE "${OpenMP_CXX_FLAGS} -O3 -w" CACHE STRING
     "Flags used by the C++ compiler during release builds.")
 set(CMAKE_CXX_FLAGS_HOSTDEBUG "${OpenMP_CXX_FLAGS} -Wall -Wno-unknown-pragmas -g -fno-inline -DHOST_DEBUG ${CLANG_FORCE_COLOR}" CACHE STRING
@@ -670,7 +741,5 @@ mark_as_advanced(CMAKE_F_FLAGS)
 add_subdirectory(lib)
 add_subdirectory(tests)
 #QKXTM: DMH Add QKXTM directory
-if(QUDA_INTERFACE_QKXTM)
-  add_subdirectory(qkxtm)
-endif(QUDA_INTERFACE_QKXTM)
+add_subdirectory(qkxtm)
 #QKXTM: DMH

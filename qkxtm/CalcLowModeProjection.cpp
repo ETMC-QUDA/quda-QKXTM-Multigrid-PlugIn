@@ -20,7 +20,7 @@
 #include <mpi.h>
 #endif
 
-#include <gauge_qio.h>
+#include <qio_field.h>
 
 #define MAX(a,b) ((a)>(b)?(a):(b))
 
@@ -28,7 +28,6 @@
 #include <quda.h>
 #include <contractQuda.h>
 #include <qudaQKXTM.h>
-// Wilson, clover-improved Wilson, twisted mass, and domain wall are supported.
 
 //========================================================================//
 //====== P A R A M E T E R   S E T T I N G S   A N D   C H E C K S =======//
@@ -38,7 +37,6 @@
 // QUDA Parameters //
 //-----------------//
 extern QudaDslashType dslash_type;
-extern bool tune;
 extern int device;
 extern int xdim;
 extern int ydim;
@@ -222,8 +220,6 @@ void setInvertParam(QudaInvertParam &inv_param) {
   inv_param.input_location = QUDA_CPU_FIELD_LOCATION;
   inv_param.output_location = QUDA_CPU_FIELD_LOCATION;
 
-  inv_param.tune = tune ? QUDA_TUNE_YES : QUDA_TUNE_NO;
-
   inv_param.dslash_type = dslash_type;
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
@@ -339,8 +335,6 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
 
   inv_param.input_location = QUDA_CPU_FIELD_LOCATION;
   inv_param.output_location = QUDA_CPU_FIELD_LOCATION;
-
-  inv_param.tune = tune ? QUDA_TUNE_YES : QUDA_TUNE_NO;
 
   inv_param.dslash_type = dslash_type;
 

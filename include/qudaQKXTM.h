@@ -383,7 +383,6 @@ namespace quda {
                                            WHICHPARTICLE NUCLEON);
   };
 
-#ifdef HAVE_ARPACK
   ////////////////////////////
   // CLASS: QKXTM_Deflation //
   //////////////////////////// 
@@ -463,7 +462,7 @@ namespace quda {
     void polynomialOperator(cudaColorSpinorField &out, 
 			    const cudaColorSpinorField &in);
     void eigenSolver();
-    void Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param, 
+    void Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param, bool loopCovDev,
 				     void *gen_uloc, void *std_uloc, 
 				     void **gen_oneD, void **std_oneD, 
 				     void **gen_csvC, void **std_csvC);
@@ -474,7 +473,6 @@ namespace quda {
 		       int is, int NeV_defl);
     void copyToEigenVector(Float *vec, Float *vals);
   };
-#endif  
 }
 // End quda namespace
 
@@ -482,6 +480,11 @@ namespace quda {
 //////////////////////////////////
 // Multigrid Inversion Routines //
 //////////////////////////////////
+
+void MG_bench(void **gaugeSmeared, void **gauge, 
+	      QudaGaugeParam *gauge_param, 
+	      QudaInvertParam *param,
+	      quda::qudaQKXTMinfo info);
 
 void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       QudaGaugeParam *gauge_param,
@@ -500,7 +503,6 @@ void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, QudaInvertParam *par
 // MG with Exact Deflation //
 /////////////////////////////
 
-#ifdef HAVE_ARPACK
 void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette, 
 				  QudaInvertParam *EVparam,
 				  QudaInvertParam *param,
@@ -520,8 +522,5 @@ void calcLowModeProjection(void **gaugeToPlaquette,
 			   quda::qudaQKXTM_arpackInfo arpackInfo,
 			   quda::qudaQKXTMinfo info);
   
-#endif
-// HAVE_ARPACK
-
 #endif
 //_QUDAQKXTM__H

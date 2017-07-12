@@ -98,8 +98,8 @@ int GK_timeSize;
 static void createMomenta(int Q_sq){
   int counter=0;
   for(int iQ = 0 ; iQ <= Q_sq ; iQ++){
-    for(int nx = iQ ; nx >= -iQ ; nx--)
-      for(int ny = iQ ; ny >= -iQ ; ny--)
+    for(int nx = iQ ; nx >= -iQ ; nx--){
+      for(int ny = iQ ; ny >= -iQ ; ny--){
         for(int nz = iQ ; nz >= -iQ ; nz--){
           if( nx*nx + ny*ny + nz*nz == iQ ){
             GK_moms[counter][0] = nx;
@@ -108,13 +108,15 @@ static void createMomenta(int Q_sq){
             counter++;
           }
         }
+      }
+    }
   }
   if(counter > MAX_NMOMENTA)errorQuda("Error exceeded max number of momenta\n");
   GK_Nmoms=counter;
 }
 
 void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
-
+  
   if(GK_init_qudaQKXTM_flag == false){
     GK_nColor = 3;
     GK_nSpin = 4;
@@ -125,15 +127,15 @@ void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
     GK_nsmearGauss = info->nsmearGauss;
     createMomenta(info->Q_sq);
     // from now on depends on lattice and break format we choose
-
+    
     for(int i = 0 ; i < GK_nDim ; i++)
       GK_nProc[i] = comm_dim(i);
     
-        for(int i = 0 ; i < GK_nDim ; i++){   // take local and total lattice
+    for(int i = 0 ; i < GK_nDim ; i++){   // take local and total lattice
       GK_localL[i] = info->lL[i];
       GK_totalL[i] = GK_nProc[i] * GK_localL[i];
     }
-  
+
     GK_localVolume = 1;
     GK_totalVolume = 1;
     for(int i = 0 ; i < GK_nDim ; i++){
@@ -150,15 +152,17 @@ void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
 	GK_surface3D[i] *= GK_localL[j];
       }
     }
-
-  for(int i = 0 ; i < GK_nDim ; i++)
-    if( GK_localL[i] == GK_totalL[i] )
-      GK_surface3D[i] = 0;
+    
+    
+    for(int i = 0 ; i < GK_nDim ; i++)
+      if( GK_localL[i] == GK_totalL[i] )
+	GK_surface3D[i] = 0;
     
     for(int i = 0 ; i < GK_nDim ; i++){
       GK_plusGhost[i] =0;
       GK_minusGhost[i] = 0;
     }
+    
     
 #ifdef MULTI_GPU
     int lastIndex = GK_localVolume;
@@ -170,7 +174,6 @@ void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
       }
 #endif
     
-
     for(int i = 0 ; i < GK_nDim ; i++){
       if( GK_localL[i] < GK_totalL[i])
 	GK_dimBreak[i] = true;
@@ -198,7 +201,6 @@ void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
     for(int i= 0 ; i < 4 ; i++)
       procPosition[i] = comm_coords(default_topo)[i];
 
-
     // put it zero but change it later
     GK_Nsources = info->Nsources;
     if(GK_Nsources > MAX_NSOURCES) errorQuda("Error you exceeded maximum number of source position\n");
@@ -207,7 +209,6 @@ void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
       for(int i = 0 ; i < 4 ; i++)
 	GK_sourcePosition[is][i] = info->sourcePosition[is][i];
 
-    
     // initialization consist also from define device constants
     cudaMemcpyToSymbol(c_nColor, &GK_nColor, sizeof(int) );
     cudaMemcpyToSymbol(c_nSpin, &GK_nSpin, sizeof(int) );
@@ -256,7 +257,6 @@ void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
     for(int i= 0 ; i < space3D_proc ; i++)
       ranks[i] = comm_coords(default_topo)[3] + GK_nProc[3]*i;
 
-
     //    for(int i= 0 ; i < space3D_proc ; i++)
     //      printf("%d (%d,%d,%d,%d)\n",comm_rank(),comm_coords(default_topo)[0],comm_coords(default_topo)[1],comm_coords(default_topo)[2],comm_coords(default_topo)[3]);
 
@@ -287,10 +287,13 @@ void quda::init_qudaQKXTM(qudaQKXTMinfo *info){
 
     GK_init_qudaQKXTM_flag = true;
     printfQuda("qudaQKXTM has been initialized\n");
-  }
-  else
-    return;
+  }  
 
+  else{
+    printfQuda("???\n");
+    return;
+  }
+  
 }
 
 void quda::printf_qudaQKXTM(){

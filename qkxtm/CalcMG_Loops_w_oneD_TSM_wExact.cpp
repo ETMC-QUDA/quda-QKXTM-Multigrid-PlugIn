@@ -659,7 +659,10 @@ int main(int argc, char **argv)
   //requested, and how many to dump. 
   loopInfo.TSM_NLP = Nstoch;
   loopInfo.TSM_NdumpLP = Ndump;
-  
+  loopInfo.TSM_NprintLP=1;
+
+
+
   //Populate LP criteria arrays    
   for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
     loopInfo.TSM_tol[a] = TSM_tol[a];
@@ -668,7 +671,7 @@ int main(int argc, char **argv)
       errorQuda("Criterion for low-precision solve %d not set!\n", a);
     }
   }
-  
+
 
   // QUDA parameters begin here.
   //-----------------------------------------------------------------

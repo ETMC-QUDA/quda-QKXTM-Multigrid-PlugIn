@@ -7388,6 +7388,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   printfQuda(" The conf trajectory is: %04d\n",loopInfo.traj);
   printfQuda(" Will produce the loop for %d Momentum Combinations\n",Nmoms);
   printfQuda(" The loop file format is %s\n", (LoopFileFormat == ASCII_FORM) ? "ASCII" : "HDF5");
+  printfQuda(" Will write the loops in %s\n", loopInfo.HighMomForm ? "High-Momenta Form" : "Standard Form");
   printfQuda(" The loop base name is %s\n",loopInfo.loop_fname);
   printfQuda(" Will %sperform covariant derivative calculations\n",loopCovDev ? "" : "not ");
   printfQuda(" %d Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions per TSM criterion\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);

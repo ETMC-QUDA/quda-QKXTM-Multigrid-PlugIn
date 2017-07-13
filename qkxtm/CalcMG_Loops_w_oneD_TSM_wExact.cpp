@@ -595,6 +595,10 @@ int main(int argc, char **argv)
   loopInfo.spinColorDil = spinColorDil;
   loopInfo.loopCovDev = loopCovDev;
   strcpy(loopInfo.loop_fname,loop_fname);
+  loopInfo.kappa = kappa;
+  loopInfo.csw = csw;
+  loopInfo.mu = mu;
+  loopInfo.inv_tol = tol;
 
   if( strcmp(loop_file_format,"ASCII")==0 || 
       strcmp(loop_file_format,"ascii")==0 ) {
@@ -611,7 +615,11 @@ int main(int argc, char **argv)
   }
   if(loopInfo.Nstoch%loopInfo.Ndump==0) loopInfo.Nprint = loopInfo.Nstoch/loopInfo.Ndump;
   else errorQuda("NdumpStep MUST divide Nstoch exactly! Exiting.\n");
-  
+
+  //-C.K. Choose High-Momenta form by default when writing in HDF5 format
+  if(loopInfo.FileFormat == HDF5_FORM) loopInfo.HighMomForm = true;
+  else loopInfo.HighMomForm = false;
+ 
   
   //-C.K. Determine the deflation steps
   if(defl_steps == 1){

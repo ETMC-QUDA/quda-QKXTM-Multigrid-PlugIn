@@ -666,6 +666,9 @@ int main(int argc, char **argv)
 
   QudaGaugeParam gauge_param = newQudaGaugeParam();
   setGaugeParam(gauge_param);
+  QudaGaugeParam gaugeSmeared_param = gauge_param;
+  gaugeSmeared_param.type = QUDA_SMEARED_LINKS;
+
 
   QudaInvertParam mg_inv_param = newQudaInvertParam();
   QudaMultigridParam mg_param = newQudaMultigridParam();
@@ -676,7 +679,7 @@ int main(int argc, char **argv)
 
   QudaInvertParam inv_param = newQudaInvertParam();
   setInvertParam(inv_param);
-
+  
   setDims(gauge_param.X);
 
   setSpinorSiteSize(24);
@@ -723,10 +726,7 @@ int main(int argc, char **argv)
   
   // load the gauge field
   loadGaugeQuda((void*)gauge, &gauge_param);
-
-  for(int i = 0 ; i < 4 ; i++){
-    free(gauge[i]);
-  }   
+  loadGaugeQuda((void*)gauge_APE, &gaugeSmeared_param);
 
   printfQuda("Before clover term\n");
   // This line ensures that if we need to construct the clover inverse 
@@ -777,6 +777,7 @@ int main(int argc, char **argv)
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) freeCloverQuda();
   
   for(int i = 0 ; i < 4 ; i++){
+    free(gauge[i]);
     free(gauge_APE[i]);
     free(gaugeContract[i]);
   }

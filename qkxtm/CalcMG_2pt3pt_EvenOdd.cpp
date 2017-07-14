@@ -710,7 +710,7 @@ int main(int argc, char **argv)
   mapEvenOddToNormalGauge(gaugeContract,gauge_param,xdim,ydim,zdim,tdim);
 
   // load in the command line supplied smeared gauge field
-  // first read gauge field without apply BC  
+  // first read gauge field without apply BC, if BC change only in the temporal direction for 3D Gaussian smearing it does matter
   readLimeGaugeSmeared(gauge_APE, latfile_smeared, &gauge_param, &inv_param,
 		       gridsize_from_cmdline);
   mapEvenOddToNormalGauge(gauge_APE,gauge_param,xdim,ydim,zdim,tdim);

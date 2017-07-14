@@ -244,6 +244,8 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
   
   bool flag_eo;
   double t1,t2,t3,t4,t5,t6;
+  double tx1,tx2,summ_tx12=0.; // needed to time gaussian smearing routines
+  double tx3,tx4,summ_tx34=0.; // needed to time just the inversion time
   char fname[256];
   sprintf(fname, "calcMG_threepTwop_EvenOdd");
 
@@ -695,14 +697,27 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 
       //Ensure mu is +ve
       if(param->mu < 0) param->mu *= -1.0;
+      //<<<<<<< HEAD
       mapNormalToEvenOdd(input_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
+      tx1 = MPI_Wtime();
       performWuppertalnStep(output_vector, input_vector, param, GK_nsmearGauss, GK_alphaGauss);
+      tx2 = MPI_Wtime();
+      summ_tx12 += tx2-tx1;
       mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
       K_guess->packVector((double*) output_vector);
 
       //      K_vector->packVector((double*) input_vector);
       //      K_vector->loadVector();
       //      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+      //=======
+      // K_vector->packVector((double*) input_vector);
+      // K_vector->loadVector();
+      // tx1 = MPI_Wtime();
+      // K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+      // tx2 = MPI_Wtime();
+      // summ_tx12 += tx2-tx1;
+
+      //>>>>>>> 8c464562d2aa5065c035ff3518450651ff5b73ef
       K_guess->uploadToCuda(b,flag_eo);
       blas::zero(*x);
       diracUP.prepare(in,out,*x,*b,param->solution_type);
@@ -716,7 +731,10 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
       // initial guess is ready
       
       printfQuda(" up - %02d: \n",isc);
+      tx3 = MPI_Wtime();
       (*solveU)(*out,*in);
+      tx4 = MPI_Wtime();
+      summ_tx34 += tx4-tx3;
       solverParamU.updateInvertParam(*param);
       diracUP.reconstruct(*x,*b,param->solution_type);
       K_vector->downloadFromCuda(x,flag_eo);
@@ -762,7 +780,10 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
       
       K_vector->packVector((double*) input_vector);
       K_vector->loadVector();
+      tx1=MPI_Wtime();
       K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+      tx2=MPI_Wtime();
+      summ_tx12 += tx2-tx1;
       K_guess->uploadToCuda(b,flag_eo);
       diracDN.prepare(in,out,*x,*b,param->solution_type);
       
@@ -775,7 +796,10 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
       // initial guess is ready
       
       printfQuda(" dn - %02d: \n",isc);
+      tx3 = MPI_Wtime();
       (*solveD)(*out,*in);
+      tx4 = MPI_Wtime();
+      summ_tx34 += tx4-tx3;
       solverParamD.updateInvertParam(*param);
       diracDN.reconstruct(*x,*b,param->solution_type);
       K_vector->downloadFromCuda(x,flag_eo);
@@ -794,7 +818,11 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
     // Close loop over 12 spin-color
     
     t2 = MPI_Wtime();
-    printfQuda("TIME_REPORT - Forward Inversions: %f sec.\n\n",t2-t1);
+    printfQuda("TIME_REPORT - Gaussian Smearing (For just the source point, all spin-color components): %f sec. \n",summ_tx12);
+    summ_tx12=0.;
+    printfQuda("TIME_REPORT - Just Inversions (24 in total): %f sec. \n", summ_tx34);
+    summ_tx34=0.;
+    printfQuda("TIME_REPORT - Forward Inversions (Total including smearing, inversions and others): %f sec.\n\n",t2-t1);
     
     ////////////////////////////////////
     // Smearing on the 3D propagators //

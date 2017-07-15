@@ -113,13 +113,6 @@ namespace quda {
     char *loop_type[6];
     // = { false  , false,  true   , true    ,  true  ,  true}
     bool loop_oneD[6];
-    bool useTSM;
-    int TSM_NHP;
-    int TSM_NLP;
-    int TSM_NdumpHP;
-    int TSM_NdumpLP;
-    int TSM_NprintHP;
-    int TSM_NprintLP;
     int TSM_NLP_iters = 1;
     int TSM_maxiter[MAX_LP_CRIT] = {0,0,0,0,0,0,0,0,0,0};
     double TSM_tol[MAX_LP_CRIT]  = {0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0};

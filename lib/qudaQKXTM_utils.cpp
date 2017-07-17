@@ -1,4 +1,5 @@
 #include <cufft.h>
+#include <fftw3-mpi.h>
 #include <gsl/gsl_rng.h>
 #include <contractQuda.h>
 
@@ -201,7 +202,7 @@ static int** allocateMomMatrix(int Q_sq){
 
 
 template <typename Float>
-void doCudaFFT_v2(void *cnIn, void *cnOut){
+void performCudaFFT(void *cnIn, void *cnOut){
   static cufftHandle fftPlan;
   static int init = 0;
   int nRank[3] = {GK_localL[0], GK_localL[1], GK_localL[2]};
@@ -237,6 +238,170 @@ void doCudaFFT_v2(void *cnIn, void *cnOut){
   cufftDestroy            (fftPlan);
   cudaStreamDestroy       (streamCuFFT);
   checkCudaError();
+}
+
+
+void performFFTW(void *cnIn, double *write_buf, int iPrint, int Nmoms, int **mom, int Q_sq){
+  
+  //FFTW detects the size of the DFFT from the product of N0, N1, and N2. It
+  //assumes double precison, and detects complex to complex transform type
+  //from the pointer types (fftw_complex) passed to the planner.
+  //All transfroms are done in place.
+
+  const ptrdiff_t N0 = GK_localL[0], N1 = GK_localL[1], N2 = GK_localL[2];
+  const ptrdiff_t N[3] = {N0,N1,N2};
+  ptrdiff_t howmany = 16*GK_localL[3];
+  int vol = GK_localL[0]*GK_localL[1]*GK_localL[2];
+  
+  fftw_plan plan;
+  const char *WRP = "fftw_wisdom.wisdom"; //Wisdom Resource Path
+  
+  printfQuda("Flag A\n");
+  
+  fftw_import_wisdom_from_filename(WRP);
+  
+  printfQuda("Flag B\n");
+  
+  fftw_mpi_init();
+  
+  printfQuda("Flag C\n");
+
+  //Loop over gamma matrix projections, and time slices
+  //for(int v=0; v<16*GK_localL[3]; v++){ 
+  // create plan for in-place forward 3D complex DFT
+  plan = fftw_mpi_plan_many_dft(3, N, howmany, FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, 
+				((fftw_complex*)cnIn), ((fftw_complex*)cnIn),
+				MPI_COMM_WORLD, FFTW_FORWARD, FFTW_ESTIMATE);
+  
+  printfQuda("Flag D\n");
+  
+  //compute transforms
+  fftw_execute(plan);
+  
+  printfQuda("Flag E\n");
+  
+  fftw_destroy_plan(plan);
+  
+  for(int a=0; a<2*2*24*24*24*24*16; a+=2) {
+    //printfQuda("elem %d %.12e %.12e\n", a, ((double*)cnIn)[a], ((double*)cnIn)[a+1]);
+  }
+  
+  printfQuda("Flag F\n");
+  
+  fftw_export_wisdom_to_filename(WRP);
+  
+  printfQuda("Flag G\n");
+  
+  //Copy to write buffer
+  //MPI_Reduce(cnIn, &(write_buf[2*Nmoms*GK_localL[3]*16*iPrint]), 2*Nmoms*GK_localL[3]*16, MPI_DOUBLE, MPI_SUM, 0, GK_spaceComm);  
+
+  int imom = 0;
+
+  for(int ip=0; ip < Q_sq; ip++){
+    printfQuda("ip_loop=%d\n", ip);
+    if ((mom[ip][0]*mom[ip][0] + mom[ip][1]*mom[ip][1] + mom[ip][2]*mom[ip][2]) <= Q_sq){
+      printfQuda("ip_loop=%d\n", ip);
+      for(int lt=0; lt < GK_localL[3]; lt++){
+	for(int gm=0; gm<16; gm++){
+	  printfQuda("ip=%d lt=%d gm=%d\n", ip, lt, gm);
+	  write_buf[0 + 2*imom + 2*Nmoms*lt + 2*Nmoms*GK_localL[3]*gm + 2*Nmoms*GK_localL[3]*16*iPrint] = 
+	    ((double*)cnIn) [0 + 2*gm + 2*16*lt + 2*16*GK_localL[3]*ip];
+	  printfQuda("ip=%d lt=%d gm=%d\n", ip, lt, gm);	  
+	  write_buf[1 + 2*imom + 2*Nmoms*lt + 2*Nmoms*GK_localL[3]*gm + 2*Nmoms*GK_localL[3]*16*iPrint] = 
+	    ((double*)cnIn) [1 + 2*gm + 2*16*lt + 2*16*GK_localL[3]*ip];
+	  printfQuda("ip=%d lt=%d gm=%d\n", ip, lt, gm);
+	}//-gm
+	printfQuda("Done\n");
+      }//-lt
+      printfQuda("Done\n");
+      imom++;
+      printfQuda("Done\n");
+    }//-if
+    printfQuda("Done\n");
+  }//-ip
+  printfQuda("Done\n");
+
+  //writeBuf[0+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint] = ((Float*)tmpBuf)[0+2*ip+2*SplV*lt+2*SplV*GK_localL[3]*gm];
+  //writeBuf[1+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint] = ((Float*)tmpBuf)[1+2*ip+2*SplV*lt+2*SplV*GK_localL[3]*gm];
+  
+  
+}
+
+
+//-C.K. Function which performs the Fourier Transform
+template<typename Float>
+void performHostFT(Float *outBuf, void *inBuf, int iPrint, 
+		   int Nmoms, int **momQsq){
+  
+  int lx=GK_localL[0];
+  int ly=GK_localL[1];
+  int lz=GK_localL[2];
+  int lt=GK_localL[3];
+  int LX=GK_totalL[0];
+  int LY=GK_totalL[1];
+  int LZ=GK_totalL[2];
+
+  long int SplV = lx*ly*lz;
+
+  double two_pi = 2*M_PI;
+
+  int x_coord = comm_coord(0);
+  int y_coord = comm_coord(1);
+  int z_coord = comm_coord(2);
+
+  Float *sum = (Float*) malloc(2*16*Nmoms*lt*sizeof(Float));
+  if(sum == NULL) errorQuda("performHostFFT: Allocation of sum buffer failed.\n");
+  memset(sum,0,2*16*Nmoms*lt*sizeof(Float));
+
+#pragma omp parallel for
+  for(int ip=0;ip<Nmoms;ip++){
+    Float px = two_pi*momQsq[ip][0]/LX;
+    Float py = two_pi*momQsq[ip][1]/LY;
+    Float pz = two_pi*momQsq[ip][2]/LZ;
+    
+    int x,  y,  z,  t, gm;
+    int xg, yg, zg;    
+
+    int v = 0;
+    Float phase[2];
+    Float expn;
+
+    for(z=0;z<lz;z++){     
+      zg = z+z_coord*lz;
+      for(y=0;y<ly;y++){   
+	yg = y+y_coord*ly;
+	for(x=0;x<lx;x++){ 
+	  xg = x+x_coord*lx;
+	  
+	  expn = ( (px*xg) + (py*yg) + (pz*zg) );
+
+	  phase[0] =  cos(expn);
+	  phase[1] = -sin(expn);
+
+	  for(t=0;t<lt;t++){
+	    for(gm=0;gm<16;gm++){
+	      //Real
+	      sum[0 + 2*(ip + Nmoms*(t + lt*gm))] += 
+		((Float*)inBuf)[0 + 2*v + 2*SplV*t + 2*SplV*lt*gm]*phase[0] - 
+		((Float*)inBuf)[1 + 2*v + 2*SplV*t + 2*SplV*lt*gm]*phase[1];
+	      //Imag
+	      sum[1 + 2*(ip + Nmoms*(t + lt*gm))] += 
+		((Float*)inBuf)[0 + 2*(v + SplV*(t + lt*gm))]*phase[1] + 
+		((Float*)inBuf)[1 + 2*(v + SplV*(t + lt*gm))]*phase[0];
+	      
+	    }//-gm
+	  }//-t
+	  
+	  v++;
+	}//-x
+      }//-y
+    }//-z
+  }//-ip
+
+  if(typeid(Float)==typeid(float))  MPI_Reduce(sum, &(outBuf[2*Nmoms*lt*16*iPrint]), 2*Nmoms*lt*16, MPI_FLOAT , MPI_SUM, 0, GK_spaceComm);
+  if(typeid(Float)==typeid(double)) MPI_Reduce(sum, &(outBuf[2*Nmoms*lt*16*iPrint]), 2*Nmoms*lt*16, MPI_DOUBLE, MPI_SUM, 0, GK_spaceComm);
+
+  free(sum);
 }
 
 //-C.K. Added this function for convenience, when writing the 
@@ -286,104 +451,29 @@ void createLoopMomenta(int **mom, int **momQsq, int Q_sq, int Nmoms){
   
 }
 
-//-C.K. Function which performs the Fourier Transform
-template<typename Float>
-void performFFT(Float *outBuf, void *inBuf, int iPrint, 
-		int Nmoms, int **momQsq){
-  
-  int lx=GK_localL[0];
-  int ly=GK_localL[1];
-  int lz=GK_localL[2];
-  int lt=GK_localL[3];
-  int LX=GK_totalL[0];
-  int LY=GK_totalL[1];
-  int LZ=GK_totalL[2];
 
-  long int SplV = lx*ly*lz;
-
-  double two_pi = 2*M_PI;
-
-  int x_coord = comm_coord(0);
-  int y_coord = comm_coord(1);
-  int z_coord = comm_coord(2);
-
-  Float *sum = (Float*) malloc(2*16*Nmoms*lt*sizeof(Float));
-  if(sum == NULL) errorQuda("performManFFT: Allocation of sum buffer failed.\n");
-  memset(sum,0,2*16*Nmoms*lt*sizeof(Float));
-
-#pragma omp parallel for
-  for(int ip=0;ip<Nmoms;ip++){
-    Float px = two_pi*momQsq[ip][0]/L;
-    Float py = two_pi*momQsq[ip][1]/L;
-    Float pz = two_pi*momQsq[ip][2]/L;
-    
-    int x,  y,  z,  t, gm;
-    int xg, yg, zg;    
-
-    int v = 0;
-    Float phase[2];
-    Float expn;
-
-    for(z=0;z<lz;z++){     
-      zg = z+z_coord*lz;
-      for(y=0;y<ly;y++){   
-	yg = y+y_coord*ly;
-	for(x=0;x<lx;x++){ 
-	  xg = x+x_coord*lx;
-	  
-	  expn = ( (px*xg)/LX + (py*yg)/LY + (pz*zg)/LZ );
-
-	  phase[0] =  cos(expn);
-	  phase[1] = -sin(expn);
-
-	  for(t=0;t<lt;t++){
-	    for(gm=0;gm<16;gm++){
-	      //Real
-	      sum[0 + 2*(ip + Nmoms*(t + lt*gm))] += 
-		((Float*)inBuf)[0 + 2*(v + SplV*(t + lt*gm))]*phase[0] - 
-		((Float*)inBuf)[1 + 2*(v + SplV*(t + lt*gm))]*phase[1];
-	      //Imag
-	      sum[1 + 2*(ip + Nmoms*(t + lt*gm))] += 
-		((Float*)inBuf)[0 + 2*(v + SplV*(t + lt*gm))]*phase[1] + 
-		((Float*)inBuf)[1 + 2*(v + SplV*(t + lt*gm))]*phase[0];
-	      
-	    }//-gm
-	  }//-t
-	  
-	  v++;
-	}//-x
-      }//-y
-    }//-z
-  }//-ip
-
-  if(typeid(Float)==typeid(float))  MPI_Reduce(sum, &(outBuf[2*Nmoms*lt*16*iPrint]), 2*Nmoms*lt*16, MPI_FLOAT , MPI_SUM, 0, GK_spaceComm);
-  if(typeid(Float)==typeid(double)) MPI_Reduce(sum, &(outBuf[2*Nmoms*lt*16*iPrint]), 2*Nmoms*lt*16, MPI_DOUBLE, MPI_SUM, 0, GK_spaceComm);
-
-  free(sum);
-}
 
 template<typename Float>
 void copyLoopToWriteBuf(Float *writeBuf, void *tmpBuf, int iPrint, 
 			int Q_sq, int Nmoms, int **mom){
 
-  if(GK_nProc[2]==1){
-    long int SplV = GK_localL[0]*GK_localL[1]*GK_localL[2];
-    int imom = 0;
-    
-    for(int ip=0; ip < SplV; ip++){
-      if ((mom[ip][0]*mom[ip][0] + mom[ip][1]*mom[ip][1] + mom[ip][2]*mom[ip][2]) <= Q_sq){
-	for(int lt=0; lt < GK_localL[3]; lt++){
-	  for(int gm=0; gm<16; gm++){
-	    writeBuf[0+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint] = ((Float*)tmpBuf)[0+2*ip+2*SplV*lt+2*SplV*GK_localL[3]*gm];
-	    writeBuf[1+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint] = ((Float*)tmpBuf)[1+2*ip+2*SplV*lt+2*SplV*GK_localL[3]*gm];
-	  }//-gm
-	}//-lt
-	imom++;
-      }//-if
-    }//-ip
-  }
-  else errorQuda("copyLoopToWriteBuf: This function does not support more than 1 GPU in the z-direction\n");
-
+  //if(GK_nProc[2]==1){
+  long int SplV = GK_localL[0]*GK_localL[1]*GK_localL[2];
+  int imom = 0;
+  
+  for(int ip=0; ip < SplV; ip++){
+    if ((mom[ip][0]*mom[ip][0] + mom[ip][1]*mom[ip][1] + mom[ip][2]*mom[ip][2]) <= Q_sq){
+      for(int lt=0; lt < GK_localL[3]; lt++){
+	for(int gm=0; gm<16; gm++){
+	  writeBuf[0+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint] = ((Float*)tmpBuf)[0+2*ip+2*SplV*lt+2*SplV*GK_localL[3]*gm];
+	  writeBuf[1+2*imom+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint] = ((Float*)tmpBuf)[1+2*ip+2*SplV*lt+2*SplV*GK_localL[3]*gm];
+	}//-gm
+      }//-lt
+      imom++;
+    }//-if
+  }//-ip
+  //}
+  //else errorQuda("copyLoopToWriteBuf: This function does not support more than 1 GPU in the z-direction\n"); //Why?  
 }
 
 

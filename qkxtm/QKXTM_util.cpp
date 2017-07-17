@@ -1678,6 +1678,9 @@ unsigned long int seed = 100;  // The seed for the stochastic vectors
 char loop_fname[512] = "loop";
 char *loop_file_format = "ASCII";
 char source_type[257] = "random";
+bool loopFFTCuda = false;
+bool loopFFTW    = false;
+bool loopHostFT  = false;
 int TSM_NLP_iters = 1;
 int TSM_maxiter[10] = { };
 double TSM_tol[10] = { };
@@ -1848,7 +1851,9 @@ void usage(char** argv )
   printfQuda("    --Nstoch                                  # Number of stochastic noise vectors for loop (default 100)\n");
   printfQuda("    --NdumpStep                               # Every how many noise vectors it will dump the data (default 10)\n");
   printfQuda("    --loop-filename                           # File name to save loops (default \"loop\")\n");
-  printfQuda("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
+  printfQuda("    --loopFFTCuda                             # Use Cuda's FFT device routines for loop Fourier transforms\n");
+  printfQuda("    --loopFFTW                                # Use FFTW host routines for loop Fourier transforms.\n");
+  printfQuda("    --loopHostFT                              # Use simple host side FT for loop Fourier transforms(default)\n");
   printfQuda("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
   printfQuda("    --useEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
   printfQuda("    --TSM-NLP-iters                               # How many Low-precision criteria for TSM\n");
@@ -3330,6 +3335,64 @@ int process_command_line_option(int argc, char** argv, int* idx)
     ret = 0;
     goto out;
   }
+
+  if( strcmp(argv[i], "--loopFFTCuda") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+
+    if (strcmp(argv[i+1], "true") == 0){
+      loopFFTCuda = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      loopFFTCuda = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid loopFFTCuda type (true/false)\n");	
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--loopFFTW") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+
+    if (strcmp(argv[i+1], "true") == 0){
+      loopFFTW = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      loopFFTW = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid loopFFTW type (true/false)\n");	
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--loopHostFT") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+
+    if (strcmp(argv[i+1], "true") == 0){
+      loopHostFT = true;
+    }else if (strcmp(argv[i+1], "false") == 0){
+      loopHostFT = false;
+    }else{
+      fprintf(stderr, "ERROR: invalid loopHostFT type (true/false)\n");	
+      exit(1);
+    }
+
+    i++;
+    ret = 0;
+    goto out;
+  }
+
 
   if( strcmp(argv[i], "--source-type") == 0){
     if (i+1 >= argc){

@@ -121,6 +121,9 @@ extern int Nstoch;
 extern unsigned long int seed;
 extern char loop_fname[];
 extern char *loop_file_format;
+extern bool loopFFTCuda;
+extern bool loopFFTW;
+extern bool loopHostFT;
 extern int Ndump;
 extern char source_type[];
 extern int defl_steps;
@@ -538,9 +541,9 @@ int main(int argc, char **argv)
 
   // call srand() with a rank-dependent seed
   initRand();
-
+  
   display_test_info();
-
+  
   //QKXTM: qkxtm specific inputs
   //--------------------------------------------------------------------
   //-C.K. Pass ARPACK parameters to arpackInfo  
@@ -612,6 +615,34 @@ int main(int argc, char **argv)
   if(loopInfo.Nstoch%loopInfo.Ndump==0) loopInfo.Nprint = loopInfo.Nstoch/loopInfo.Ndump;
   else errorQuda("NdumpStep MUST divide Nstoch exactly! Exiting.\n");
   
+  //Determine method for Fourier transforms.
+  if(loopFFTCuda && loopFFTW || 
+     loopFFTCuda && loopHostFT ||
+     loopHostFT  && loopFFTW) {
+    printfQuda("Conflicting FT methods given, defaulting to FFTW\n");
+    loopInfo.loopFFTCuda = false;
+    loopInfo.loopFFTW    = true;
+    loopInfo.loopHostFT  = false;
+  }
+  else if( (!loopFFTCuda && !loopFFTW) && !loopHostFT) {
+    printfQuda("No explicit FT method given, defaulting to FFTW\n");
+    loopInfo.loopFFTCuda = false;
+    loopInfo.loopFFTW    = true;
+    loopInfo.loopHostFT  = false;
+  }
+  else {
+    loopInfo.loopFFTCuda = loopFFTCuda;
+    loopInfo.loopFFTW    = loopFFTW;
+    loopInfo.loopHostFT  = loopHostFT;
+  }  
+  if( (loopInfo.loopFFTCuda && xdim != 1) ||
+      (loopInfo.loopFFTCuda && ydim != 1) ||
+      (loopInfo.loopFFTCuda && zdim != 1) ) {
+    printfQuda("GPU Splitting in X,Y, or Z dimensions not supported for CUDA FFT, defaulting to FFTW\n");
+    loopInfo.loopFFTCuda = false;
+    loopInfo.loopFFTW    = true;
+    loopInfo.loopHostFT  = false;
+  }
   
   //-C.K. Determine the deflation steps
   if(defl_steps == 1){
@@ -749,7 +780,7 @@ int main(int argc, char **argv)
   inv_param.preconditioner = mg_preconditioner;
 
   //Launch calculation.
-  calcMG_loop_wOneD_TSM_wExact(gauge_Plaq, &EVinv_param, &inv_param, 
+  calcMG_loop_wOneD_TSM_wExact(gauge_Plaq, &EVinv_param, &inv_param,
 			       &gauge_param, arpackInfo, loopInfo, info);
   
   // free the multigrid solver

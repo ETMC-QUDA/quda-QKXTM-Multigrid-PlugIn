@@ -100,6 +100,9 @@ namespace quda {
     unsigned long int seed;
     int Ndump;
     char loop_fname[512];
+    bool loopFFTCuda;
+    bool loopFFTW;
+    bool loopHostFT;
 #ifdef HAVE_ARPACK
     int nSteps_defl;
     int deflStep[MAX_DEFLSTEPS];

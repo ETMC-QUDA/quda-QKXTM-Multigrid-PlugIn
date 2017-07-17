@@ -11,6 +11,7 @@
 
 #include <qudaQKXTM_utils.cpp>
 
+
 ///////////////////////
 // QKXTM MG Routines //
 ///////////////////////
@@ -1419,7 +1420,7 @@ void calcLowModeProjection(void **gaugeToPlaquette,
 
 void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette, 
 				  QudaInvertParam *EvInvParam, 
-				  QudaInvertParam *param, 
+				  QudaInvertParam *param,
 				  QudaGaugeParam *gauge_param,
 				  qudaQKXTM_arpackInfo arpackInfo, 
 				  qudaQKXTM_loopInfo loopInfo, 
@@ -1500,7 +1501,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   int nDefl[deflSteps];
   for(int a=0; a<deflSteps; a++) nDefl[a] = loopInfo.deflStep[a];
 
-
   FILE_WRITE_FORMAT LoopFileFormat = loopInfo.FileFormat;
 
   char loop_exact_fname[512];
@@ -1548,7 +1548,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   for(int a=0; a<TSM_NLP_iters; a++) {
     if (TSM_maxiter[0] == 0) printfQuda(" Solver stopping criterion %d is: tol = %e\n",a, TSM_tol[a]);
     else printfQuda(" Solver stopping criterion %d is: max-iter = %ld\n", a, TSM_maxiter[a]);
-  }
+  }  
   printfQuda(" Will project\n");
   for (int a=0; a<deflSteps; a++) printfQuda(" Ndefl %d: %d\n", a, nDefl[a]);
   printfQuda(" exact eigenmodes fom the solutions\n");
@@ -1772,50 +1772,67 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	       n+1,t2-t1);
     
     if( (n+1)==loopInfo.deflStep[s] ){     
-      if(GK_nProc[2]==1){      
-	doCudaFFT_v2<double>(std_uloc[0], tmp_loop); // Scalar
+      if(loopInfo.loopFFTCuda){
+	t1 = MPI_Wtime();
+	performCudaFFT<double>(std_uloc[0], tmp_loop); // Scalar
 	copyLoopToWriteBuf(buf_std_uloc[0], tmp_loop,
 			   iPrint, info.Q_sq, Nmoms,mom);
-	doCudaFFT_v2<double>(gen_uloc[0], tmp_loop); // dOp
+	performCudaFFT<double>(gen_uloc[0], tmp_loop); // dOp
 	copyLoopToWriteBuf(buf_gen_uloc[0], tmp_loop, 
 			   iPrint, info.Q_sq, Nmoms,mom);
 	
 	for(int mu = 0 ; mu < 4 ; mu++){
-	  doCudaFFT_v2<double>(std_oneD[0][mu], tmp_loop); // Loops
+	  performCudaFFT<double>(std_oneD[0][mu], tmp_loop); // Loops
 	  copyLoopToWriteBuf(buf_std_oneD[0][mu], tmp_loop,
 			     iPrint, info.Q_sq, Nmoms,mom);
-	  doCudaFFT_v2<double>(std_csvC[0][mu], tmp_loop); // LoopsCv
+	  performCudaFFT<double>(std_csvC[0][mu], tmp_loop); // LoopsCv
 	  copyLoopToWriteBuf(buf_std_csvC[0][mu], tmp_loop, 
 			     iPrint, info.Q_sq, Nmoms, mom);
 	  
-	  doCudaFFT_v2<double>(gen_oneD[0][mu], tmp_loop); // LpsDw
+	  performCudaFFT<double>(gen_oneD[0][mu], tmp_loop); // LpsDw
 	  copyLoopToWriteBuf(buf_gen_oneD[0][mu], tmp_loop, 
 			     iPrint, info.Q_sq, Nmoms, mom);
-	  doCudaFFT_v2<double>(gen_csvC[0][mu], tmp_loop); // LpsDwCv
+	  performCudaFFT<double>(gen_csvC[0][mu], tmp_loop); // LpsDwCv
 	  copyLoopToWriteBuf(buf_gen_csvC[0][mu], tmp_loop, 
 			     iPrint, info.Q_sq, Nmoms, mom);
 	}
-	printfQuda("Exact part of Loops for NeV = %d copied to write buffers\n",n+1);
+	t2 = MPI_Wtime();
+	printfQuda("TIME_REPORT: FT (CUDA) Exact part of Loops for NeV = %d FT and copied to write buffers in %f sec\n",n+1, t2-t1);
       }
-      else if(GK_nProc[2]>1){
+      else if(loopInfo.loopHostFT){
 	t1 = MPI_Wtime();
-	performFFT<double>(buf_std_uloc[0], std_uloc[0], 
+	performHostFT<double>(buf_std_uloc[0], std_uloc[0], 
 			   iPrint, Nmoms, momQsq);
-	performFFT<double>(buf_gen_uloc[0], gen_uloc[0], 
+	performHostFT<double>(buf_gen_uloc[0], gen_uloc[0], 
 			   iPrint, Nmoms, momQsq);
 	
 	for(int mu=0;mu<4;mu++){
-	  performFFT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], 
+	  performHostFT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], 
 			     iPrint, Nmoms, momQsq);
-	  performFFT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], 
+	  performHostFT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], 
 			     iPrint, Nmoms, momQsq);
-	  performFFT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], 
+	  performHostFT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], 
 			     iPrint, Nmoms, momQsq);
-	  performFFT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], 
+	  performHostFT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], 
 			     iPrint, Nmoms, momQsq);
 	}
 	t2 = MPI_Wtime();
-	printfQuda("TIME_REPORT: FFT and copying to Write Buffers is %f sec\n",t2-t1);
+	printfQuda("TIME_REPORT: FT (Host) Exact part of Loops for NeV = %d FT and copied to write buffers in %f sec\n",n+1, t2-t1);
+      }
+
+      else if(loopInfo.loopFFTW){
+	t1 = MPI_Wtime();
+	performFFTW(std_uloc[0], buf_std_uloc[0], iPrint, Nmoms, momQsq, info.Q_sq); // Scalar
+	performFFTW(gen_uloc[0], buf_gen_uloc[0], iPrint, Nmoms, momQsq, info.Q_sq); // dOp
+	
+	for(int mu = 0 ; mu < 4 ; mu++){
+	  performFFTW(std_oneD[0][mu], buf_std_oneD[0][mu], iPrint, Nmoms, momQsq, info.Q_sq); // Loops
+	  performFFTW(std_csvC[0][mu], buf_std_csvC[0][mu], iPrint, Nmoms, momQsq, info.Q_sq); // LoopsCv
+	  performFFTW(gen_oneD[0][mu], buf_gen_oneD[0][mu], iPrint, Nmoms, momQsq, info.Q_sq); // LpsDw
+	  performFFTW(gen_csvC[0][mu], buf_gen_csvC[0][mu], iPrint, Nmoms, momQsq, info.Q_sq); // LpsDwCv
+	}
+	t2 = MPI_Wtime();
+	printfQuda("TIME_REPORT: FT (FFTW) Exact part of Loops for NeV = %d FT and copied to write buffers in %f sec\n",n+1, t2-t1);
       }
 
       //================================================================//
@@ -1825,34 +1842,66 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
       //-Write the exact part of the loop
       sprintf(loop_exact_fname,"%s_exact_NeV%d",loopInfo.loop_fname,n+1);
       if(LoopFileFormat==ASCII_FORM){ // Write the loops in ASCII format
-	// Scalar
-	writeLoops_ASCII(buf_std_uloc[0], loop_exact_fname, 
-			 loopInfo, momQsq, 0, 0, exact_part);
-	// dOp
-	writeLoops_ASCII(buf_gen_uloc[0], loop_exact_fname, 
-			 loopInfo, momQsq, 1, 0, exact_part);
-	for(int mu = 0 ; mu < 4 ; mu++){
-	  // Loops
-	  writeLoops_ASCII(buf_std_oneD[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 2, mu, exact_part);
-	  // LoopsCv 
-	  writeLoops_ASCII(buf_std_csvC[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 3, mu, exact_part);
-	  // LpsDw
-	  writeLoops_ASCII(buf_gen_oneD[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 4, mu, exact_part);
-	  // LpsDwCv 
-	  writeLoops_ASCII(buf_gen_csvC[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 5, mu, exact_part); 
-	}
+	if(!loopInfo.loopFFTW) {
+	  // Scalar
+	  writeLoops_ASCII(buf_std_uloc[0], loop_exact_fname, 
+			   loopInfo, momQsq, 0, 0, exact_part);
+	  // dOp
+	  writeLoops_ASCII(buf_gen_uloc[0], loop_exact_fname, 
+			   loopInfo, momQsq, 1, 0, exact_part);
+	  for(int mu = 0 ; mu < 4 ; mu++){
+	    // Loops
+	    writeLoops_ASCII(buf_std_oneD[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 2, mu, exact_part);
+	    // LoopsCv 
+	    writeLoops_ASCII(buf_std_csvC[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 3, mu, exact_part);
+	    // LpsDw
+	    writeLoops_ASCII(buf_gen_oneD[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 4, mu, exact_part);
+	    // LpsDwCv 
+	    writeLoops_ASCII(buf_gen_csvC[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 5, mu, exact_part); 
+	  }
+	} else {
+	  // Scalar
+	  writeLoops_ASCII((double*)std_uloc[0], loop_exact_fname, 
+			   loopInfo, momQsq, 0, 0, exact_part);
+	  // dOp
+	  writeLoops_ASCII((double*)gen_uloc[0], loop_exact_fname, 
+			   loopInfo, momQsq, 1, 0, exact_part);
+	  for(int mu = 0 ; mu < 4 ; mu++){
+	    // Loops
+	    writeLoops_ASCII((double*)std_oneD[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 2, mu, exact_part);
+	    // LoopsCv 
+	    writeLoops_ASCII((double*)std_csvC[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 3, mu, exact_part);
+	    // LpsDw
+	    writeLoops_ASCII((double*)gen_oneD[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 4, mu, exact_part);
+	    // LpsDwCv 
+	    writeLoops_ASCII((double*)gen_csvC[0][mu], loop_exact_fname, 
+			     loopInfo, momQsq, 5, mu, exact_part); 
+	  }
+	}	
       }
       else if(LoopFileFormat==HDF5_FORM){
 	// Write the loops in HDF5 format
-	writeLoops_HDF5(buf_std_uloc[0], buf_gen_uloc[0], 
-			buf_std_oneD[0], buf_std_csvC[0], 
-			buf_gen_oneD[0], buf_gen_csvC[0], 
-			loop_exact_fname, loopInfo, 
-			momQsq, exact_part);
+	if(!loopInfo.loopFFTW){
+	  writeLoops_HDF5(buf_std_uloc[0], buf_gen_uloc[0], 
+			  buf_std_oneD[0], buf_std_csvC[0], 
+			  buf_gen_oneD[0], buf_gen_csvC[0], 
+			  loop_exact_fname, loopInfo, 
+			  momQsq, exact_part);
+	}
+	else {
+	  writeLoops_HDF5(std_uloc[0], gen_uloc[0], 
+			  std_oneD[0], std_csvC[0], 
+			  gen_oneD[0], gen_csvC[0], 
+			  loop_exact_fname, loopInfo, 
+			  momQsq, exact_part);
+	}
       }
       
       printfQuda("Writing the Exact part of the loops for NeV = %d completed.\n",n+1);
@@ -2162,51 +2211,72 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	      //including any deflation projections. iPrint simply increments
 	      //the array for the delfation step.
 	      if(idx==0) iPrint++;
-	      
-	      t1 = MPI_Wtime();
-	      if(GK_nProc[2]==1){      
-		doCudaFFT_v2<double>(std_uloc[idx], tmp_loop); // Scalar
+	     
+	      if(loopInfo.loopFFTCuda){      
+		t1 = MPI_Wtime();
+		performCudaFFT<double>(std_uloc[idx], tmp_loop); // Scalar
 		copyLoopToWriteBuf(buf_std_uloc[idx], tmp_loop, 
 				   iPrint, info.Q_sq, Nmoms, mom);
-		doCudaFFT_v2<double>(gen_uloc[idx], tmp_loop); // dOp
+		performCudaFFT<double>(gen_uloc[idx], tmp_loop); // dOp
 		copyLoopToWriteBuf(buf_gen_uloc[idx], tmp_loop, 
 				   iPrint, info.Q_sq, Nmoms, mom);
 		
 		for(int mu = 0 ; mu < 4 ; mu++){
-		  doCudaFFT_v2<double>(std_oneD[idx][mu], tmp_loop); // Loops
+		  performCudaFFT<double>(std_oneD[idx][mu], tmp_loop); // Loops
 		  copyLoopToWriteBuf(buf_std_oneD[idx][mu], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom);
-		  doCudaFFT_v2<double>(std_csvC[idx][mu], tmp_loop); // LoopsCv
+		  performCudaFFT<double>(std_csvC[idx][mu], tmp_loop); // LoopsCv
 		  copyLoopToWriteBuf(buf_std_csvC[idx][mu], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom);	      
-		  doCudaFFT_v2<double>(gen_oneD[idx][mu],tmp_loop); // LpsDw
+		  performCudaFFT<double>(gen_oneD[idx][mu],tmp_loop); // LpsDw
 		  copyLoopToWriteBuf(buf_gen_oneD[idx][mu], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom);
-		  doCudaFFT_v2<double>(gen_csvC[idx][mu], tmp_loop); // LpsDwCv
+		  performCudaFFT<double>(gen_csvC[idx][mu], tmp_loop); // LpsDwCv
 		  copyLoopToWriteBuf(buf_gen_csvC[idx][mu], tmp_loop, 
 				     iPrint, info.Q_sq, Nmoms, mom);
 		}
+		t2 = MPI_Wtime();
+		printfQuda("TIME_REPORT: Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
+			   " - Loops FT (Cuda) and copy %f sec\n", is, ih, sc, NeV_defl, LP_crit, t2-t1);		
 	      }
-	      else if(GK_nProc[2]>1){
-		performFFT<double>(buf_std_uloc[idx], std_uloc[idx], 
+	      else if(loopInfo.loopHostFT){
+		t1 = MPI_Wtime();
+		performHostFT<double>(buf_std_uloc[idx], std_uloc[idx], 
 				   iPrint, Nmoms, momQsq);
-		performFFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
+		performHostFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
 				   iPrint, Nmoms, momQsq);
 		
 		for(int mu=0;mu<4;mu++){
-		  performFFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
+		  performHostFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
 				     iPrint, Nmoms, momQsq);
-		  performFFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
+		  performHostFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
 				     iPrint, Nmoms, momQsq);
-		  performFFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
+		  performHostFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
 				     iPrint, Nmoms, momQsq);
-		  performFFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
+		  performHostFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
 				     iPrint, Nmoms, momQsq);
 		}
+		t2 = MPI_Wtime();
+		printfQuda("TIME_REPORT: Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
+			   " - Loops FT (Host) and copy %f sec\n", is, ih, sc, NeV_defl, LP_crit, t2-t1);
 	      }
-	      t2 = MPI_Wtime();
-	      printfQuda("TIME_REPORT: Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
-			 " - Loops FFT and copy %f sec\n", is, ih, sc, NeV_defl, LP_crit, t2-t1);
+	      else if(loopInfo.loopFFTW){ 
+		t1 = MPI_Wtime();
+		printfQuda("Flag 1\n");
+		performFFTW(std_uloc[idx], buf_std_uloc[idx], iPrint, Nmoms, momQsq, info.Q_sq); // Scalar
+		printfQuda("Flag 2\n");
+		performFFTW(gen_uloc[idx], buf_gen_uloc[idx], iPrint, Nmoms, momQsq, info.Q_sq); // dOp
+		printfQuda("Flag 3\n");
+		for(int mu = 0 ; mu < 4 ; mu++){
+		  performFFTW(std_oneD[idx][mu], buf_std_oneD[idx][mu], iPrint, Nmoms, momQsq, info.Q_sq); // Loops
+		  performFFTW(std_csvC[idx][mu], buf_std_csvC[idx][mu], iPrint, Nmoms, momQsq, info.Q_sq); // LoopsCv
+		  performFFTW(gen_oneD[idx][mu], buf_gen_oneD[idx][mu], iPrint, Nmoms, momQsq, info.Q_sq); // LpsDw
+		  performFFTW(gen_csvC[idx][mu], buf_gen_csvC[idx][mu], iPrint, Nmoms, momQsq, info.Q_sq); // LpsDwCv
+		}
+		t2 = MPI_Wtime();
+		printfQuda("TIME_REPORT: Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, LP crit = %02d"
+			   " - Loops FT (FFTW) and copy %f sec\n", is, ih, sc, NeV_defl, LP_crit, t2-t1);		
+	      }     
 	    }// Dump conditonal
 	  }// Deflation steps
 	}// LP criteria
@@ -2238,36 +2308,61 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	      loopInfo.loop_fname, LP_crit, NeV_defl);
       
       if(LoopFileFormat==ASCII_FORM){ 
-	// Write the loops in ASCII format
-	writeLoops_ASCII(buf_std_uloc[idx], loop_stoch_fname, 
-			 loopInfo, momQsq, 0, 0, stoch_part); // Scalar
-	writeLoops_ASCII(buf_gen_uloc[idx], loop_stoch_fname, 
-			 loopInfo, momQsq, 1, 0, stoch_part); // dOp
-	for(int mu = 0 ; mu < 4 ; mu++){
-	  writeLoops_ASCII(buf_std_oneD[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 2, mu, stoch_part); // Loops
-	  writeLoops_ASCII(buf_std_csvC[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 3, mu, stoch_part); // LoopsCv
-	  writeLoops_ASCII(buf_gen_oneD[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 4, mu, stoch_part); // LpsDw
-	  writeLoops_ASCII(buf_gen_csvC[idx][mu], loop_stoch_fname, 
-			   loopInfo, momQsq, 5, mu, stoch_part); // LpsDwCv
+	if(!loopInfo.loopFFTW){
+	  writeLoops_ASCII(buf_std_uloc[idx], loop_stoch_fname, 
+			   loopInfo, momQsq, 0, 0, stoch_part); // Scalar
+	  writeLoops_ASCII(buf_gen_uloc[idx], loop_stoch_fname, 
+			   loopInfo, momQsq, 1, 0, stoch_part); // dOp
+	  for(int mu = 0 ; mu < 4 ; mu++){
+	    writeLoops_ASCII(buf_std_oneD[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 2, mu, stoch_part); // Loops
+	    writeLoops_ASCII(buf_std_csvC[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 3, mu, stoch_part); // LoopsCv
+	    writeLoops_ASCII(buf_gen_oneD[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 4, mu, stoch_part); // LpsDw
+	    writeLoops_ASCII(buf_gen_csvC[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 5, mu, stoch_part); // LpsDwCv
+	  }
+	}
+	else {
+	  writeLoops_ASCII((double*)std_uloc[idx], loop_stoch_fname, 
+			   loopInfo, momQsq, 0, 0, stoch_part); // Scalar
+	  writeLoops_ASCII((double*)gen_uloc[idx], loop_stoch_fname, 
+			   loopInfo, momQsq, 1, 0, stoch_part); // dOp
+	  for(int mu = 0 ; mu < 4 ; mu++){
+	    writeLoops_ASCII((double*)std_oneD[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 2, mu, stoch_part); // Loops
+	    writeLoops_ASCII((double*)std_csvC[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 3, mu, stoch_part); // LoopsCv
+	    writeLoops_ASCII((double*)gen_oneD[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 4, mu, stoch_part); // LpsDw
+	    writeLoops_ASCII((double*)gen_csvC[idx][mu], loop_stoch_fname, 
+			     loopInfo, momQsq, 5, mu, stoch_part); // LpsDwCv
+	  }
 	}
       }
       else if(LoopFileFormat==HDF5_FORM){ 
-	// Write the loops in HDF5 format
-	writeLoops_HDF5(buf_std_uloc[idx], buf_gen_uloc[idx], 
-			buf_std_oneD[idx], buf_std_csvC[idx], 
-			buf_gen_oneD[idx], buf_gen_csvC[idx],
-			loop_stoch_fname, loopInfo, momQsq, 
-			stoch_part);
+	if(!loopInfo.loopFFTW){
+	  writeLoops_HDF5(buf_std_uloc[idx], buf_gen_uloc[idx], 
+			  buf_std_oneD[idx], buf_std_csvC[idx], 
+			  buf_gen_oneD[idx], buf_gen_csvC[idx],
+			  loop_stoch_fname, loopInfo, momQsq, 
+			  stoch_part);
+	} else {
+	  writeLoops_HDF5(std_uloc[idx], gen_uloc[idx], 
+			  std_oneD[idx], std_csvC[idx], 
+			  gen_oneD[idx], gen_csvC[idx],
+			  loop_stoch_fname, loopInfo, momQsq, 
+			  stoch_part);
+	}
       }
+      
       t2 = MPI_Wtime();
       printfQuda("TIME_REPORT: Writing the Stochastic part of the loops for NeV = %d, LP crit %d: completed in %f sec.\n",NeV_defl,LP_crit,t2-t1);
     }//N defl 
   } //LP criteria
-  
-  
+    
+    
   gsl_rng_free(rNum);
   
   printfQuda("\n ### Stochastic part calculation Done ###\n");
@@ -2275,7 +2370,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   //======================================================================//
   //================ M E M O R Y   C L E A N - U P =======================// 
   //======================================================================//
-
+  
   printfQuda("\nCleaning up...\n");
   
   //-Free the momentum matrices
@@ -2344,7 +2439,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
     delete x_LP[a];
   }
-  
   
   printfQuda("...Done\n");
   popVerbosity();

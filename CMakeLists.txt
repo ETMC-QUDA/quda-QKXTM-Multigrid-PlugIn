@@ -123,10 +123,11 @@ if(QKXTM_2FLAVMG)
   add_definitions(-DQKXTM_2FLAVMG)
 endif()
 
-# Locations for GSL HDF5 LIME
+# Locations for GSL HDF5 LIME FFTW
 set(QKXTM_GSLHOME "" CACHE PATH "path to GSL")
 set(QKXTM_LIMEHOME "" CACHE PATH "path to LIME")
 set(QKXTM_HDF5HOME "" CACHE PATH "path to HDF5")
+set(QKXTM_FFTWHOME "" CACHE PATH "path to FFTW")
 
 #-C.K. Switch between MKL and OpenBlas BLAS
 set(QKXTM_MKL OFF CACHE BOOL "build QKXTM with MKL")
@@ -408,6 +409,11 @@ include_directories(SYSTEM ${QKXTM_HDF5HOME}/include)
 add_definitions(-DHAVE_LIME)
 FIND_LIBRARY(QKXTM_LIME_LIB lime ${QKXTM_LIMEHOME}/lib)
 include_directories(SYSTEM ${QKXTM_LIMEHOME}/include)
+
+add_definitions(-DHAVE_FFTW)
+FIND_LIBRARY(QKXTM_FFTW_MPI_LIB fftw3_mpi ${QKXTM_FFTWHOME}/lib)
+FIND_LIBRARY(QKXTM_FFTW_LIB fftw3 ${QKXTM_FFTWHOME}/lib)
+include_directories(SYSTEM ${QKXTM_FFTWHOME}/include)
 
 include_directories(lib/code_pieces_Kepler)
 

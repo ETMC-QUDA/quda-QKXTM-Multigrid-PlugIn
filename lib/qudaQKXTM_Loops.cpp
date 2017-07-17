@@ -333,7 +333,7 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
 
   if(param->dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
     dWParam.type           = QUDA_CLOVER_DIRAC;
-    dWParam.clover                 = cloverPrecise;
+    dWParam.clover         = cloverPrecise;
     DiracClover   *dW      = new DiracClover(dWParam);
     dW->M(tmp4,x);
     delete  dW;
@@ -668,10 +668,10 @@ void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc,
 	  // Extra conditional on loopCovDev
 	  if(loopInfo.loop_oneD[it] && loopInfo.loopCovDev ){
 	    for(int mu=0;mu<4;mu++){
-	      if(strcmp(loopInfo.loop_type[it],"Loops")==0)   loopBuf = buf_std_oneD[mu];
-	      if(strcmp(loopInfo.loop_type[it],"LoopsCv")==0) loopBuf = buf_std_csvC[mu];
-	      if(strcmp(loopInfo.loop_type[it],"LpsDw")==0)   loopBuf = buf_gen_oneD[mu];
-	      if(strcmp(loopInfo.loop_type[it],"LpsDwCv")==0) loopBuf = buf_gen_csvC[mu];
+	      if(strcmp(loopInfo.loop_type[it],"Loops")==0)   loopBuf = (double*)buf_std_oneD[mu];
+	      if(strcmp(loopInfo.loop_type[it],"LoopsCv")==0) loopBuf = (double*)buf_std_csvC[mu];
+	      if(strcmp(loopInfo.loop_type[it],"LpsDw")==0)   loopBuf = (double*)buf_gen_oneD[mu];
+	      if(strcmp(loopInfo.loop_type[it],"LpsDwCv")==0) loopBuf = (double*)buf_gen_csvC[mu];
 
 	      char *group5_tag;
 	      asprintf(&group5_tag,"dir_%02d",mu);
@@ -698,8 +698,8 @@ void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc,
 	    }//-mu
 	  }//-if
 	  else{
-	    if(strcmp(loopInfo.loop_type[it],"Scalar")==0) loopBuf = buf_std_uloc;
-	    if(strcmp(loopInfo.loop_type[it],"dOp")==0)    loopBuf = buf_gen_uloc;
+	    if(strcmp(loopInfo.loop_type[it],"Scalar")==0) loopBuf = (double*)buf_std_uloc;
+	    if(strcmp(loopInfo.loop_type[it],"dOp")==0)    loopBuf = (double*)buf_gen_uloc;
 
 	    hid_t filespace  = H5Screate_simple(3, dims, NULL);
 	    hid_t dataset_id = H5Dcreate(group4_id, "loop", H5T_NATIVE_DOUBLE, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);

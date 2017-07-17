@@ -639,28 +639,25 @@ int main(int argc, char **argv)
   }
   
   //- TSM parameters
-
   //How many LP criteria to calculate. Default is 1 i.e.,
   //a single high precision solve.
   loopInfo.TSM_NLP_iters = TSM_NLP_iters;
-  if(loopInfo.TSM_NLP_iters == 0)
+  if(loopInfo.TSM_NLP_iters == 0) {
     warningQuda("Overiding your choice of 0 LP iterations to 1.\n");
-  
-  //One will always perform the full number of inversions
-  //in LP, these are same as the total number of vectors
-  //requested, and how many to dump. 
-  loopInfo.TSM_NLP = Nstoch;
-  loopInfo.TSM_NdumpLP = Ndump;
-  
+  } 
   //Populate LP criteria arrays    
-  for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
-    loopInfo.TSM_tol[a] = TSM_tol[a];
-    loopInfo.TSM_maxiter[a] = TSM_maxiter[a];
-    if( (TSM_maxiter[a]==0) && (TSM_tol[a]==0) ) {
-      errorQuda("Criterion for low-precision solve %d not set!\n", a);
+  if(loopInfo.TSM_NLP_iters == 1) {
+    //Do a single HP solve.
+    loopInfo.TSM_tol[0] = tol;
+  } else {
+    for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
+      loopInfo.TSM_tol[a] = TSM_tol[a];
+      loopInfo.TSM_maxiter[a] = TSM_maxiter[a];
+      if( (TSM_maxiter[a]==0) && (TSM_tol[a]==0) ) {
+	errorQuda("Criterion for low-precision solve %d not set!\n", a);
+      }
     }
   }
-  
 
   // QUDA parameters begin here.
   //-----------------------------------------------------------------

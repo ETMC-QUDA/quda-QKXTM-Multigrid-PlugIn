@@ -665,39 +665,8 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	   my_src[0]*24 + 
 	   isc*2 ) = 1.0;
       
-      // //Ensure mu is +ve
-      // if(param->mu < 0) param->mu *= -1.0;
-      // K_vector->packVector((double*) input_vector);
-      // K_vector->loadVector();
-      // K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-      // K_guess->uploadToCuda(b,flag_eo);
-      // diracUP.prepare(in,out,*x,*b,param->solution_type);
-
-      // // in is reference to the b but for a parity singlet
-      // // out is reference to the x but for a parity singlet
-      
-      // K_vector->downloadFromCuda(in,flag_eo);
-      // K_vector->download();
-      // K_guess->uploadToCuda(out,flag_eo); 
-      // // initial guess is ready
-      
-      // printfQuda(" up - %02d: \n",isc);
-      // (*solveU)(*out,*in);
-      // solverParamU.updateInvertParam(*param);
-      // diracUP.reconstruct(*x,*b,param->solution_type);
-      // K_vector->downloadFromCuda(x,flag_eo);
-      // if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
-      // 	  param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
-      // 	K_vector->scaleVector(2*param->kappa);
-      // }
-      
-      // K_temp->castDoubleToFloat(*K_vector);
-      // K_prop_up->absorbVectorToDevice(*K_temp,isc/3,isc%3);
-
-
       //Ensure mu is +ve
       if(param->mu < 0) param->mu *= -1.0;
-      //<<<<<<< HEAD
       mapNormalToEvenOdd(input_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
       tx1 = MPI_Wtime();
       performWuppertalnStep(output_vector, input_vector, param, GK_nsmearGauss, GK_alphaGauss);
@@ -705,30 +674,13 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
       summ_tx12 += tx2-tx1;
       mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
       K_guess->packVector((double*) output_vector);
-
-      //      K_vector->packVector((double*) input_vector);
-      //      K_vector->loadVector();
-      //      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-      //=======
-      // K_vector->packVector((double*) input_vector);
-      // K_vector->loadVector();
-      // tx1 = MPI_Wtime();
-      // K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-      // tx2 = MPI_Wtime();
-      // summ_tx12 += tx2-tx1;
-
-      //>>>>>>> 8c464562d2aa5065c035ff3518450651ff5b73ef
+      K_guess->loadVector();
       K_guess->uploadToCuda(b,flag_eo);
       blas::zero(*x);
       diracUP.prepare(in,out,*x,*b,param->solution_type);
 
       // in is reference to the b but for a parity singlet
       // out is reference to the x but for a parity singlet
-      
-      //      K_vector->downloadFromCuda(in,flag_eo);
-      //  K_vector->download();
-      //  K_guess->uploadToCuda(out,flag_eo); 
-      // initial guess is ready
       
       printfQuda(" up - %02d: \n",isc);
       tx3 = MPI_Wtime();
@@ -777,24 +729,9 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 
       //Ensure mu is -ve
       if(param->mu > 0) param->mu *= -1.0;
-      
-      K_vector->packVector((double*) input_vector);
-      K_vector->loadVector();
-      tx1=MPI_Wtime();
-      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-      tx2=MPI_Wtime();
-      summ_tx12 += tx2-tx1;
       K_guess->uploadToCuda(b,flag_eo);
+      blas::zero(*x);
       diracDN.prepare(in,out,*x,*b,param->solution_type);
-      
-      // in is reference to the b but for a parity singlet
-      // out is reference to the x but for a parity singlet
-
-      K_vector->downloadFromCuda(in,flag_eo);
-      K_vector->download();
-      K_guess->uploadToCuda(out,flag_eo); 
-      // initial guess is ready
-      
       printfQuda(" dn - %02d: \n",isc);
       tx3 = MPI_Wtime();
       (*solveD)(*out,*in);
@@ -1251,19 +1188,30 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
     ///////////////////////////////////
     // Smear the forward propagators //
     ///////////////////////////////////
+
     for(int nu = 0 ; nu < 4 ; nu++)
       for(int c2 = 0 ; c2 < 3 ; c2++){
-	K_temp->copyPropagator(*K_prop_up,nu,c2);
-	K_vector->castFloatToDouble(*K_temp);
-	K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-	K_temp->castDoubleToFloat(*K_guess);
-	K_prop_up->absorbVectorToDevice(*K_temp,nu,c2);
+    	K_temp->copyPropagator(*K_prop_up,nu,c2);
+    	K_vector->castFloatToDouble(*K_temp);
+	K_vector->download();
+	mapNormalToEvenOdd((void*) K_vector->H_elem() , *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
+	performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, GK_nsmearGauss, GK_alphaGauss);
+	mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
+	K_guess->packVector((double*) output_vector);
+	K_guess->loadVector();
+    	K_temp->castDoubleToFloat(*K_guess);
+    	K_prop_up->absorbVectorToDevice(*K_temp,nu,c2);
 	
-	K_temp->copyPropagator(*K_prop_down,nu,c2);
-	K_vector->castFloatToDouble(*K_temp);
-	K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-	K_temp->castDoubleToFloat(*K_guess);
-	K_prop_down->absorbVectorToDevice(*K_temp,nu,c2);
+    	K_temp->copyPropagator(*K_prop_down,nu,c2);
+    	K_vector->castFloatToDouble(*K_temp);
+	K_vector->download();
+	mapNormalToEvenOdd((void*) K_vector->H_elem() , *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
+	performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, GK_nsmearGauss, GK_alphaGauss);
+	mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
+	K_guess->packVector((double*) output_vector);
+	K_guess->loadVector();
+    	K_temp->castDoubleToFloat(*K_guess);
+    	K_prop_down->absorbVectorToDevice(*K_temp,nu,c2);
       }
     
     K_prop_up->rotateToPhysicalBase_device(+1);

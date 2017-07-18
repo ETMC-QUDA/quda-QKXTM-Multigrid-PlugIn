@@ -718,21 +718,23 @@ int main(int argc, char **argv)
   }
   mapEvenOddToNormalGauge(gaugeContract,gauge_param,xdim,ydim,zdim,tdim);
 
+
+  // initialize the QUDA library
+  initQuda(device);
+
   // load in the command line supplied smeared gauge field
   // first read gauge field without apply BC, if BC change only in the temporal direction for 3D Gaussian smearing it does matter
   readLimeGaugeSmeared(gauge_APE, latfile_smeared, &gauge_param, &inv_param,
 		       gridsize_from_cmdline);
+  loadGaugeQuda((void*)gauge_APE, &gaugeSmeared_param);
   mapEvenOddToNormalGauge(gauge_APE,gauge_param,xdim,ydim,zdim,tdim);
   
-  // initialize the QUDA library
-  initQuda(device);
   //Print remaining info to stdout
   init_qudaQKXTM(&info);
   printf_qudaQKXTM();
   
   // load the gauge field
   loadGaugeQuda((void*)gauge, &gauge_param);
-  loadGaugeQuda((void*)gauge_APE, &gaugeSmeared_param);
 
   printfQuda("Before clover term\n");
   // This line ensures that if we need to construct the clover inverse 

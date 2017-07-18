@@ -126,6 +126,11 @@ namespace quda {
     int k_probing;     // if its value <=0 then probing is switched off
     bool spinColorDil; // enables spin color dilution
     bool loopCovDev;   // enables covariant derivate calculations in loops.
+    bool HighMomForm;
+    double kappa;
+    double mu;
+    double csw;
+    double inv_tol;
   } qudaQKXTM_loopInfo;
   
   enum ALLOCATION_FLAG{NONE,HOST,DEVICE,BOTH,BOTH_EXTRA};

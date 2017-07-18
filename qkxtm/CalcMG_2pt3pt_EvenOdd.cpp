@@ -672,6 +672,9 @@ int main(int argc, char **argv)
 
   QudaGaugeParam gauge_param = newQudaGaugeParam();
   setGaugeParam(gauge_param);
+  QudaGaugeParam gaugeSmeared_param = gauge_param;
+  gaugeSmeared_param.type = QUDA_SMEARED_LINKS;
+
 
   QudaInvertParam mg_inv_param = newQudaInvertParam();
   QudaMultigridParam mg_param = newQudaMultigridParam();
@@ -682,7 +685,7 @@ int main(int argc, char **argv)
 
   QudaInvertParam inv_param = newQudaInvertParam();
   setInvertParam(inv_param);
-
+  
   setDims(gauge_param.X);
 
   setSpinorSiteSize(24);
@@ -715,24 +718,23 @@ int main(int argc, char **argv)
   }
   mapEvenOddToNormalGauge(gaugeContract,gauge_param,xdim,ydim,zdim,tdim);
 
-  // load in the command line supplied smeared gauge field
-  // first read gauge field without apply BC  
-  readLimeGaugeSmeared(gauge_APE, latfile_smeared, &gauge_param, &inv_param,
-		       gridsize_from_cmdline);
-  mapEvenOddToNormalGauge(gauge_APE,gauge_param,xdim,ydim,zdim,tdim);
-  
+
   // initialize the QUDA library
   initQuda(device);
+
+  // load in the command line supplied smeared gauge field
+  // first read gauge field without apply BC, if BC change only in the temporal direction for 3D Gaussian smearing it does matter
+  readLimeGaugeSmeared(gauge_APE, latfile_smeared, &gauge_param, &inv_param,
+		       gridsize_from_cmdline);
+  loadGaugeQuda((void*)gauge_APE, &gaugeSmeared_param);
+  mapEvenOddToNormalGauge(gauge_APE,gauge_param,xdim,ydim,zdim,tdim);
+  
   //Print remaining info to stdout
   init_qudaQKXTM(&info);
   printf_qudaQKXTM();
   
   // load the gauge field
   loadGaugeQuda((void*)gauge, &gauge_param);
-
-  for(int i = 0 ; i < 4 ; i++){
-    free(gauge[i]);
-  }   
 
   printfQuda("Before clover term\n");
   // This line ensures that if we need to construct the clover inverse 
@@ -783,6 +785,7 @@ int main(int argc, char **argv)
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) freeCloverQuda();
   
   for(int i = 0 ; i < 4 ; i++){
+    free(gauge[i]);
     free(gauge_APE[i]);
     free(gaugeContract[i]);
   }

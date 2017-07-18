@@ -595,6 +595,10 @@ int main(int argc, char **argv)
   loopInfo.spinColorDil = spinColorDil;
   loopInfo.loopCovDev = loopCovDev;
   strcpy(loopInfo.loop_fname,loop_fname);
+  loopInfo.kappa = kappa;
+  loopInfo.csw = csw;
+  loopInfo.mu = mu;
+  loopInfo.inv_tol = tol;
 
   if( strcmp(loop_file_format,"ASCII")==0 || 
       strcmp(loop_file_format,"ascii")==0 ) {
@@ -611,7 +615,11 @@ int main(int argc, char **argv)
   }
   if(loopInfo.Nstoch%loopInfo.Ndump==0) loopInfo.Nprint = loopInfo.Nstoch/loopInfo.Ndump;
   else errorQuda("NdumpStep MUST divide Nstoch exactly! Exiting.\n");
-  
+
+  //-C.K. Choose High-Momenta form by default when writing in HDF5 format
+  if(loopInfo.FileFormat == HDF5_FORM) loopInfo.HighMomForm = true;
+  else loopInfo.HighMomForm = false;
+ 
   
   //-C.K. Determine the deflation steps
   if(defl_steps == 1){
@@ -651,7 +659,10 @@ int main(int argc, char **argv)
   //requested, and how many to dump. 
   loopInfo.TSM_NLP = Nstoch;
   loopInfo.TSM_NdumpLP = Ndump;
-  
+  loopInfo.TSM_NprintLP=1;
+
+
+
   //Populate LP criteria arrays    
   for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
     loopInfo.TSM_tol[a] = TSM_tol[a];
@@ -660,7 +671,7 @@ int main(int argc, char **argv)
       errorQuda("Criterion for low-precision solve %d not set!\n", a);
     }
   }
-  
+
 
   // QUDA parameters begin here.
   //-----------------------------------------------------------------

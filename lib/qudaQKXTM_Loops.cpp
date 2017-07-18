@@ -505,13 +505,16 @@ template<typename Float>
 void writeLoops_ASCII(Float *writeBuf, const char *Pref, 
 		      qudaQKXTM_loopInfo loopInfo, 
 		      int **momQsq, int type, 
-		      int mu, bool exact_loop){
+		      int mu, bool exact_loop, 
+		      bool useTSM, bool LowPrec){
   
+  if(exact_loop && useTSM) errorQuda("writeLoops_ASCII: Got conflicting options - exact_loop AND useTSM.\n");
+
   if(!loopInfo.loopCovDev && type > 1) {
     printfQuda("writeLoops_ASCII: Loop derivatives not calculated, will not write %s data\n", loopInfo.loop_type[type]);
     return;
   }
-  
+
   if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
     FILE *ptr;
     char file_name[512];
@@ -520,22 +523,34 @@ void writeLoops_ASCII(Float *writeBuf, const char *Pref,
     int Nmoms = loopInfo.Nmoms;
 
     if(exact_loop) Nprint = 1;
-    else {
-      Nprint = loopInfo.Nprint;
-      Ndump  = loopInfo.Ndump;
+    else{
+      if(useTSM){
+	if(LowPrec){
+	  Nprint = loopInfo.TSM_NprintLP;
+	  Ndump  = loopInfo.TSM_NdumpLP; 
+	}
+	else{
+	  Nprint = loopInfo.TSM_NprintHP;
+	  Ndump  = loopInfo.TSM_NdumpHP; 
+	}
+      }
+      else{
+	Nprint = loopInfo.Nprint;
+	Ndump  = loopInfo.Ndump;
+      }
     }
-    
-    
-    for(int iPrint=0;iPrint<Nprint;iPrint++){
-      asprintf(&ptrVal,"%d_%d", GK_nProc[3], GK_timeRank);
 
-      if(!exact_loop) sprintf(file_name, "%s_%04d_%s.loop.%s", Pref, (iPrint+1)*Ndump, loopInfo.loop_type[type], ptrVal);
+    for(int iPrint=0;iPrint<Nprint;iPrint++){
+      if(exact_loop || useTSM) asprintf(&ptrVal,"%d_%d", GK_nProc[3], GK_timeRank);
+      else asprintf(&ptrVal,"%04d.%d_%d",(iPrint+1)*Ndump, GK_nProc[3], GK_timeRank);
+
+      if(useTSM) sprintf(file_name, "%s_%s%04d_%s.loop.%s", Pref, LowPrec ? "NLP" : "NHP", (iPrint+1)*Ndump, loopInfo.loop_type[type], ptrVal);
       else sprintf(file_name, "%s_%s.loop.%s",Pref,loopInfo.loop_type[type],ptrVal);
-      
+
       if(loopInfo.loop_oneD[type] && mu!=0) ptr = fopen(file_name,"a");
       else ptr = fopen(file_name,"w");
       if(ptr == NULL) errorQuda("Cannot open %s to write the loop\n",file_name);
-      
+
       if(loopInfo.loop_oneD[type]){
 	for(int ip=0; ip < Nmoms; ip++){
 	  for(int lt=0; lt < GK_localL[3]; lt++){
@@ -597,8 +612,11 @@ template<typename Float>
 void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc, 
 		     Float **buf_std_oneD, Float **buf_std_csvC, 
 		     Float **buf_gen_oneD, Float **buf_gen_csvC, 
-		     char *file_pref, qudaQKXTM_loopInfo loopInfo, 
-		     int **momQsq, bool exact_loop){
+		     char *file_pref, 
+		     qudaQKXTM_loopInfo loopInfo, int **momQsq,
+		     bool exact_loop, bool useTSM, bool LowPrec){
+
+  if(exact_loop && useTSM) errorQuda("writeLoops_HDF5: Got conflicting options - exact_loop AND useTSM.\n");
 
   if(!loopInfo.loopCovDev) {
     printfQuda("writeLoops_HDF5: Loop derivatives not calculated, will not write %s, %s, %s, %s data.\n",
@@ -614,11 +632,24 @@ void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc,
       sprintf(fname,"%s_Qsq%d.h5",file_pref,loopInfo.Qsq);
     }
     else{
-      Nprint = loopInfo.Nprint;
-      Ndump  = loopInfo.Ndump;
-      sprintf(fname,"%s_Ns%04d_step%04d_Qsq%d.h5",file_pref,loopInfo.Nstoch,Ndump,loopInfo.Qsq);
+      if(useTSM){
+	if(LowPrec){
+	  Nprint = loopInfo.TSM_NprintLP;
+	  Ndump  = loopInfo.TSM_NdumpLP;
+	  sprintf(fname,"%s_NLP%04d_step%04d_Qsq%d.h5",file_pref,loopInfo.TSM_NLP,Ndump,loopInfo.Qsq);
+	}
+	else{
+	  Nprint = loopInfo.TSM_NprintHP;
+	  Ndump  = loopInfo.TSM_NdumpHP;
+	  sprintf(fname,"%s_NHP%04d_step%04d_Qsq%d.h5",file_pref,loopInfo.TSM_NHP,Ndump,loopInfo.Qsq);
+	}	
+      }
+      else{
+	Nprint = loopInfo.Nprint;
+	Ndump  = loopInfo.Ndump;
+	sprintf(fname,"%s_Ns%04d_step%04d_Qsq%d.h5",file_pref,loopInfo.Nstoch,Ndump,loopInfo.Qsq);
+      }
     }
-    
 
     double *loopBuf = NULL;
     double *writeBuf = (double*) malloc(GK_localL[3]*16*2*sizeof(double));
@@ -649,17 +680,21 @@ void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc,
 
       if(!exact_loop){
 	char *group2_tag;
-	asprintf(&group2_tag,"Nstoch_%04d",(iPrint+1)*Ndump);
+	if(useTSM){
+	  if(LowPrec) asprintf(&group2_tag,"NLP_%04d",(iPrint+1)*Ndump);
+	  else        asprintf(&group2_tag,"NHP_%04d",(iPrint+1)*Ndump);
+	}
+	else asprintf(&group2_tag,"Nstoch_%04d",(iPrint+1)*Ndump);
 	group2_id = H5Gcreate(group1_id, group2_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
       }
-      
+
       for(int it=0;it<6;it++){
 	char *group3_tag;
 	asprintf(&group3_tag,"%s",loopInfo.loop_type[it]);
 
 	if(exact_loop) group3_id = H5Gcreate(group1_id, group3_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 	else           group3_id = H5Gcreate(group2_id, group3_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
-	
+
 	for(int imom=0;imom<loopInfo.Nmoms;imom++){
 	  char *group4_tag;
 	  asprintf(&group4_tag,"mom_xyz_%+d_%+d_%+d",momQsq[imom][0],momQsq[imom][1],momQsq[imom][2]);

@@ -77,6 +77,14 @@ if(QKXTM_2FLAVMG)
   target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
 endif()  
 
+#CalcMG_Loops_w_oneD_TSM_EvenOdd (DEPRECATED)
+# This function will calculate the All-to-All propagator with a covariant 
+# derivate, and correlation functions thereof. It employs undiluted 
+# stochastic sources, Even/Odd preconditioning, functionality for using 
+# the Trunacted Solver Method, as well as QUDA's MG solver routines.
+#cuda_add_executable(CalcMG_Loops_w_oneD_TSM_EvenOdd CalcMG_Loops_w_oneD_TSM_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+#target_link_libraries(CalcMG_Loops_w_oneD_TSM_EvenOdd ${QKXTM_LIBS})
+
 #MG_Bench
 # This function will invert a single flavour, Gaussian smeared source
 # using the MG preconditioner.

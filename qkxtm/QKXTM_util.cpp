@@ -1709,7 +1709,7 @@ bool isFullOp = false;
 
 int k_probing = 0; // default is without probing
 bool spinColorDil = false;
-bool loopCovDev = false;
+
 //===========//
 
 
@@ -1878,7 +1878,7 @@ void usage(char** argv )
 #endif
   printfQuda("    --k-probing <n>                           # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
   printfQuda("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
-  printfQuda("    --loopCovDev <true/false>                 # Whether we want to compute loop covariant derivatives (default false)\n");
+
   
   //--------//
 
@@ -3647,25 +3647,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
-  if( strcmp(argv[i], "--loopCovDev") == 0){
-    if (i+1 >= argc){
-      usage(argv);
-    }	    
-
-    if (strcmp(argv[i+1], "true") == 0){
-      loopCovDev = true;
-    }else if (strcmp(argv[i+1], "false") == 0){
-      loopCovDev = false;
-    }else{
-      fprintf(stderr, "ERROR: invalid loopCovDev type\n");	
-      exit(1);
-    }
-
-    i++;
-    ret = 0;
-    goto out;
-  }
- 
   //-----//
 
   if( strcmp(argv[i], "--version") == 0){

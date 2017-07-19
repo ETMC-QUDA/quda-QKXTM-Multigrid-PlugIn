@@ -1488,7 +1488,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   loopInfo.Nmoms = GK_Nmoms;
   int Nmoms = GK_Nmoms;
   char filename_out[512];
-  bool loopCovDev = loopInfo.loopCovDev;
 
   int deflSteps = loopInfo.nSteps_defl;
   int nDefl[deflSteps];
@@ -1541,7 +1540,6 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   printfQuda(" The loop file format is %s\n", (LoopFileFormat == ASCII_FORM) ? "ASCII" : "HDF5");
   printfQuda(" Will write the loops in %s\n", loopInfo.HighMomForm ? "High-Momenta Form" : "Standard Form");
   printfQuda(" The loop base name is %s\n",loopInfo.loop_fname);
-  printfQuda(" Will %sperform covariant derivative calculations\n",loopCovDev ? "" : "not ");
   printfQuda(" %d Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions per TSM criterion\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
   printfQuda(" N_LP_iters = %d Low precision stopping criteria\n",TSM_NLP_iters);
   for(int a=0; a<TSM_NLP_iters; a++) {
@@ -1765,7 +1763,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
   int s = 0;
   for(int n=0;n<NeV_Full;n++){
     t1 = MPI_Wtime();
-    deflation->Loop_w_One_Der_FullOp_Exact(n, EvInvParam, loopCovDev,
+    deflation->Loop_w_One_Der_FullOp_Exact(n, EvInvParam,
 					   gen_uloc[0], std_uloc[0], 
 					   gen_oneD[0], std_oneD[0], 
 					   gen_csvC[0], std_csvC[0]);
@@ -2146,7 +2144,7 @@ void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette,
 	    int idx = LP_crit*deflSteps + dstep;
 	    
 	    t1 = MPI_Wtime();
-	    oneEndTrick_w_One_Der<double>(*x_LP[LP_crit], *tmp3, *tmp4, param, loopCovDev,
+	    oneEndTrick_w_One_Der<double>(*x_LP[LP_crit], *tmp3, *tmp4, param, 
 					  gen_uloc[idx], std_uloc[idx], 
 					  gen_oneD[idx], std_oneD[idx], 
 					  gen_csvC[idx], std_csvC[idx]);

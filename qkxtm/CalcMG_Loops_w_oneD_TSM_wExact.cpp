@@ -147,7 +147,7 @@ extern bool isFullOp;
 // K.H probing parameters
 extern int k_probing;
 extern bool spinColorDil;
-extern bool loopCovDev;
+
 
 namespace quda {
   extern void setTransferGPU(bool);
@@ -593,7 +593,7 @@ int main(int argc, char **argv)
   loopInfo.Qsq = Q_sq;
   loopInfo.k_probing = k_probing;
   loopInfo.spinColorDil = spinColorDil;
-  loopInfo.loopCovDev = loopCovDev;
+
   strcpy(loopInfo.loop_fname,loop_fname);
   loopInfo.kappa = kappa;
   loopInfo.csw = csw;

@@ -1678,9 +1678,6 @@ unsigned long int seed = 100;  // The seed for the stochastic vectors
 char loop_fname[512] = "loop";
 char *loop_file_format = "ASCII";
 char source_type[257] = "random";
-int TSM_NLP_iters = 1;
-int TSM_maxiter[10] = { };
-double TSM_tol[10] = { };
 
 #ifdef HAVE_ARPACK
 //- Loop params with ARPACK enabled
@@ -1851,9 +1848,6 @@ void usage(char** argv )
   printfQuda("    --loop-file-format                        # file format for the loops, ASCII/HDF5 (default \"ASCII_format\")\n");
   printfQuda("    --source-type                             # Stochastic source type (unity/random) (default random)\n");
   printfQuda("    --useEven                                 # Whether to use Even-Even operator (yes/no, default no)\n");
-  printfQuda("    --TSM-NLP-iters                               # How many Low-precision criteria for TSM\n");
-  printfQuda("    --TSM-maxiter <step> <n>                  # Set the iteration number as criterion for Low-precision solves for TSM\n");
-  printfQuda("    --TSM-tol <step> <tol>                    # Set the solver tolerance as criterion for Low-precision solves for TSM\n");
 #ifdef HAVE_ARPACK
   printfQuda("    --pathEigenVectorsUp                      # Path where the eigenVectors for up flavor are (default ev_u.0000)\n");
   printfQuda("    --pathEigenVectorsDown                    # Path where the eigenVectors for up flavor are (default ev_d.0000)\n");
@@ -3341,52 +3335,7 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
 
- 
-  if( strcmp(argv[i], "--TSM-NLP-iters") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    TSM_NLP_iters = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
   
- 
-  if( strcmp(argv[i], "--TSM-maxiter") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    int level = atoi(argv[i+1]);
-    if (level < 0 || level > 10) {
-      printf("ERROR: invalid TSM maxiter level %d", level);
-      usage(argv);
-    }
-    i++;
-
-    TSM_maxiter[level] = atoi(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
- 
-  if( strcmp(argv[i], "--TSM-tol") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    int level = atoi(argv[i+1]);
-    if (level < 0 || level > 10) {
-      printf("ERROR: invalid TSM tol level %d", level);
-      usage(argv);
-    }
-    i++;
-    double tol = atof(argv[i+1]);
-    TSM_tol[level] = tol;
-    i++;
-    ret = 0;
-    goto out;
-  }
- 
   if( strcmp(argv[i], "--useEven") ==0){
     if(i+1 >= argc){
       usage(argv);

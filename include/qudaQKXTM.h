@@ -493,17 +493,11 @@ void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       char *filename_twop, char *filename_threep,
 			       quda::WHICHPARTICLE NUCLEON);
 
-
-void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, QudaInvertParam *param,
-				   QudaGaugeParam *gauge_param, 
-				   quda::qudaQKXTM_loopInfo loopInfo, 
-				   quda::qudaQKXTMinfo info);
-
 /////////////////////////////
 // MG with Exact Deflation //
 /////////////////////////////
 
-void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette, 
+void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette, 
 				  QudaInvertParam *EVparam,
 				  QudaInvertParam *param,
 				  QudaGaugeParam *gauge_param, 

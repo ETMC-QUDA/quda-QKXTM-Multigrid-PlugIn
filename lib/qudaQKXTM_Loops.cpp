@@ -200,9 +200,7 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   cudaDeviceSynchronize();
 
   //Create Covarant derivative.
-  DiracParam CovDevParam;
-  CovDevParam.type = QUDA_GAUGE_COVDEV_DIRAC;
-  GaugeCovDev *cov = new GaugeCovDev(CovDevParam);
+  GaugeCovDev *cov = new GaugeCovDev(dWParam);
 
   // ONE-DERIVATIVE Generalized one-end trick
   for(int mu=0; mu<4; mu++){
@@ -391,17 +389,13 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   ////////////////// DERIVATIVES //////////////////////////////
 
   //Create Covarant derivative.
-  DiracParam CovDevParam;
-  CovDevParam.type = QUDA_GAUGE_COVDEV_DIRAC;
-  GaugeCovDev *cov = new GaugeCovDev(CovDevParam);
-    
-  //CovD *cov = new CovD(gaugePrecise, profileCovDev);
+  GaugeCovDev *cov = new GaugeCovDev(dWParam);
 
   // for generalized one-end trick
   for(int mu=0; mu<4; mu++)	
     {
-
       cov->MCD(static_cast<cudaColorSpinorField&>(tmp4),static_cast<cudaColorSpinorField&>(tmp3),mu);
+
       // Term 0
       contract(x, tmp4, ctrnS, QUDA_CONTRACT_GAMMA5);
 

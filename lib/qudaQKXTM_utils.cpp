@@ -302,6 +302,9 @@ template<typename Float>
 void performFFT(Float *outBuf, void *inBuf, int iPrint, 
 		int Nmoms, int **momQsq){
   
+  if( (GK_localL[0] != GK_totalL[0]) || (GK_localL[1] != GK_totalL[1]) )
+    errorQuda("Error: This function does not work if you partition X or Y direction");
+
   int lx=GK_localL[0];
   int ly=GK_localL[1];
   int lz=GK_localL[2];
@@ -329,6 +332,71 @@ void performFFT(Float *outBuf, void *inBuf, int iPrint,
       for(int y=0;y<ly;y++){   //-Here either ly or LY is the same because we don't split in y (for now)
 	for(int x=0;x<lx;x++){ //-The same here
 	  Float expn = two_pi*( px*x/(Float)LX + py*y/(Float)LY + pz*zg/(Float)LZ );
+	  Float phase[2];
+	  phase[0] =  cos(expn);
+	  phase[1] = -sin(expn);
+
+	  for(int t=0;t<lt;t++){
+	    for(int gm=0;gm<16;gm++){
+	      sum[0 + 2*ip + 2*Nmoms*t + 2*Nmoms*lt*gm] += 
+		((Float*)inBuf)[0+2*v+2*SplV*t+2*SplV*lt*gm]*phase[0] - 
+		((Float*)inBuf)[1+2*v+2*SplV*t+2*SplV*lt*gm]*phase[1];
+	      sum[1 + 2*ip + 2*Nmoms*t + 2*Nmoms*lt*gm] += 
+		((Float*)inBuf)[0+2*v+2*SplV*t+2*SplV*lt*gm]*phase[1] + 
+		((Float*)inBuf)[1+2*v+2*SplV*t+2*SplV*lt*gm]*phase[0];
+	    }//-gm
+	  }//-t
+	  
+	  v++;
+	}//-x
+      }//-y
+    }//-z
+  }//-ip
+
+  if(typeid(Float)==typeid(float))  MPI_Reduce(sum, &(outBuf[2*Nmoms*lt*16*iPrint]), 2*Nmoms*lt*16, MPI_FLOAT , MPI_SUM, 0, GK_spaceComm);
+  if(typeid(Float)==typeid(double)) MPI_Reduce(sum, &(outBuf[2*Nmoms*lt*16*iPrint]), 2*Nmoms*lt*16, MPI_DOUBLE, MPI_SUM, 0, GK_spaceComm);
+
+  free(sum);
+}
+
+//-K.H. Function which performs the Fourier Transform and it allows partitioning also in X,Y direction, includes OMP
+template<typename Float>
+void performSimpleFT(Float *outBuf, void *inBuf, int iPrint, 
+		     int Nmoms, int **momQsq){
+  
+  int lx=GK_localL[0];
+  int ly=GK_localL[1];
+  int lz=GK_localL[2];
+  int lt=GK_localL[3];
+  int LX=GK_totalL[0];
+  int LY=GK_totalL[1];
+  int LZ=GK_totalL[2];
+  long int SplV = lx*ly*lz;
+
+  double two_pi = 4.0*asin(1.0);
+
+  int x_coord = comm_coord(0);
+  int y_coord = comm_coord(1);
+  int z_coord = comm_coord(2);
+
+  Float *sum = (Float*) malloc(2*16*Nmoms*lt*sizeof(Float));
+  if(sum == NULL) errorQuda("performManFFT: Allocation of sum buffer failed.\n");
+  memset(sum,0,2*16*Nmoms*lt*sizeof(Float));
+
+#pragma omp parallel for
+  for(int ip=0;ip<Nmoms;ip++){
+    int px = momQsq[ip][0];
+    int py = momQsq[ip][1];
+    int pz = momQsq[ip][2];
+
+    int v = 0;
+    for(int z=0;z<lz;z++){     //-For z-direction we must have lz
+      int zg = z+z_coord*lz;
+      for(int y=0;y<ly;y++){   
+	int yg = y+y_coord*ly;
+	for(int x=0;x<lx;x++){
+	  int xg = x+x_coord*lx;
+	  Float expn = two_pi*( px*xg/(Float)LX + py*yg/(Float)LY + pz*zg/(Float)LZ );
 	  Float phase[2];
 	  phase[0] =  cos(expn);
 	  phase[1] = -sin(expn);

@@ -1755,7 +1755,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	       n+1,t2-t1);
     
     if( (n+1)==loopInfo.deflStep[s] ){     
-      if(GK_nProc[2]==1){      
+      if(GK_nProc[0]*GK_nProc[1]*GK_nProc[2] == 1){      
 	doCudaFFT_v2<double>(std_uloc[0], tmp_loop); // Scalar
 	copyLoopToWriteBuf(buf_std_uloc[0], tmp_loop,
 			   iPrint, info.Q_sq, Nmoms,mom);
@@ -1780,7 +1780,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	}
 	printfQuda("Exact part of Loops for NeV = %d copied to write buffers\n",n+1);
       }
-      else if(GK_nProc[2]>1){ // this need to be modified
+      else{ 
 	t1 = MPI_Wtime();
 	performSimpleFT<double>(buf_std_uloc[0], std_uloc[0], // this function as it is working only when from the spatial directions only z is partitioned
 			   iPrint, Nmoms, momQsq);
@@ -2102,7 +2102,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	    if(idx==0) iPrint++;
 	      
 	    t1 = MPI_Wtime();
-	    if(GK_nProc[2]==1){      
+	    if(GK_nProc[0]*GK_nProc[1]*GK_nProc[2] == 1){      
 	      doCudaFFT_v2<double>(std_uloc[idx], tmp_loop); // Scalar
 	      copyLoopToWriteBuf(buf_std_uloc[idx], tmp_loop, 
 				 iPrint, info.Q_sq, Nmoms, mom);
@@ -2125,7 +2125,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 				   iPrint, info.Q_sq, Nmoms, mom);
 	      }
 	    }
-	    else if(GK_nProc[2]>1){
+	    else{
 	      performSimpleFT<double>(buf_std_uloc[idx], std_uloc[idx], 
 				 iPrint, Nmoms, momQsq);
 	      performSimpleFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 

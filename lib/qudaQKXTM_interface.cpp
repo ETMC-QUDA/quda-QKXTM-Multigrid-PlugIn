@@ -1782,19 +1782,19 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
       }
       else if(GK_nProc[2]>1){ // this need to be modified
 	t1 = MPI_Wtime();
-	performFFT<double>(buf_std_uloc[0], std_uloc[0], // this function as it is working only when from the spatial directions only z is partitioned
+	performSimpleFT<double>(buf_std_uloc[0], std_uloc[0], // this function as it is working only when from the spatial directions only z is partitioned
 			   iPrint, Nmoms, momQsq);
-	performFFT<double>(buf_gen_uloc[0], gen_uloc[0], 
+	performSimpleFT<double>(buf_gen_uloc[0], gen_uloc[0], 
 			   iPrint, Nmoms, momQsq);
 	
 	for(int mu=0;mu<4;mu++){
-	  performFFT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], 
+	  performSimpleFT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], 
 			     iPrint, Nmoms, momQsq);
-	  performFFT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], 
+	  performSimpleFT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], 
 			     iPrint, Nmoms, momQsq);
-	  performFFT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], 
+	  performSimpleFT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], 
 			     iPrint, Nmoms, momQsq);
-	  performFFT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], 
+	  performSimpleFT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], 
 			     iPrint, Nmoms, momQsq);
 	}
 	t2 = MPI_Wtime();
@@ -2046,6 +2046,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	    
 	(*solve)(*out,*in);	    
 	dirac.reconstruct(*x,*b,param->solution_type);
+	sol = new cudaColorSpinorField(*x);
 	if(is == 0 && ih == 0 && is == 0) saveTuneCache();
 	delete solve;
 	t2 = MPI_Wtime();
@@ -2125,19 +2126,19 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	      }
 	    }
 	    else if(GK_nProc[2]>1){
-	      performFFT<double>(buf_std_uloc[idx], std_uloc[idx], 
+	      performSimpleFT<double>(buf_std_uloc[idx], std_uloc[idx], 
 				 iPrint, Nmoms, momQsq);
-	      performFFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
+	      performSimpleFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
 				 iPrint, Nmoms, momQsq);
 		
 	      for(int mu=0;mu<4;mu++){
-		performFFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
+		performSimpleFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
 				   iPrint, Nmoms, momQsq);
-		performFFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
+		performSimpleFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
 				   iPrint, Nmoms, momQsq);
-		performFFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
+		performSimpleFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
 				   iPrint, Nmoms, momQsq);
-		performFFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
+		performSimpleFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
 				   iPrint, Nmoms, momQsq);
 	      }
 	    }

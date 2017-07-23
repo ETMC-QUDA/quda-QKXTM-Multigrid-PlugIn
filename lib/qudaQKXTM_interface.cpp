@@ -1743,7 +1743,9 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 
   //- Calculate the exact part of the loop
   int iPrint = 0;
-  int s = 0;
+  int s;
+  s = (loopInfo.deflStep[0] == 0) ? 1 : 0;
+  
   for(int n=0;n<NeV_Full;n++){
     t1 = MPI_Wtime();
     deflation->Loop_w_One_Der_FullOp_Exact(n, EvInvParam,

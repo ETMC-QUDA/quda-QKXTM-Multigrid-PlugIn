@@ -125,9 +125,6 @@ extern int Ndump;
 extern char source_type[];
 extern int defl_steps;
 extern int defl_step_nEv[];;
-extern int TSM_NLP_iters;
-extern int TSM_maxiter[];
-extern double TSM_tol[];
 
 //-C.K. ARPACK Parameters
 extern int PolyDeg;
@@ -147,7 +144,7 @@ extern bool isFullOp;
 // K.H probing parameters
 extern int k_probing;
 extern bool spinColorDil;
-extern bool loopCovDev;
+
 
 namespace quda {
   extern void setTransferGPU(bool);
@@ -267,7 +264,7 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.mu = mu;
+    inv_param.mu = mu > 0 ? -mu : mu; // For the loops we invert the negative mu
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -421,7 +418,7 @@ void setInvertParam(QudaInvertParam &inv_param) {
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.mu = mu;
+    inv_param.mu = mu > 0 ? -mu : mu; // For the loops we invert the negative mu
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -593,7 +590,7 @@ int main(int argc, char **argv)
   loopInfo.Qsq = Q_sq;
   loopInfo.k_probing = k_probing;
   loopInfo.spinColorDil = spinColorDil;
-  loopInfo.loopCovDev = loopCovDev;
+
   strcpy(loopInfo.loop_fname,loop_fname);
   loopInfo.kappa = kappa;
   loopInfo.csw = csw;
@@ -645,34 +642,8 @@ int main(int argc, char **argv)
       loopInfo.deflStep[loopInfo.nSteps_defl-1] = nEv;
     }
   }
-  
-  //- TSM parameters
-
-  //How many LP criteria to calculate. Default is 1 i.e.,
-  //a single high precision solve.
-  loopInfo.TSM_NLP_iters = TSM_NLP_iters;
-  if(loopInfo.TSM_NLP_iters == 0)
-    warningQuda("Overiding your choice of 0 LP iterations to 1.\n");
-  
-  //One will always perform the full number of inversions
-  //in LP, these are same as the total number of vectors
-  //requested, and how many to dump. 
-  loopInfo.TSM_NLP = Nstoch;
-  loopInfo.TSM_NdumpLP = Ndump;
-  loopInfo.TSM_NprintLP=1;
-
-
-
-  //Populate LP criteria arrays    
-  for(int a=0; a<loopInfo.TSM_NLP_iters; a++) {
-    loopInfo.TSM_tol[a] = TSM_tol[a];
-    loopInfo.TSM_maxiter[a] = TSM_maxiter[a];
-    if( (TSM_maxiter[a]==0) && (TSM_tol[a]==0) ) {
-      errorQuda("Criterion for low-precision solve %d not set!\n", a);
-    }
-  }
-
-
+ 
+ 
   // QUDA parameters begin here.
   //-----------------------------------------------------------------
   if ( dslash_type != QUDA_TWISTED_MASS_DSLASH && 
@@ -763,8 +734,8 @@ int main(int argc, char **argv)
   inv_param.preconditioner = mg_preconditioner;
 
   //Launch calculation.
-  calcMG_loop_wOneD_TSM_wExact(gauge_Plaq, &EVinv_param, &inv_param, 
-			       &gauge_param, arpackInfo, loopInfo, info);
+  calcMG_loop_wOneD_wExact(gauge_Plaq, &EVinv_param, &inv_param, 
+			   &gauge_param, arpackInfo, loopInfo, info);
   
   // free the multigrid solver
   destroyMultigridQuda(mg_preconditioner);

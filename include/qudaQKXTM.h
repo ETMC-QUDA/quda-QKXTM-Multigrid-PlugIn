@@ -462,7 +462,7 @@ namespace quda {
     void polynomialOperator(cudaColorSpinorField &out, 
 			    const cudaColorSpinorField &in);
     void eigenSolver();
-    void Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param, bool loopCovDev,
+    void Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 				     void *gen_uloc, void *std_uloc, 
 				     void **gen_oneD, void **std_oneD, 
 				     void **gen_csvC, void **std_csvC);
@@ -493,17 +493,11 @@ void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       char *filename_twop, char *filename_threep,
 			       quda::WHICHPARTICLE NUCLEON);
 
-
-void calcMG_loop_wOneD_TSM_EvenOdd(void **gaugeToPlaquette, QudaInvertParam *param,
-				   QudaGaugeParam *gauge_param, 
-				   quda::qudaQKXTM_loopInfo loopInfo, 
-				   quda::qudaQKXTMinfo info);
-
 /////////////////////////////
 // MG with Exact Deflation //
 /////////////////////////////
 
-void calcMG_loop_wOneD_TSM_wExact(void **gaugeToPlaquette, 
+void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette, 
 				  QudaInvertParam *EVparam,
 				  QudaInvertParam *param,
 				  QudaGaugeParam *gauge_param, 

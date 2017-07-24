@@ -1443,7 +1443,6 @@ void QKXTM_Deflation<Float>::eigenSolver(){
     cpuParam3.v = (helem_cplx+i*LDV);
     h_v3 = new cpuColorSpinorField(cpuParam3);
     *d_v = *h_v3;                                    //d_v  = v
-    gamma5Cuda(d_v2,d_v);
     gamma5Cuda(static_cast<cudaColorSpinorField*> (&d_v2->Even()), static_cast<cudaColorSpinorField*>(&d_v->Even()));
     gamma5Cuda(static_cast<cudaColorSpinorField*> (&d_v2->Odd()), static_cast<cudaColorSpinorField*>(&d_v->Odd()));
     Complex sig = blas::cDotProduct(*d_v,*d_v2);     //sig  = v^dag * g5 *v

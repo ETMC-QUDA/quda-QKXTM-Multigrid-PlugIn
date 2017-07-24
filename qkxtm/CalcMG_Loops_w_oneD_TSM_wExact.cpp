@@ -616,14 +616,17 @@ int main(int argc, char **argv)
   //-C.K. Choose High-Momenta form by default when writing in HDF5 format
   if(loopInfo.FileFormat == HDF5_FORM) loopInfo.HighMomForm = true;
   else loopInfo.HighMomForm = false;
- 
   
+  if(defl_steps > 1)
+    if(nEv == 0)
+      errorQuda("You have chosen to do not do deflation but you chose defl_steps > 1, please correct this");
+
   //-C.K. Determine the deflation steps
   if(defl_steps == 1){
     loopInfo.nSteps_defl = 1;
     loopInfo.deflStep[0] = nEv;
   }
-  else{    
+  else{
     loopInfo.nSteps_defl = defl_steps;
     for(int a=0; a <defl_steps; a++) {      
       loopInfo.deflStep[a] = defl_step_nEv[a];

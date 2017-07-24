@@ -1437,27 +1437,20 @@ void QKXTM_Deflation<Float>::eigenSolver(){
 	       i,real(evals_cplx[i]),imag(evals_cplx[i]),sqrt(norma));
     delete h_v3;
   }
-  // Caluclate v^dag gamma_5 v
-  char fname[256];
-  sprintf(fname,"%s_v_g5_product",arpack_logfile);  
-  FILE *fptr;
-  fptr = fopen(fname,"wa");
+
 
   for(int i =0 ; i < NeV ; i++){
     cpuParam3.v = (helem_cplx+i*LDV);
     h_v3 = new cpuColorSpinorField(cpuParam3);
     *d_v = *h_v3;                                    //d_v  = v
-    gamma5Cuda(d_v2,d_v);                            //d_v2 = g5*v
+    gamma5Cuda(d_v2,d_v);
+    gamma5Cuda(static_cast<cudaColorSpinorField*> (&d_v2->Even()), static_cast<cudaColorSpinorField*>(&d_v->Even()));
+    gamma5Cuda(static_cast<cudaColorSpinorField*> (&d_v2->Odd()), static_cast<cudaColorSpinorField*>(&d_v->Odd()));
     Complex sig = blas::cDotProduct(*d_v,*d_v2);     //sig  = v^dag * g5 *v
-    fprintf(fptr, "V_G5_Product: %d %.10e %.10e Eigenvalue %.10e\n", 
-	    i, real(sig), imag(sig), real(evals_cplx[i]));    
-
-    //QKXTM: DMH careful here. It might be norm() in a different namespace...
     printfQuda("vG5v[%04d] = %+e  %+e\n",
-	       i,real(sig),imag(sig));
+  	       i,real(sig),imag(sig));
     delete h_v3;
   }
-  fclose(fptr);
 
   t2 = MPI_Wtime();
   printfQuda("\neigenSolver: TIME_REPORT - Eigenvalues of Dirac operator: %f sec\n",t2-t1);

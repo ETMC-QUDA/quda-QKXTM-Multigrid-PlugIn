@@ -509,12 +509,8 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 // Low Mode Projection //
 /////////////////////////
 
-void calcLowModeProjection(void **gaugeToPlaquette,
-			   QudaInvertParam *EvInvParam,
-			   QudaInvertParam *param,
-			   QudaGaugeParam *gauge_param,
-			   quda::qudaQKXTM_arpackInfo arpackInfo,
-			   quda::qudaQKXTMinfo info);
-  
+void calcLowModeProjection(QudaInvertParam *evInvParam,
+			   quda::qudaQKXTM_arpackInfo arpackInfo);
+
 #endif
 //_QUDAQKXTM__H

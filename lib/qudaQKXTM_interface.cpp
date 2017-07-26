@@ -1741,6 +1741,32 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 
   deflation->MapEvenOddToFull();
 
+  // ==================== Prepare covariant derivative ======//
+  DiracParam dWParam;
+  dWParam.matpcType = QUDA_MATPC_EVEN_EVEN;
+  dWParam.dagger    = QUDA_DAG_NO;
+  dWParam.gauge     = gaugePrecise;
+  dWParam.kappa     = param->kappa;
+  dWParam.mass      = 1./(2.*param->kappa) - 4.;
+  dWParam.m5        = 0.;
+  dWParam.mu        = 0.;
+  for(int i=0; i<4; i++)
+    dWParam.commDim[i] = 1;
+
+  if(param->dslash_type == QUDA_TWISTED_CLOVER_DSLASH){
+    dWParam.type = QUDA_CLOVER_DIRAC;
+    dWParam.clover = cloverPrecise;
+  } 
+  else if (param->dslash_type == QUDA_TWISTED_MASS_DSLASH){
+    dWParam.type = QUDA_WILSON_DIRAC;
+  }
+  else{
+    errorQuda("Operator not supported\n");
+  }
+
+  GaugeCovDev *cov = new GaugeCovDev(dWParam);
+  //================================================//
+
   //- Calculate the exact part of the loop
   int iPrint = 0;
   int s;
@@ -1751,7 +1777,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
     deflation->Loop_w_One_Der_FullOp_Exact(n, EvInvParam,
 					   gen_uloc[0], std_uloc[0], 
 					   gen_oneD[0], std_oneD[0], 
-					   gen_csvC[0], std_csvC[0]);
+					   gen_csvC[0], std_csvC[0], cov);
     t2 = MPI_Wtime();
     printfQuda("TIME_REPORT: Exact part for EV %d done in: %f sec\n",
 	       n+1,t2-t1);
@@ -2090,7 +2116,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	  oneEndTrick_w_One_Der<double>(*x, *tmp3, *tmp4, param, 
 					gen_uloc[idx], std_uloc[idx], 
 					gen_oneD[idx], std_oneD[idx], 
-					gen_csvC[idx], std_csvC[idx]);
+					gen_csvC[idx], std_csvC[idx],cov);
 	  t2 = MPI_Wtime();
 	    
 	  printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, oneEndTrick: %f sec\n",
@@ -2263,6 +2289,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
     free(Vc);
 
   delete deflation;
+  delete cov;
   delete d;
   delete dSloppy;
   delete dPre;

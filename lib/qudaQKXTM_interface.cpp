@@ -1339,14 +1339,10 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 #ifdef HAVE_ARPACK
 
 
-void calcLowModeProjection(void **gaugeToPlaquette, 
-			   QudaInvertParam *EvInvParam, 
-			   QudaInvertParam *param, 
-			   QudaGaugeParam *gauge_param,
-			   qudaQKXTM_arpackInfo arpackInfo, 
-			   qudaQKXTMinfo info){
+void calcLowModeProjection(QudaInvertParam *evInvParam, 
+			   qudaQKXTM_arpackInfo arpackInfo){
   
-  double t1,t2,t3,t4,t5;
+  double t1,t2;
   char fname[256];
   sprintf(fname, "calcLowModeProjection");
   
@@ -1356,33 +1352,31 @@ void calcLowModeProjection(void **gaugeToPlaquette,
 
   if (!initialized) 
     errorQuda("%s: QUDA not initialized", fname);
-  pushVerbosity(param->verbosity);
-  if (getVerbosity() >= QUDA_DEBUG_VERBOSE) printQudaInvertParam(param);
+  pushVerbosity(evInvParam->verbosity);
+  if (getVerbosity() >= QUDA_DEBUG_VERBOSE) printQudaInvertParam(evInvParam);
   
   //-Checks for exact deflation part 
   profileInvert.TPSTART(QUDA_PROFILE_TOTAL);
-  if( (EvInvParam->matpc_type != QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) && 
-      (EvInvParam->matpc_type != QUDA_MATPC_ODD_ODD_ASYMMETRIC) ) 
+  if( (evInvParam->matpc_type != QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) && 
+      (evInvParam->matpc_type != QUDA_MATPC_ODD_ODD_ASYMMETRIC) ) 
     errorQuda("Only asymmetric operators are supported in deflation\n");
   if( arpackInfo.isEven    && 
-      (EvInvParam->matpc_type != QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) ) 
+      (evInvParam->matpc_type != QUDA_MATPC_EVEN_EVEN_ASYMMETRIC) ) 
     errorQuda("%s: Inconsistency between operator types!",fname);
   if( (!arpackInfo.isEven) && 
-      (EvInvParam->matpc_type != QUDA_MATPC_ODD_ODD_ASYMMETRIC) )   
+      (evInvParam->matpc_type != QUDA_MATPC_ODD_ODD_ASYMMETRIC) )   
     errorQuda("%s: Inconsistency between operator types!",fname);
-
+  
   // QKXTM: DMH Here the low modes of the normal M^{\dagger}M 
   //        operator are constructed. We then apply gamma_5 to
-  //        each eigenvector u, and then take the inner product:
-  //        G5iProd_i = u^dag_i \gamma_5 u_i
-  
-  printfQuda("\n ### Exact part calculation ###\n");
+  //        each eigenvector V, and then take the inner product:
+  //        g5Prod_i = V^{\dagger}_i g5 V_i
 
   int NeV_Full = arpackInfo.nEv;  
   
   //Create object to store and calculate eigenpairs
   QKXTM_Deflation<double> *deflation = 
-    new QKXTM_Deflation<double>(param,arpackInfo);
+    new QKXTM_Deflation<double>(evInvParam,arpackInfo);
   deflation->printInfo();
   
   //- Calculate the eigenVectors

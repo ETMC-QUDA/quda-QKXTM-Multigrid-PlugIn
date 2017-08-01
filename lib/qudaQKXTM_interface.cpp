@@ -1,3 +1,4 @@
+
 #include <interface_quda.cpp>
 #include <qudaQKXTM_Field.cpp>
 #include <qudaQKXTM_Gauge.cpp>
@@ -1804,7 +1805,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
       }
       else{ 
 	t1 = MPI_Wtime();
-	performSimpleFT<double>(buf_std_uloc[0], std_uloc[0], // this function as it is working only when from the spatial directions only z is partitioned
+	performSimpleFT<double>(buf_std_uloc[0], std_uloc[0], 
 			   iPrint, Nmoms, momQsq);
 	performSimpleFT<double>(buf_gen_uloc[0], gen_uloc[0], 
 			   iPrint, Nmoms, momQsq);

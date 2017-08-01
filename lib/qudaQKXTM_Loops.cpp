@@ -77,10 +77,10 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 			    void **gen_oneD, 
 			    void **std_oneD, 
 			    void **gen_csvC, 
-			    void **std_csvC){
+			    void **std_csvC,GaugeCovDev *cov){
   
   if(!isFullOp) errorQuda("oneEndTrick_w_One_Der_FullOp_Exact: This function only works with the full operator\n");
-  
+  if(cov==NULL) errorQuda("CovDev has not been constructed");
   void *h_ctrn, *ctrnS, *ctrnC;
 
   double t1,t2;
@@ -200,7 +200,7 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   cudaDeviceSynchronize();
 
   //Create Covarant derivative.
-  GaugeCovDev *cov = new GaugeCovDev(dWParam);
+  //  GaugeCovDev *cov = new GaugeCovDev(dWParam);
 
   // ONE-DERIVATIVE Generalized one-end trick
   for(int mu=0; mu<4; mu++){
@@ -276,7 +276,7 @@ Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
   }
 
   //------------------------------------------------
-  delete cov;
+  //  delete cov;
   
 
   delete Kvec;
@@ -297,10 +297,10 @@ template<typename Float>
 void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3, 
 			   ColorSpinorField &tmp4, QudaInvertParam *param,
 			   void *cnRes_gv,void *cnRes_vv, void **cnD_gv, 
-			   void **cnD_vv, void **cnC_gv, void **cnC_vv){
+			   void **cnD_vv, void **cnC_gv, void **cnC_vv, GaugeCovDev *cov){
   
   void *h_ctrn, *ctrnS, *ctrnC;
-  
+  if(cov==NULL) errorQuda("CovDev has not been constructed");
   if((cudaMallocHost(&h_ctrn, sizeof(Float)*32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3])) == cudaErrorMemoryAllocation)
     errorQuda("Error allocating memory for contraction results in CPU.\n");
   cudaMemset(h_ctrn, 0, sizeof(Float)*32*GK_localL[0]*GK_localL[1]*GK_localL[2]*GK_localL[3]);
@@ -389,7 +389,7 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
   ////////////////// DERIVATIVES //////////////////////////////
 
   //Create Covarant derivative.
-  GaugeCovDev *cov = new GaugeCovDev(dWParam);
+  //  GaugeCovDev *cov = new GaugeCovDev(dWParam);
 
   // for generalized one-end trick
   for(int mu=0; mu<4; mu++)	
@@ -480,7 +480,7 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
       //	((Float *) cnC_vv[mu])[ix] -= ((Float*)h_ctrn)[ix];
     }
 
-  delete cov;
+  //  delete cov;
 
   cudaFreeHost(h_ctrn);
   cudaFree(ctrnS);

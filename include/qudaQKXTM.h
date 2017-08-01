@@ -465,7 +465,7 @@ namespace quda {
     void Loop_w_One_Der_FullOp_Exact(int n, QudaInvertParam *param,
 				     void *gen_uloc, void *std_uloc, 
 				     void **gen_oneD, void **std_oneD, 
-				     void **gen_csvC, void **std_csvC);
+				     void **gen_csvC, void **std_csvC, GaugeCovDev *cov);
     void projectVector(QKXTM_Vector<Float> &vec_defl, 
 		       QKXTM_Vector<Float> &vec_in, int is);
     void projectVector(QKXTM_Vector<Float> &vec_defl, 

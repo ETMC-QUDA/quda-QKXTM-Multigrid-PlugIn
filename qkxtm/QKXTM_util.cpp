@@ -1648,7 +1648,6 @@ int src[4] = {0,0,0,0};
 int Ntsink = 1;
 char pathList_tsink[257] = "list_tsinksource.txt";
 int Q_sq = 0;
-int Q_sq_loop = 0;
 int nsmearAPE = 20;
 int nsmearGauss = 50;
 double alphaAPE = 0.5;
@@ -3259,17 +3258,6 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }    
     corr_write_space = strdup(argv[i+1]);
-    i++;
-    ret = 0;
-    goto out;
-  }
-
-  //-C.K. Loop INPUT
-  if( strcmp(argv[i], "--Q-sqMax-loop") ==0){
-    if(i+1 >= argc){
-      usage(argv);
-    }
-    Q_sq_loop = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;

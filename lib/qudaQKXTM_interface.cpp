@@ -1688,26 +1688,6 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 
   printfQuda("%s: Write buffers memory allocated properly.\n",fname);
   //--------------------------------------
-  
-  //-Allocate the momenta
-  int **mom,**momQsq;
-  long int SplV = GK_totalL[0]*GK_totalL[1]*GK_totalL[2];
-  mom =    (int**) malloc(sizeof(int*)*SplV);
-  momQsq = (int**) malloc(sizeof(int*)*Nmoms);
-  if(mom    == NULL) errorQuda("Error in allocating mom\n");
-  if(momQsq == NULL) errorQuda("Error in allocating momQsq\n");
-  
-  for(int ip=0; ip<SplV; ip++) {
-    mom[ip] = (int*) malloc(sizeof(int)*3);
-    if(mom[ip] == NULL) errorQuda("Error in allocating mom[%d]\n",ip);
-  }
-  for(int ip=0; ip<Nmoms; ip++) {
-    momQsq[ip] = (int *) malloc(sizeof(int)*3);
-    if(momQsq[ip] == NULL) errorQuda("Error in allocating momQsq[%d]\n",ip);
-  }
-  createLoopMomenta(mom,momQsq,info.Q_sq,Nmoms);
-  printfQuda("%s: Momenta created\n",fname);
-
   //======================================================================//
   //========== E X A C T   P R O B L E M   C O N S T R U C T =============// 
   //======================================================================//
@@ -1726,7 +1706,6 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
     new QKXTM_Deflation<double>(EvInvParam,arpackInfo);
   deflation->printInfo();
   
-
   //- Calculate the eigenVectors
   t1 = MPI_Wtime(); 
   deflation->eigenSolver();
@@ -1778,51 +1757,18 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	       n+1,t2-t1);
     
     if( (n+1)==loopInfo.deflStep[s] ){     
-      if(GK_nProc[0]*GK_nProc[1]*GK_nProc[2] == 1){      
-	doCudaFFT_v2<double>(std_uloc[0], tmp_loop); // Scalar
-	copyLoopToWriteBuf(buf_std_uloc[0], tmp_loop,
-			   iPrint, info.Q_sq, Nmoms,mom);
-	doCudaFFT_v2<double>(gen_uloc[0], tmp_loop); // dOp
-	copyLoopToWriteBuf(buf_gen_uloc[0], tmp_loop, 
-			   iPrint, info.Q_sq, Nmoms,mom);
-	
-	for(int mu = 0 ; mu < 4 ; mu++){
-	  doCudaFFT_v2<double>(std_oneD[0][mu], tmp_loop); // Loops
-	  copyLoopToWriteBuf(buf_std_oneD[0][mu], tmp_loop,
-			     iPrint, info.Q_sq, Nmoms,mom);
-	  doCudaFFT_v2<double>(std_csvC[0][mu], tmp_loop); // LoopsCv
-	  copyLoopToWriteBuf(buf_std_csvC[0][mu], tmp_loop, 
-			     iPrint, info.Q_sq, Nmoms, mom);
-	  
-	  doCudaFFT_v2<double>(gen_oneD[0][mu], tmp_loop); // LpsDw
-	  copyLoopToWriteBuf(buf_gen_oneD[0][mu], tmp_loop, 
-			     iPrint, info.Q_sq, Nmoms, mom);
-	  doCudaFFT_v2<double>(gen_csvC[0][mu], tmp_loop); // LpsDwCv
-	  copyLoopToWriteBuf(buf_gen_csvC[0][mu], tmp_loop, 
-			     iPrint, info.Q_sq, Nmoms, mom);
-	}
-	printfQuda("Exact part of Loops for NeV = %d copied to write buffers\n",n+1);
-      }
-      else{ 
+
 	t1 = MPI_Wtime();
-	performSimpleFT<double>(buf_std_uloc[0], std_uloc[0], 
-			   iPrint, Nmoms, momQsq);
-	performSimpleFT<double>(buf_gen_uloc[0], gen_uloc[0], 
-			   iPrint, Nmoms, momQsq);
-	
+	performGPU_FT<double>(buf_std_uloc[0], std_uloc[0], iPrint);
+	performGPU_FT<double>(buf_gen_uloc[0], gen_uloc[0], iPrint);
 	for(int mu=0;mu<4;mu++){
-	  performSimpleFT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], 
-			     iPrint, Nmoms, momQsq);
-	  performSimpleFT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], 
-			     iPrint, Nmoms, momQsq);
-	  performSimpleFT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], 
-			     iPrint, Nmoms, momQsq);
-	  performSimpleFT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], 
-			     iPrint, Nmoms, momQsq);
+	  performGPU_FT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], iPrint);
+	  performGPU_FT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], iPrint);
+	  performGPU_FT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], iPrint);
+	  performGPU_FT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], iPrint);
 	}
 	t2 = MPI_Wtime();
-	printfQuda("TIME_REPORT: FFT and copying to Write Buffers is %f sec\n",t2-t1);
-      }
+	printfQuda("TIME_REPORT: GPU FT in %f sec\n",t2-t1);
 
       //================================================================//
       //=============== D U M P   E X A C T   D A T A  =================// 
@@ -1833,23 +1779,23 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
       if(LoopFileFormat==ASCII_FORM){ // Write the loops in ASCII format
 	// Scalar
 	writeLoops_ASCII(buf_std_uloc[0], loop_exact_fname, 
-			 loopInfo, momQsq, 0, 0, exact_part);
+			 loopInfo,  0, 0, exact_part);
 	// dOp
 	writeLoops_ASCII(buf_gen_uloc[0], loop_exact_fname, 
-			 loopInfo, momQsq, 1, 0, exact_part);
+			 loopInfo,  1, 0, exact_part);
 	for(int mu = 0 ; mu < 4 ; mu++){
 	  // Loops
 	  writeLoops_ASCII(buf_std_oneD[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 2, mu, exact_part);
+			   loopInfo,  2, mu, exact_part);
 	  // LoopsCv 
 	  writeLoops_ASCII(buf_std_csvC[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 3, mu, exact_part);
+			   loopInfo,  3, mu, exact_part);
 	  // LpsDw
 	  writeLoops_ASCII(buf_gen_oneD[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 4, mu, exact_part);
+			   loopInfo,  4, mu, exact_part);
 	  // LpsDwCv 
 	  writeLoops_ASCII(buf_gen_csvC[0][mu], loop_exact_fname, 
-			   loopInfo, momQsq, 5, mu, exact_part); 
+			   loopInfo,  5, mu, exact_part); 
 	}
       }
       else if(LoopFileFormat==HDF5_FORM){
@@ -1858,7 +1804,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 			buf_std_oneD[0], buf_std_csvC[0], 
 			buf_gen_oneD[0], buf_gen_csvC[0], 
 			loop_exact_fname, loopInfo, 
-			momQsq, exact_part);
+			 exact_part);
       }
       
       printfQuda("Writing the Exact part of the loops for NeV = %d completed.\n",n+1);
@@ -1871,14 +1817,6 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
   //=====================================================================//
   //======  S T O C H A S T I C   P R O B L E M   C O N S T R U C T =====//
   //=====================================================================//
-
-  //QKXTM: DMH Here we calculate the contribution to the All-to-All
-  //       propagator from stochastic sources. In previous versions
-  //       of this code, deflation was used to accelerate the inversions
-  //       using either a deflation operator from the exact part with a 
-  //       normal (M^+M \phi = M^+ \eta) solve type, or exact deflation 
-  //       and an extra Even/Odd preconditioned deflation step on the 
-  //       remainder.
 
   printfQuda("\n ### Stochastic part calculation ###\n\n");
 
@@ -2123,49 +2061,17 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	  if( ((is+1)%Nd == 0)&&(ih*Nsc+sc == Nc*Nsc-1)){
 	    //iPrint increments the starting points in the write buffers.
 	    if(idx==0) iPrint++;
-	      
 	    t1 = MPI_Wtime();
-	    if(GK_nProc[0]*GK_nProc[1]*GK_nProc[2] == 1){      
-	      doCudaFFT_v2<double>(std_uloc[idx], tmp_loop); // Scalar
-	      copyLoopToWriteBuf(buf_std_uloc[idx], tmp_loop, 
-				 iPrint, info.Q_sq, Nmoms, mom);
-	      doCudaFFT_v2<double>(gen_uloc[idx], tmp_loop); // dOp
-	      copyLoopToWriteBuf(buf_gen_uloc[idx], tmp_loop, 
-				 iPrint, info.Q_sq, Nmoms, mom);
-		
-	      for(int mu = 0 ; mu < 4 ; mu++){
-		doCudaFFT_v2<double>(std_oneD[idx][mu], tmp_loop); // Loops
-		copyLoopToWriteBuf(buf_std_oneD[idx][mu], tmp_loop, 
-				   iPrint, info.Q_sq, Nmoms, mom);
-		doCudaFFT_v2<double>(std_csvC[idx][mu], tmp_loop); // LoopsCv
-		copyLoopToWriteBuf(buf_std_csvC[idx][mu], tmp_loop, 
-				   iPrint, info.Q_sq, Nmoms, mom);	      
-		doCudaFFT_v2<double>(gen_oneD[idx][mu],tmp_loop); // LpsDw
-		copyLoopToWriteBuf(buf_gen_oneD[idx][mu], tmp_loop, 
-				   iPrint, info.Q_sq, Nmoms, mom);
-		doCudaFFT_v2<double>(gen_csvC[idx][mu], tmp_loop); // LpsDwCv
-		copyLoopToWriteBuf(buf_gen_csvC[idx][mu], tmp_loop, 
-				   iPrint, info.Q_sq, Nmoms, mom);
-	      }
-	    }
-	    else{
-	      performSimpleFT<double>(buf_std_uloc[idx], std_uloc[idx], 
-				 iPrint, Nmoms, momQsq);
-	      performSimpleFT<double>(buf_gen_uloc[idx], gen_uloc[idx], 
-				 iPrint, Nmoms, momQsq);
+	      performGPU_FT<double>(buf_std_uloc[idx], std_uloc[idx], iPrint);
+	      performGPU_FT<double>(buf_gen_uloc[idx], gen_uloc[idx], iPrint);
 		
 	      for(int mu=0;mu<4;mu++){
-		performSimpleFT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu],
-				   iPrint, Nmoms, momQsq);
-		performSimpleFT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu],
-				   iPrint, Nmoms, momQsq);
-		performSimpleFT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu],
-				   iPrint, Nmoms, momQsq);
-		performSimpleFT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu],
-				   iPrint, Nmoms, momQsq);
+		performGPU_FT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu], iPrint);
+		performGPU_FT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu], iPrint);
+		performGPU_FT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu], iPrint);
+		performGPU_FT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu], iPrint);
 	      }
-	    }
-	    t2 = MPI_Wtime();
+	      t2 = MPI_Wtime();
 	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, Loops FFT and copy %f sec\n",msg_str, is, ih, sc, NeV_defl,  t2-t1);
 	  }// Dump conditonal
 	}// Deflation steps
@@ -2197,18 +2103,18 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
     if(LoopFileFormat==ASCII_FORM){ 
       // Write the loops in ASCII format
       writeLoops_ASCII(buf_std_uloc[idx], loop_stoch_fname, 
-		       loopInfo, momQsq, 0, 0, stoch_part); // Scalar
+		       loopInfo,  0, 0, stoch_part); // Scalar
       writeLoops_ASCII(buf_gen_uloc[idx], loop_stoch_fname, 
-		       loopInfo, momQsq, 1, 0, stoch_part); // dOp
+		       loopInfo,  1, 0, stoch_part); // dOp
       for(int mu = 0 ; mu < 4 ; mu++){
 	writeLoops_ASCII(buf_std_oneD[idx][mu], loop_stoch_fname, 
-			 loopInfo, momQsq, 2, mu, stoch_part); // Loops
+			 loopInfo,  2, mu, stoch_part); // Loops
 	writeLoops_ASCII(buf_std_csvC[idx][mu], loop_stoch_fname, 
-			 loopInfo, momQsq, 3, mu, stoch_part); // LoopsCv
+			 loopInfo,  3, mu, stoch_part); // LoopsCv
 	writeLoops_ASCII(buf_gen_oneD[idx][mu], loop_stoch_fname, 
-			 loopInfo, momQsq, 4, mu, stoch_part); // LpsDw
+			 loopInfo,  4, mu, stoch_part); // LpsDw
 	writeLoops_ASCII(buf_gen_csvC[idx][mu], loop_stoch_fname, 
-			 loopInfo, momQsq, 5, mu, stoch_part); // LpsDwCv
+			 loopInfo,  5, mu, stoch_part); // LpsDwCv
       }
     }
     else if(LoopFileFormat==HDF5_FORM){ 
@@ -2216,7 +2122,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
       writeLoops_HDF5(buf_std_uloc[idx], buf_gen_uloc[idx], 
 		      buf_std_oneD[idx], buf_std_csvC[idx], 
 		      buf_gen_oneD[idx], buf_gen_csvC[idx],
-		      loop_stoch_fname, loopInfo, momQsq, 
+		      loop_stoch_fname, loopInfo,  
 		      stoch_part);
     }
     t2 = MPI_Wtime();
@@ -2232,13 +2138,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
   //================ M E M O R Y   C L E A N - U P =======================// 
   //======================================================================//
 
-  printfQuda("\nCleaning up...\n");
-  
-  //-Free the momentum matrices
-  for(int ip=0; ip<SplV; ip++) free(mom[ip]);
-  free(mom);
-  for(int ip=0;ip<Nmoms;ip++) free(momQsq[ip]);
-  free(momQsq);
+  printfQuda("\nCleaning up...\n");  
   //---------------------------
   
   //-Free loop buffers

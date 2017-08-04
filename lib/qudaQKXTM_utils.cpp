@@ -359,6 +359,32 @@ void performFFT(Float *outBuf, void *inBuf, int iPrint,
   free(sum);
 }
 
+template<typename Float>
+void performGPU_FT(Float *outBuf, void *inBuf, int iPrint){
+  Float *d_inBuf;
+  Float *local_buf;
+
+  if((cudaMalloc((void**)&d_inBuf, 16*GK_localVolume*2*sizeof(Float)) == cudaErrorMemoryAllocation))
+    errorQuda("Error with GPU memory allocation in performGPU_FT\n");
+  cudaMemcpy(d_inBuf, inBuf, 16*GK_localVolume*2*sizeof(Float), cudaMemcpyHostToDevice);
+  local_buf = (Float*) calloc(16*GK_localL[3]*GK_Nmoms*2,sizeof(Float));
+  if(local_buf == NULL)
+    errorQuda("Error with host memory allocation in perofrmGPU_FT\n");
+
+  for(int it = 0 ; it < GK_localL[3]; it++)
+    run_performGPU_FT((void*) d_inBuf, local_buf, it, sizeof(Float));
+
+  MPI_Datatype DATATYPE;
+  if(typeid(Float) == typeid(double)) DATATYPE=MPI_DOUBLE;
+  else if(typeid(Float) == typeid(float)) DATATYPE=MPI_FLOAT;
+  else errorQuda("Precision not supported");
+  
+  MPI_Reduce(local_buf, &(outBuf[16*GK_localL[3]*GK_Nmoms*2*iPrint]), 16*GK_localL[3]*GK_Nmoms*2, DATATYPE, MPI_SUM, 0, GK_spaceComm);
+
+  free(local_buf);
+  cudaFree(d_inBuf);
+}
+
 //-K.H. Function which performs the Fourier Transform and it allows partitioning also in X,Y direction, includes OMP
 template<typename Float>
 void performSimpleFT(Float *outBuf, void *inBuf, int iPrint, 

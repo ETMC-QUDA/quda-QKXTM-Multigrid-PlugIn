@@ -492,8 +492,7 @@ void oneEndTrick_w_One_Der(ColorSpinorField &x, ColorSpinorField &tmp3,
 //-C.K. This is a new function to print all the loops in ASCII format
 template<typename Float>
 void writeLoops_ASCII(Float *writeBuf, const char *Pref, 
-		      qudaQKXTM_loopInfo loopInfo, 
-		      int **momQsq, int type, 
+		      qudaQKXTM_loopInfo loopInfo,  int type, 
 		      int mu, bool exact_loop){
 
   if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
@@ -524,7 +523,7 @@ void writeLoops_ASCII(Float *writeBuf, const char *Pref,
 	  for(int lt=0; lt < GK_localL[3]; lt++){
 	    int t  = lt+comm_coords(default_topo)[3]*GK_localL[3];
 	    for(int gm=0; gm<16; gm++){
-	      fprintf(ptr, "%02d %02d %02d %+d %+d %+d %+16.15e %+16.15e\n",t, gm, mu, momQsq[ip][0], momQsq[ip][1], momQsq[ip][2],
+	      fprintf(ptr, "%02d %02d %02d %+d %+d %+d %+16.15e %+16.15e\n",t, gm, mu, GK_moms[ip][0], GK_moms[ip][1], GK_moms[ip][2],
 		      0.25*writeBuf[0+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint],
 		      0.25*writeBuf[1+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint]);
 	    }
@@ -536,7 +535,7 @@ void writeLoops_ASCII(Float *writeBuf, const char *Pref,
 	  for(int lt=0; lt < GK_localL[3]; lt++){
 	    int t  = lt+comm_coords(default_topo)[3]*GK_localL[3];
 	    for(int gm=0; gm<16; gm++){
-	      fprintf(ptr, "%02d %02d %+d %+d %+d %+16.15e %+16.15e\n",t, gm, momQsq[ip][0], momQsq[ip][1], momQsq[ip][2],
+	      fprintf(ptr, "%02d %02d %+d %+d %+d %+16.15e %+16.15e\n",t, gm, GK_moms[ip][0], GK_moms[ip][1], GK_moms[ip][2],
 		      writeBuf[0+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint],
 		      writeBuf[1+2*ip+2*Nmoms*lt+2*Nmoms*GK_localL[3]*gm+2*Nmoms*GK_localL[3]*16*iPrint]);
 	    }
@@ -598,7 +597,7 @@ void writeLoops_HDF5_StrdMomForm(Float *buf_std_uloc, Float *buf_gen_uloc,
 				 Float **buf_std_oneD, Float **buf_std_csvC, 
 				 Float **buf_gen_oneD, Float **buf_gen_csvC, 
 				 char *file_pref, 
-				 qudaQKXTM_loopInfo loopInfo, int **momQsq,
+				 qudaQKXTM_loopInfo loopInfo,
 				 bool exact_loop){
 
   if(loopInfo.HighMomForm) errorQuda("writeLoops_HDF5_StrdMomForm: This function works only with Standard Momenta Form! (Got HighMomForm=true)\n");
@@ -659,7 +658,7 @@ void writeLoops_HDF5_StrdMomForm(Float *buf_std_uloc, Float *buf_gen_uloc,
 
 	for(int imom=0;imom<loopInfo.Nmoms;imom++){
 	  char *group4_tag;
-	  asprintf(&group4_tag,"mom_xyz_%+d_%+d_%+d",momQsq[imom][0],momQsq[imom][1],momQsq[imom][2]);
+	  asprintf(&group4_tag,"mom_xyz_%+d_%+d_%+d",GK_moms[imom][0],GK_moms[imom][1],GK_moms[imom][2]);
 	  group4_id = H5Gcreate(group3_id, group4_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
 	  if(loopInfo.loop_oneD[it]){
@@ -734,7 +733,7 @@ void writeLoops_HDF5_HighMomForm(Float *buf_std_uloc, Float *buf_gen_uloc,
                                  Float **buf_std_oneD, Float **buf_std_csvC,
                                  Float **buf_gen_oneD, Float **buf_gen_csvC,
                                  char *file_pref,
-                                 qudaQKXTM_loopInfo loopInfo, int **momQsq,
+                                 qudaQKXTM_loopInfo loopInfo,
                                  bool exact_loop){
 
   if(!loopInfo.HighMomForm) errorQuda("writeLoops_HDF5_HighMomForm: This function works only with High Momenta Form! (Got HighMomForm=false)\n");
@@ -922,7 +921,7 @@ void writeLoops_HDF5_HighMomForm(Float *buf_std_uloc, Float *buf_gen_uloc,
 
     int *Moms_H5 = (int*) malloc(Nmoms*3*sizeof(int));
     for(int im=0;im<Nmoms;im++){
-      for(int d=0;d<3;d++) Moms_H5[d + 3*im] = momQsq[im][d];
+      for(int d=0;d<3;d++) Moms_H5[d + 3*im] = GK_moms[im][d];
     }
 
     herr_t status = H5Dwrite(dataset_id, MOMTYPE_H5, H5S_ALL, filespace, H5P_DEFAULT, Moms_H5);
@@ -944,20 +943,20 @@ void writeLoops_HDF5(Float *buf_std_uloc, Float *buf_gen_uloc,
                      Float **buf_std_oneD, Float **buf_std_csvC,
                      Float **buf_gen_oneD, Float **buf_gen_csvC,
                      char *file_pref,
-                     qudaQKXTM_loopInfo loopInfo, int **momQsq,
+                     qudaQKXTM_loopInfo loopInfo,
                      bool exact_loop){
 
   if(loopInfo.HighMomForm)
     writeLoops_HDF5_HighMomForm<double>(buf_std_uloc, buf_gen_uloc,
                                         buf_std_oneD, buf_std_csvC,
                                         buf_gen_oneD, buf_gen_csvC,
-                                        file_pref, loopInfo, momQsq,
+                                        file_pref, loopInfo,
                                         exact_loop);
   else
     writeLoops_HDF5_StrdMomForm<double>(buf_std_uloc, buf_gen_uloc,
                                         buf_std_oneD, buf_std_csvC,
                                         buf_gen_oneD, buf_gen_csvC,
-                                        file_pref, loopInfo, momQsq,
+                                        file_pref, loopInfo,
                                         exact_loop);
 
 }

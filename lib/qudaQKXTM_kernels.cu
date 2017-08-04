@@ -857,6 +857,55 @@ __global__ void apply_gamma5_propagator_kernel(Float2 *inOut){
 #include <apply_gamma5_propagator_core.h>
 }
 
+template<typename Float2, typename Float>
+__global__ void performGPU_FT_kernel_(Float2* block, Float2* inV, int it){
+#include <performGPU_FT_core.h>
+}
+
+//==============================================================//
+template<typename Float2, typename Float>
+static void performGPU_FT_kernel(Float *d_in, Float *h_out, int it){
+
+  int SpVol = GK_localVolume/GK_localL[3];
+  dim3 blockDim( THREADS_PER_BLOCK , 1, 1);
+  dim3 gridDim( (SpVol + blockDim.x -1)/blockDim.x , 1 , 1); // spawn threads only for the spatial volume
+  Float *h_partial_block = NULL;
+  Float *d_partial_block = NULL;
+  h_partial_block = (Float*)malloc(16*GK_Nmoms*gridDim.x*2*sizeof(Float));
+  if(h_partial_block == NULL) errorQuda("performGPU_FT_kernel: Cannot allocate host block.\n");
+  cudaMalloc((void**)&d_partial_block, 16*GK_Nmoms*gridDim.x*2 * sizeof(Float) );
+  checkCudaError();
+  Float *reduction =(Float*) calloc(16*GK_Nmoms*2,sizeof(Float));
+
+  performGPU_FT_kernel_<Float2,Float><<<gridDim,blockDim>>>((Float2*) d_partial_block, (Float2*) d_in, it);
+  cudaMemcpy(h_partial_block , d_partial_block , 16*GK_Nmoms*gridDim.x*2*sizeof(Float) , cudaMemcpyDeviceToHost);
+  checkCudaError();
+
+  for(int gm = 0; gm < 16; gm++)
+    for(int imom = 0 ; imom < GK_Nmoms ; imom++)
+      for(int i =0 ; i < gridDim.x ; i++){
+	reduction[gm*GK_Nmoms*2 + imom*2 + 0] += h_partial_block[gm*GK_Nmoms*gridDim.x*2 + imom*gridDim.x*2 + i*2 + 0];
+	reduction[gm*GK_Nmoms*2 + imom*2 + 1] += h_partial_block[gm*GK_Nmoms*gridDim.x*2 + imom*gridDim.x*2 + i*2 + 1];
+      }
+
+  for(int gm = 0; gm < 16; gm++)
+    for(int imom = 0 ; imom < GK_Nmoms ; imom++){
+      h_out[gm*GK_localL[3]*GK_Nmoms*2 + it*GK_Nmoms*2 + imom*2 + 0] = reduction[gm*GK_Nmoms*2 + imom*2 + 0];
+      h_out[gm*GK_localL[3]*GK_Nmoms*2 + it*GK_Nmoms*2 + imom*2 + 1] = reduction[gm*GK_Nmoms*2 + imom*2 + 1];
+    }
+
+
+  free(h_partial_block);
+  cudaFree(d_partial_block);
+  free(reduction);
+}
+
+void quda::run_performGPU_FT(void *d_in, void *h_out, int it, int precision){
+  if(precision == 4) performGPU_FT_kernel<float2, float>((float*) d_in,(float*) h_out, it);
+  else if(precision == 8) performGPU_FT_kernel<double2, double>((double*) d_in,(double*) h_out, it);
+  else errorQuda("Not supported precision for performGPU_FT");
+}
+
 template<typename Float>
 static Float calculatePlaq_kernel(cudaTextureObject_t gaugeTexPlaq){
   Float plaquette = 0.;
@@ -1174,6 +1223,7 @@ void quda::run_contractMesons(cudaTextureObject_t texProp1,
   else errorQuda("run_contractMesons: Precision %d not supported\n",precision);
 
 }
+
 
 template<typename Float2,typename Float>
 static void contractBaryons_kernel(cudaTextureObject_t texProp1,

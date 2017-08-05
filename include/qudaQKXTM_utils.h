@@ -52,7 +52,6 @@ namespace quda {
     int sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
     QudaPrecision Precision;
     int Q_sq;
-    int Q_sq_loop;
     int Ntsink;
     int Nproj[MAX_TSINK];
     int traj;
@@ -151,6 +150,7 @@ namespace quda {
   void run_contractBaryons(cudaTextureObject_t texProp1, 
 			   cudaTextureObject_t texProp2, void* corr, int it, 
 			   int isource, int precision, CORR_SPACE CorrSpace);
+  void run_performGPU_FT(void *d_in, void *h_out, int it, int precision);
   void run_rotateToPhysicalBase(void* inOut, int sign, int precision);
   void run_castDoubleToFloat(void *out, void *in);
   void run_castFloatToDouble(void *out, void *in);

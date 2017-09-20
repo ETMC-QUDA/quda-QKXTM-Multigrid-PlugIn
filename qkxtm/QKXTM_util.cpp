@@ -1706,6 +1706,10 @@ bool isFullOp = false;
 int k_probing = 0; // default is without probing
 bool spinColorDil = false;
 
+// these variables will allow us to do the probing in different runs
+// if you plan to do the hadamard vectors all in one run then this is not needed
+int hadamLow = 0;
+int hadamHigh = 0;
 //===========//
 
 
@@ -1871,7 +1875,8 @@ void usage(char** argv )
 #endif
   printf("    --k-probing <n>                           # Hierarchical probing, where neighbors distance D=2**k (default 0: No probing)\n");
   printf("    --spinColorDil <true/false>               # Whether we want spin color dilution (default false)\n");
-
+  printf("    --hadamLow <n>                            # From which Hadamard vector to start (default 0)\n");
+  printf("    --hadamHigh <n>                           # Up to which Hadamard vector to stop  (default max, max will be set later in the code, max not included in the for loop)\n");
   
   //--------//
 
@@ -3560,6 +3565,26 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }	    
     k_probing = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--hadamLow") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+    hadamLow = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--hadamHigh") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }	    
+    hadamHigh = atoi(argv[i+1]);
     i++;
     ret = 0;
     goto out;

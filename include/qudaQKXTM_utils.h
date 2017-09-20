@@ -113,6 +113,8 @@ namespace quda {
     // = { false  , false,  true   , true    ,  true  ,  true}
     bool loop_oneD[6];
     int k_probing;     // if its value <=0 then probing is switched off
+    int hadamLow; 
+    int hadamHigh;
     bool spinColorDil; // enables spin color dilution
     bool HighMomForm;
     double kappa;

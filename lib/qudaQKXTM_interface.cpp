@@ -1429,17 +1429,32 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
   int k_probing = loopInfo.k_probing;
   bool spinColorDil = loopInfo.spinColorDil;
   bool isProbing;
+  bool isProbingMstep; // if this is enabled then probing will be done in steps
+
   int Nc; // number of Hadamard vectors, if not enabled then it is one
+  int Nc_low; // from where to start doing hadamard vectors
+  int Nc_high; // where to stop doing hadamard vectors
   int Nsc; // number of Spin-Color diluted vectors, if not enabled then it is one
 
   if(k_probing > 0){
     Nc = 2*pow(2,4*(k_probing-1));
     Vc = hch_coloring(k_probing,4); //4D hierarchical coloring
     isProbing=true;
+
+    if(loopInfo.hadamLow < 0 || loopInfo.hadamHigh < 0) errorQuda("Error: You cannot give negative values for hadamLow or hadamHigh\n");
+    if(loopInfo.hadamLow > loopInfo.hadamHigh) errorQuda("Error: hadamLow cannot be greater than hadamHigh\n");
+    Nc_low = loopInfo.hadamLow;
+    if(loopInfo.hadamHigh == 0) Nc_high = Nc;
+    else Nc_high = loopInfo.hadamHigh;
+    if(Nc_high > Nc) errorQuda("Error: You cannot choose hadamHigh to be greater than Nc\n");
+    if(Nc_low > 0 || Nc_high < Nc) isProbingMstep=true;
   }
   else{
     Nc=1;
+    Nc_low=0;
+    Nc_high=Nc;
     isProbing=false;
+    isProbingMstep=false;
   }
 
   if(spinColorDil)
@@ -1522,7 +1537,13 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
   printfQuda(" The loop file format is %s\n", (LoopFileFormat == ASCII_FORM) ? "ASCII" : "HDF5");
   printfQuda(" Will write the loops in %s\n", loopInfo.HighMomForm ? "High-Momenta Form" : "Standard Form");
   printfQuda(" The loop base name is %s\n",loopInfo.loop_fname);
-  printfQuda(" %d Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
+  
+  if(isProbingMstep){
+    warningQuda("You have chosen hierarchical probing with Msteps. Be very carefull use the same seed and keep partitioning the same to have the same noise vectors\n");
+    printfQuda(" %d Stoch vectors, %d Hadamard vectors (using Mstep), %d spin-colour diluted : %04d inversions\n", Nstoch, Nc_high-Nc_low, Nsc, Nstoch*(Nc_high-Nc_low)*Nsc);
+  }
+  else
+    printfQuda(" %d Stoch vectors, %d Hadamard vectors, %d spin-colour diluted : %04d inversions\n", Nstoch, Nc, Nsc, Nstoch*Nc*Nsc);
 
   printfQuda(" Will project\n");
   for (int a=0; a<deflSteps; a++) printfQuda(" Ndefl %d: %d\n", a, nDefl[a]);
@@ -1968,7 +1989,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	       msg_str,is+1,t2-t1);
 
     //Loop over probing iterations
-    for( int ih = 0 ; ih < Nc ; ih++) {
+    for( int ih = Nc_low ; ih < Nc_high ; ih++) {
       //Loop over spin-colour dilution
       for(int sc = 0 ; sc < Nsc ; sc++){
 	t3 = MPI_Wtime();
@@ -2058,7 +2079,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	  //Condition to assert if we are dumping at this stochastic source
 	  //and if we have completed a loop over Hadamard vectors. If true,
 	  //dump the data.
-	  if( ((is+1)%Nd == 0)&&(ih*Nsc+sc == Nc*Nsc-1)){
+	  if( ((is+1)%Nd == 0)&&(ih*Nsc+sc == Nc_high*Nsc-1)){
 	    //iPrint increments the starting points in the write buffers.
 	    if(idx==0) iPrint++;
 	    t1 = MPI_Wtime();

@@ -1,4 +1,3 @@
-
 #include <interface_quda.cpp>
 #include <qudaQKXTM_Field.cpp>
 #include <qudaQKXTM_Gauge.cpp>

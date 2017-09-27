@@ -856,7 +856,7 @@ writeTwopBaryons_ASCII(void *corrBaryons,
   Float (*GLcorrBaryons)[2][N_BARYONS][4][4] = (Float(*)[2][N_BARYONS][4][4]) calloc(GK_totalL[3]*GK_Nmoms*2*N_BARYONS*4*4*2,sizeof(Float));
   if( GLcorrBaryons == NULL )errorQuda("writeTwopBaryons_ASCII: Cannot allocate memory for Baryon two-point function buffer.");
 
-  MPI_Datatype DATATYPE = -1;
+  MPI_Datatype DATATYPE;
   if( typeid(Float) == typeid(float)){
     DATATYPE = MPI_FLOAT;
     printfQuda("writeTwopBaryons_ASCII: Will write in single precision\n");
@@ -934,7 +934,7 @@ contractBaryons(QKXTM_Propagator<Float> &prop1,
 			  (void*) corrBaryons_local,it,
 			  isource,sizeof(Float),CorrSpace);
     
-    MPI_Datatype DATATYPE = -1;
+    MPI_Datatype DATATYPE;
     if( typeid(Float) == typeid(float))  DATATYPE = MPI_FLOAT;
     if( typeid(Float) == typeid(double)) DATATYPE = MPI_DOUBLE;
 
@@ -1567,7 +1567,7 @@ void QKXTM_Contraction<Float>::writeTwopMesons_ASCII(void *corrMesons, char *fil
   Float (*GLcorrMesons)[2][N_MESONS] = (Float(*)[2][N_MESONS]) calloc(GK_totalL[3]*GK_Nmoms*2*N_MESONS*2,sizeof(Float));;
   if( GLcorrMesons == NULL )errorQuda("writeTwopMesons_ASCII: Cannot allocate memory for Meson two-point function buffer.\n");
 
-  MPI_Datatype DATATYPE = -1;
+  MPI_Datatype DATATYPE;
   if( typeid(Float) == typeid(float)){
     DATATYPE = MPI_FLOAT;
     printfQuda("writeTwopMesons_ASCII: Will write in single precision\n");
@@ -1634,7 +1634,7 @@ contractMesons(QKXTM_Propagator<Float> &prop1,
 
     for(int it = 0 ; it < GK_localL[3] ; it++) run_contractMesons(texProp1,texProp2,(void*) corrMesons_local,it,isource,sizeof(Float),CorrSpace);
 
-    MPI_Datatype DATATYPE = -1;
+    MPI_Datatype DATATYPE;
     if( typeid(Float) == typeid(float))  DATATYPE = MPI_FLOAT;
     if( typeid(Float) == typeid(double)) DATATYPE = MPI_DOUBLE;
     
@@ -2863,7 +2863,7 @@ writeThrp_ASCII(void *corrThp_local,
      GLcorrThp_oneD == NULL) 
     errorQuda("writeThrp_ASCII: Cannot allocate memory for write Buffers.");
 
-  MPI_Datatype DATATYPE = -1;
+  MPI_Datatype DATATYPE;
   if( typeid(Float) == typeid(float)){
     DATATYPE = MPI_FLOAT;
     printfQuda("writeThrp_ASCII: Will write in single precision\n");
@@ -3085,7 +3085,7 @@ contractFixSink(QKXTM_Propagator<Float> &seqProp,
 			      partflag, it, isource, 
 			      sizeof(Float), CorrSpace);
 
-    MPI_Datatype DATATYPE = -1;
+    MPI_Datatype DATATYPE;
     if( typeid(Float) == typeid(float))  DATATYPE = MPI_FLOAT;
     if( typeid(Float) == typeid(double)) DATATYPE = MPI_DOUBLE;
     

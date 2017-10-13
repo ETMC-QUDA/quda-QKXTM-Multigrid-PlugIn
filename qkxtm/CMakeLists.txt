@@ -75,6 +75,14 @@ if(QKXTM_2FLAVMG)
   # employed, as well as QUDA's MG solver routines.
   cuda_add_executable(CalcMG_2pt3pt_EvenOdd CalcMG_2pt3pt_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
   target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
+
+  #CalcMG_2pt3pt_Mesons
+  # This function will calculate mesonic correlation functions using a 
+  # handful of randomly separated, gaussian smeared point sources, 
+  #constructed with a smeared gauge field. Even/Odd preconditioning is 
+  # employed, as well as QUDA's MG solver routines.
+  cuda_add_executable(CalcMG_2pt3pt_Mesons CalcMG_2pt3pt_Mesons.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+  target_link_libraries(CalcMG_2pt3pt_Mesons ${QKXTM_LIBS})
 endif()  
 
 #CalcMG_Loops_w_oneD_TSM_EvenOdd (DEPRECATED)

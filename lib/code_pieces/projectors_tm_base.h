@@ -82,7 +82,4 @@
       projector[0][2].y = -0.25; projector[1][3].y = +0.25; projector[2][0].y = -0.25; projector[3][1].y = +0.25;
     }
   }
-  else if( PID == IDENTITY ){
-    projector[0][0].x=1; projector[1][1].x=1; projector[2][2].x=1;  projector[3][3].x=1;
-  }
 

@@ -1820,7 +1820,7 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 
     // CJL: If particle is a baryon, include a projection loop
 
-    if( HADRON != PIPLUS && HADRON != PIMINUS ){
+    if( HADRON != PION ){
     
       for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	char *group4_tag;
@@ -1979,7 +1979,7 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 	H5Gclose(group4_id);
       }//-ipr
     }//-baryon
-    else {
+    else {// if hadron is a meson
       for(int thrp_int=0;thrp_int<3;thrp_int++){
 
 	char *group4_tag;
@@ -2022,8 +2022,7 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 	  hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
 	  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 	  
-	  writeThrpBuf = &(((Float*)Thrp_local_HDF5)[2*lV*2*Mel*its + 
-						     2*lV*2*Mel*Nsink]);
+	  writeThrpBuf = &(((Float*)Thrp_local_HDF5)[2*lV*2*Mel*its]);
 	  
 	  herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, 
 				   filespace, plist_id, writeThrpBuf);
@@ -2065,8 +2064,7 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 	  hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
 	  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-	  writeThrpBuf=&(((Float*)Thrp_noether_HDF5)[2*lV*2*Mel*its + 
-						     2*lV*2*Mel*Nsink]);
+	  writeThrpBuf=&(((Float*)Thrp_noether_HDF5)[2*lV*2*Mel*its]);
 	  
 	  herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, 
 				   filespace, plist_id, writeThrpBuf);
@@ -2113,7 +2111,7 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 	  if( (writeThrpBuf = (Float*) malloc(2*lV*2*Mel*4*sizeof(Float))) == NULL ) 
 	    errorQuda("writeThrpHDF5_PosSpace: Cannot allocate writeBuffer for one-derivative three-point correlator\n");
 
-	  for(int dir=0;dir<4;dir++) memcpy(&(writeThrpBuf[2*lV*2*Mel*dir]), &(((Float*)Thrp_oneD_HDF5[dir])[2*lV*2*Mel*its + 2*lV*2*Mel*Nsink]), 2*lV*2*Mel*sizeof(Float));
+	  for(int dir=0;dir<4;dir++) memcpy(&(writeThrpBuf[2*lV*2*Mel*dir]), &(((Float*)Thrp_oneD_HDF5[dir])[2*lV*2*Mel*its]), 2*lV*2*Mel*sizeof(Float));
 
 	  herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, filespace, plist_id, writeThrpBuf);
 	  if(status<0) errorQuda("writeThrpHDF5_PosSpace: Unsuccessful writing of the %s dataset. Exiting\n",info.thrp_type[thrp_int]);
@@ -2251,7 +2249,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 
       // CJL: If particle is a baryon, include a projection loop
 
-      if( HADRON != PIPLUS && HADRON != PIMINUS ){
+      if( HADRON != PION ){
 
 	for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	  char *group4_tag;
@@ -2384,7 +2382,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 	  H5Gclose(group4_id);
 	}//-projector
       }//-baryon
-      else {
+      else {// if hadron is a meson
 	for(int part=0;part<2;part++){
 	  char *group4_tag;
 	  asprintf(&group4_tag,"%s", (part==0) ? "up" : "down");
@@ -2457,8 +2455,8 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 		  hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
 		  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-		  if(GK_timeRank==src_rank) writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*w + 2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its + 2*Mel*Lt*GK_Nmoms*2*Nsink]);
-		  else writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its + 2*Mel*Lt*GK_Nmoms*2*Nsink]);
+		  if(GK_timeRank==src_rank) writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*w + 2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its]);
+		  else writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its]);
 
 		  herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, 
 					   subspace, filespace, 
@@ -2490,8 +2488,8 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 		hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
 		H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-		if(GK_timeRank==src_rank) writeThrpBuf = &(thrpBuf[2*Mel*w + 2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its + 2*Mel*Lt*GK_Nmoms*2*Nsink]);
-		else writeThrpBuf = &(thrpBuf[2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its + 2*Mel*Lt*GK_Nmoms*2*Nsink]);
+		if(GK_timeRank==src_rank) writeThrpBuf = &(thrpBuf[2*Mel*w + 2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its]);
+		else writeThrpBuf = &(thrpBuf[2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its]);
 
 		herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, filespace, plist_id, writeThrpBuf);
 	      
@@ -2535,7 +2533,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 
 	// CJL: If particle is a baryon, include a projection loop
 
-	if( HADRON != PIPLUS && HADRON != PIMINUS ){
+	if( HADRON != PION ){
 
 	  for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	    for(int part=0;part<2;part++){
@@ -2640,7 +2638,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 	    }//-part
 	  }//-projector
 	}//-baryon
-	else {
+	else {// if particle is a meson
 	    for(int part=0;part<2;part++){
 	      for(int thrp_int=0;thrp_int<3;thrp_int++){
 		THRP_TYPE type = (THRP_TYPE) thrp_int;
@@ -2684,7 +2682,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 		      H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, start, 
 					  NULL, ldims, NULL);
 
-		      tailBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its + 2*Mel*Lt*GK_Nmoms*2*Nsink]);
+		      tailBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Lt*imom + 2*Mel*Lt*GK_Nmoms*part + 2*Mel*Lt*GK_Nmoms*2*its]);
 
 		      herr_t status = H5Dwrite(dset_id, DATATYPE_H5, 
 					       mspace_id, dspace_id, 
@@ -2724,8 +2722,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 		
 		    tailBuf = &(thrpBuf[2*Mel*Lt*imom + 
 					2*Mel*Lt*GK_Nmoms*part + 
-					2*Mel*Lt*GK_Nmoms*2*its + 
-					2*Mel*Lt*GK_Nmoms*2*Nsink]);
+					2*Mel*Lt*GK_Nmoms*2*its]);
 		  
 		    herr_t status = H5Dwrite(dset_id, DATATYPE_H5, 
 					     mspace_id, dspace_id, 
@@ -2842,7 +2839,7 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 
       // CJL: If particle is a baryon, include a projection loop
     
-      if( HADRON != PIPLUS && HADRON != PIMINUS ){
+      if( HADRON != PION ){
 
 	for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	  char *group4_tag;
@@ -3010,8 +3007,8 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 		hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
 		H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-		if(GK_timeRank==src_rank) writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Nmoms*w + 2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms*Lt*2*Nsink]);
-		else writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms*Lt*2*Nsink]);
+		if(GK_timeRank==src_rank) writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Nmoms*w + 2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its]);
+		else writeThrpBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its]);
 
 		herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, filespace, plist_id, writeThrpBuf);
 
@@ -3036,8 +3033,8 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 	      hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
 	      H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
-	      if(GK_timeRank==src_rank) writeThrpBuf = &(thrpBuf[2*Mel*Nmoms*w + 2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms*Lt*2*Nsink]);
-	      else writeThrpBuf = &(thrpBuf[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms*Lt*2*Nsink]);
+	      if(GK_timeRank==src_rank) writeThrpBuf = &(thrpBuf[2*Mel*Nmoms*w + 2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its]);
+	      else writeThrpBuf = &(thrpBuf[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms]);
 
 	      herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, filespace, plist_id, writeThrpBuf);
               
@@ -3079,7 +3076,7 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 	
 	// CJL: If particle is a baryon, include a projection loop
 
-	if( HADRON != PIPLUS && HADRON != PIMINUS ){
+	if( HADRON != PION ){
 
 	  for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	    for(int part=0;part<2;part++){
@@ -3191,7 +3188,7 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 
 		    H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, start, NULL, ldims, NULL);
 
-		    tailBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms*Lt*2*Nsink]);
+		    tailBuf = &(((Float*)Thrp_oneD_HDF5[mu])[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its]);
 
 		    herr_t status = H5Dwrite(dset_id, DATATYPE_H5, mspace_id, dspace_id, H5P_DEFAULT, tailBuf);
 
@@ -3218,7 +3215,7 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 
 		  H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, start, NULL, ldims, NULL);
                 
-		  tailBuf = &(thrpBuf[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms*Lt*2*Nsink]);
+		  tailBuf = &(thrpBuf[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its]);
 
 		  herr_t status = H5Dwrite(dset_id, DATATYPE_H5, mspace_id, dspace_id, H5P_DEFAULT, tailBuf);
                 
@@ -3576,117 +3573,6 @@ writeThrp_ASCII(void *corrThp_local,
   free(GLcorrThp_local);
   free(GLcorrThp_noether);
   free(GLcorrThp_oneD);
-}
-
-//-CJL: Overloaded function to perform the contractions without 
-// writing the data for problems without projectors
-// Note: other contractFixSink() might also not need which projector 
-template<typename Float>
-void QKXTM_Contraction<Float>::
-contractFixSink(QKXTM_Propagator<Float> &seqProp,
-		QKXTM_Propagator<Float> &prop, 
-		QKXTM_Gauge<Float> &gauge, 
-		void *corrThp_local, void *corrThp_noether, 
-		void *corrThp_oneD, 
-		WHICHPARTICLE testParticle, 
-		int partflag, int isource, 
-		CORR_SPACE CorrSpace){
-  
-  if( typeid(Float) == typeid(float))  
-    printfQuda("contractFixSink: Will perform in single precision\n");
-  if( typeid(Float) == typeid(double)) 
-    printfQuda("contractFixSink: Will perform in double precision\n");
-  
-  // seq prop apply gamma5 and conjugate
-  seqProp.apply_gamma5();
-  seqProp.conjugate();
-
-  gauge.ghostToHost();
-  // communicate gauge
-  gauge.cpuExchangeGhost(); 
-  gauge.ghostToDevice();
-  comm_barrier();
-
-  prop.ghostToHost();
-  // communicate forward propagator
-  prop.cpuExchangeGhost(); 
-  prop.ghostToDevice();
-  comm_barrier();
-
-  seqProp.ghostToHost();
-  // communicate sequential propagator
-  seqProp.cpuExchangeGhost();
-  seqProp.ghostToDevice();
-  comm_barrier();
-
-  cudaTextureObject_t seqTex, fwdTex, gaugeTex;
-  seqProp.createTexObject(&seqTex);
-  prop.createTexObject(&fwdTex);
-  gauge.createTexObject(&gaugeTex);
-
-  if(CorrSpace==POSITION_SPACE){
-    for(int it = 0 ; it < GK_localL[3] ; it++)
-      run_fixSinkContractions((void*)corrThp_local, 
-			      (void*)corrThp_noether, 
-			      (void*)corrThp_oneD, 
-			      fwdTex, seqTex, gaugeTex, 
-			      testParticle, 
-			      partflag, it, isource, 
-			      sizeof(Float), CorrSpace);
-  }
-  else if(CorrSpace==MOMENTUM_SPACE){
-    Float *corrThp_local_local   = (Float*) calloc(GK_localL[3]*
-						   GK_Nmoms*16*2,
-						   sizeof(Float));
-
-    Float *corrThp_noether_local = (Float*) calloc(GK_localL[3]*
-						   GK_Nmoms*4*2,
-						   sizeof(Float));
-
-    Float *corrThp_oneD_local    = (Float*) calloc(GK_localL[3]*
-						   GK_Nmoms*16*4*2,
-						   sizeof(Float));
-    
-    if(corrThp_local_local == NULL || 
-       corrThp_noether_local == NULL || 
-       corrThp_oneD_local == NULL) 
-      errorQuda("contractFixSink: Cannot allocate memory for three-point function contract buffers.\n");
-    
-    for(int it = 0 ; it < GK_localL[3] ; it++)
-      run_fixSinkContractions(corrThp_local_local, 
-			      corrThp_noether_local, 
-			      corrThp_oneD_local, 
-			      fwdTex, seqTex, gaugeTex, 
-			      testParticle, 
-			      partflag, it, isource, 
-			      sizeof(Float), CorrSpace);
-
-    MPI_Datatype DATATYPE;
-    if( typeid(Float) == typeid(float))  DATATYPE = MPI_FLOAT;
-    if( typeid(Float) == typeid(double)) DATATYPE = MPI_DOUBLE;
-    
-    MPI_Reduce(corrThp_local_local, (Float*)corrThp_local, 
-	       GK_localL[3]*GK_Nmoms*16*2, DATATYPE, 
-	       MPI_SUM, 0, GK_spaceComm);
-
-    MPI_Reduce(corrThp_noether_local, (Float*)corrThp_noether, 
-	       GK_localL[3]*GK_Nmoms*4*2, DATATYPE, 
-	       MPI_SUM, 0, GK_spaceComm);
-
-    MPI_Reduce(corrThp_oneD_local, (Float*)corrThp_oneD, 
-	       GK_localL[3]*GK_Nmoms*16*4*2, DATATYPE, 
-	       MPI_SUM, 0, GK_spaceComm);
-    
-    free(corrThp_local_local);
-    free(corrThp_noether_local);
-    free(corrThp_oneD_local);
-  }
-  else errorQuda("contractFixSink: Supports only POSITION_SPACE and MOMENTUM_SPACE!\n");
-
-  seqProp.destroyTexObject(seqTex);
-  prop.destroyTexObject(fwdTex);
-  gauge.destroyTexObject(gaugeTex);
-
 }
 
 //-C.K. Overloaded function to perform the contractions without 

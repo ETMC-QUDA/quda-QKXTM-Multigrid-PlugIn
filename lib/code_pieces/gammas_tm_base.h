@@ -1,21 +1,27 @@
-  for(int mu = 0 ; mu < 4 ; mu++)
+
+for(int mu = 0 ; mu < 4 ; mu++)
     for(int nu = 0 ; nu < 4 ; nu++){
       gamma[mu][nu].x = 0 ; gamma[mu][nu].y = 0;
     }
 
 switch( flag ){
- case 0: // 1 -> ig5 or -ig5
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+ case 0: // 1
+   switch( TESTPARTICLE ){
+   case PROTON: // 1 -> ig5 or -ig5
+     if(partFlag == 1){
        gamma[0][2].y=1.; gamma[1][3].y=1.; gamma[2][0].y=1.; gamma[3][1].y=1.;}
      else{
        gamma[0][2].y=-1.; gamma[1][3].y=-1.; gamma[2][0].y=-1.; gamma[3][1].y=-1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // 1 -> -ig5 or ig5
+     if(partFlag == 1){
        gamma[0][2].y=-1.; gamma[1][3].y=-1.; gamma[2][0].y=-1.; gamma[3][1].y=-1.;}
      else{
        gamma[0][2].y=1.; gamma[1][3].y=1.; gamma[2][0].y=1.; gamma[3][1].y=1.;}
+     break;
+   case PION:  // 1 -> ig5
+       gamma[0][2].y=1.; gamma[1][3].y=1.; gamma[2][0].y=1.; gamma[3][1].y=1.;
+     break;
    }
    break;
  case 1: // g1
@@ -30,18 +36,23 @@ switch( flag ){
  case 4: // g4 
    gamma[0][0].x=1.; gamma[1][1].x=1.; gamma[2][2].x=-1.; gamma[3][3].x=-1.;
    break;
- case 5: // g5 -> i or -i
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+ case 5: // g5
+   switch( TESTPARTICLE ){
+   case PROTON: // g5 -> i or -i
+     if(partFlag == 1){
        gamma[0][0].y=1.; gamma[1][1].y=1.; gamma[2][2].y=1.; gamma[3][3].y=1.;}
      else{
        gamma[0][0].y=-1.; gamma[1][1].y=-1.; gamma[2][2].y=-1.; gamma[3][3].y=-1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // g5 -> -i or i
+     if(partFlag == 1){
        gamma[0][0].y=-1.; gamma[1][1].y=-1.; gamma[2][2].y=-1.; gamma[3][3].y=-1.;}
      else{
        gamma[0][0].y=1.; gamma[1][1].y=1.; gamma[2][2].y=1.; gamma[3][3].y=1.;}
+     break;
+   case PION: // g5 -> i
+       gamma[0][0].y=1.; gamma[1][1].y=1.; gamma[2][2].y=1.; gamma[3][3].y=1.;
+     break;
    }
    break;
  case 6: // g5g1
@@ -56,93 +67,118 @@ switch( flag ){
  case 9: // g5g4
    gamma[0][2].x=-1.; gamma[1][3].x=-1.; gamma[2][0].x=1.; gamma[3][1].x=1.;
    break;
- case 10: // 0.5*g5[g1,g2]
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+ case 10: // -0.5*i[g1,g2]
+   switch( TESTPARTICLE ){
+   case PROTON: // -0.5*i[g1,g2] -> +\- 0.5*g5[g1,g2]
+     if(partFlag == 1){
        gamma[0][2].y=1.; gamma[1][3].y=-1.; gamma[2][0].y=1.; gamma[3][1].y=-1.;}
      else{
        gamma[0][2].y=-1.; gamma[1][3].y=1.; gamma[2][0].y=-1.; gamma[3][1].y=+1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // -0.5*i[g1,g2] -> -\+ 0.5*g5[g1,g2]
+     if(partFlag == 1){
        gamma[0][2].y=-1.; gamma[1][3].y=1.; gamma[2][0].y=-1.; gamma[3][1].y=+1.;}
      else{
        gamma[0][2].y=1.; gamma[1][3].y=-1.; gamma[2][0].y=1.; gamma[3][1].y=-1.;}
+     break;
+   case PION: // -0.5*i[g1,g2] -> 0.5*g5[g1,g2]
+       gamma[0][2].y=1.; gamma[1][3].y=-1.; gamma[2][0].y=1.; gamma[3][1].y=-1.;
+     break;
    }
    break;
  case 11: // 0.5*g5[g1,g3]
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+   switch( TESTPARTICLE ){
+   case PROTON: // 0.5*g5[g1,g3] -> +\- 0.5*g5[g1,g3]
+     if(partFlag == 1){
        gamma[0][3].x=-1.; gamma[1][2].x=1.; gamma[2][1].x=-1.; gamma[3][0].x=1.;}
      else{
        gamma[0][3].x=1.; gamma[1][2].x=-1.; gamma[2][1].x=1.; gamma[3][0].x=-1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // 0.5*g5[g1,g3] -> -/+ 0.5*g5[g1,g3]
+     if(partFlag == 1){
        gamma[0][3].x=1.; gamma[1][2].x=-1.; gamma[2][1].x=1.; gamma[3][0].x=-1.;}
      else{
        gamma[0][3].x=-1.; gamma[1][2].x=1.; gamma[2][1].x=-1.; gamma[3][0].x=1.;}
+     break;
+   case PION: // 0.5*g5[g1,g3] -> 0.5*g5[g1,g3]
+       gamma[0][3].x=-1.; gamma[1][2].x=1.; gamma[2][1].x=-1.; gamma[3][0].x=1.;
+     break;
    }
    break;
-
  case 12: // 0.5*g5[g2,g3]
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+   switch( TESTPARTICLE ){
+   case PROTON: // 0.5*g5[g2,g3] -> +/- 0.5*g5[g2,g3]
+     if(partFlag == 1){
        gamma[0][3].y=1.; gamma[1][2].y=1.; gamma[2][1].y=1.; gamma[3][0].y=1.;}
      else{
        gamma[0][3].y=-1.; gamma[1][2].y=-1.; gamma[2][1].y=-1.; gamma[3][0].y=-1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // 0.5*g5[g2,g3] -> -/+ 0.5*g5[g2,g3]
+     if(partFlag == 1){
        gamma[0][3].y=-1.; gamma[1][2].y=-1.; gamma[2][1].y=-1.; gamma[3][0].y=-1.;}
      else{
        gamma[0][3].y=1.; gamma[1][2].y=1.; gamma[2][1].y=1.; gamma[3][0].y=1.;}
+     break;
+   case PION: // 0.5*g5[g2,g3] -> 0.5*g5[g2,g3]
+       gamma[0][3].y=1.; gamma[1][2].y=1.; gamma[2][1].y=1.; gamma[3][0].y=1.;
+     break;
    }
    break;
-
  case 13: // 0.5*g5[g4,g1]
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+   switch( TESTPARTICLE ){
+   case PROTON: // 0.5*g5[g4,g1] -> +/- 0.5*g5[g4,g1]
+     if(partFlag == 1){
        gamma[0][1].y=1.; gamma[1][0].y=1.; gamma[2][3].y=1.; gamma[3][2].y=1.;}
      else{
        gamma[0][1].y=-1.; gamma[1][0].y=-1.; gamma[2][3].y=-1.; gamma[3][2].y=-1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // 0.5*g5[g4,g1] -> -/+ 0.5*g5[g4,g1]
+     if(partFlag == 1){
        gamma[0][1].y=-1.; gamma[1][0].y=-1.; gamma[2][3].y=-1.; gamma[3][2].y=-1.;}
      else{
        gamma[0][1].y=1.; gamma[1][0].y=1.; gamma[2][3].y=1.; gamma[3][2].y=1.;}
+     break;
+   case PION: // 0.5*g5[g4,g1] -> 0.5*g5[g4,g1]
+       gamma[0][1].y=1.; gamma[1][0].y=1.; gamma[2][3].y=1.; gamma[3][2].y=1.;
+     break;
    }
    break;
-
  case 14: // 0.5*g5[g4,g2]
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+   switch( TESTPARTICLE ){
+   case PROTON: // 0.5*g5[g4,g2] -> +/- 0.5*g5[g4,g2]
+     if(partFlag == 1){
        gamma[0][1].x=1.; gamma[1][0].x=-1.; gamma[2][3].x=1.; gamma[3][2].x=-1.;}
      else{
        gamma[0][1].x=-1.; gamma[1][0].x=1.; gamma[2][3].x=-1.; gamma[3][2].x=1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // 0.5*g5[g4,g2] -> -/+ 0.5*g5[g4,g2]
+     if(partFlag == 1){
        gamma[0][1].x=-1.; gamma[1][0].x=1.; gamma[2][3].x=-1.; gamma[3][2].x=1.;}
      else{
        gamma[0][1].x=1.; gamma[1][0].x=-1.; gamma[2][3].x=1.; gamma[3][2].x=-1.;}
+     break;
+   case PION: // 0.5*g5[g4,g2] -> 0.5*g5[g4,g2]
+       gamma[0][1].x=1.; gamma[1][0].x=-1.; gamma[2][3].x=1.; gamma[3][2].x=-1.;
+     break;
    }
-     
    break;
-
  case 15: // 0.5*g5[g4,g3]
-   if(partFlag == 1){
-     if(TESTPARTICLE == PROTON){
+   switch( TESTPARTICLE ){
+   case PROTON: // 0.5*g5[g4,g3] -> +/- 0.5*g5[g4,g3]
+     if(partFlag == 1){
        gamma[0][0].y=1.; gamma[1][1].y=-1.; gamma[2][2].y=1.; gamma[3][3].y=-1.;}
      else{
        gamma[0][0].y=-1.; gamma[1][1].y=1.; gamma[2][2].y=-1.; gamma[3][3].y=1.;}
-   }
-   else{
-     if(TESTPARTICLE == PROTON){
+     break;
+   case NEUTRON: // 0.5*g5[g4,g3] -> -/+ 0.5*g5[g4,g3]
+     if(partFlag == 1){
        gamma[0][0].y=-1.; gamma[1][1].y=1.; gamma[2][2].y=-1.; gamma[3][3].y=1.;}
      else{
        gamma[0][0].y=1.; gamma[1][1].y=-1.; gamma[2][2].y=1.; gamma[3][3].y=-1.;}
+     break;
+   case PION: // 0.5*g5[g4,g3] -> 0.5*g5[g4,g3]
+       gamma[0][0].y=1.; gamma[1][1].y=-1.; gamma[2][2].y=1.; gamma[3][3].y=-1.;
+     break;
    }
    break;
  case 16: // 1 + g1

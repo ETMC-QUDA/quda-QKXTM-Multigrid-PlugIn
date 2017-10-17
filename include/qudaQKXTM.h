@@ -493,6 +493,13 @@ void calcMG_threepTwop_EvenOdd(void **gaugeSmeared, void **gauge,
 			       char *filename_twop, char *filename_threep,
 			       quda::WHICHPARTICLE NUCLEON);
 
+void calcMG_threepTwop_Mesons(void **gaugeSmeared, void **gauge,
+			       QudaGaugeParam *gauge_param,
+			       QudaInvertParam *param,
+			       quda::qudaQKXTMinfo info,
+			       char *filename_twop, char *filename_threep,
+			       quda::WHICHPARTICLE MESON);
+
 /////////////////////////////
 // MG with Exact Deflation //
 /////////////////////////////

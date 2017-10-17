@@ -1344,6 +1344,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   double tx1,tx2,summ_tx12=0.; // needed to time gaussian smearing routines
   double tx3,tx4,summ_tx34=0.; // needed to time just the inversion time
   char fname[256];
+  WHICHPROJECTOR PID = NOPROJ;
   sprintf(fname, "calcMG_threepTwop_Meson");
 
   //======================================================================//
@@ -1446,20 +1447,9 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   double *corrThp_local   = (double*)calloc(alloc_size  *16*2,sizeof(double));
   double *corrThp_noether = (double*)calloc(alloc_size*4   *2,sizeof(double));
   double *corrThp_oneD    = (double*)calloc(alloc_size*4*16*2,sizeof(double));
-  /*
-  double *corrThp_local_minus   = (double*)calloc(alloc_size  *16*2,sizeof(double));
-  double *corrThp_noether_minus = (double*)calloc(alloc_size*4   *2,sizeof(double));
-  double *corrThp_oneD_minus    = (double*)calloc(alloc_size*4*16*2,sizeof(double));
-  */
   if(corrThp_local == NULL ||
      corrThp_noether == NULL || 
      corrThp_oneD == NULL
-    /*
-     ||
-     corrThp_local_minus == NULL || 
-     corrThp_noether_minus == NULL ||      
-     corrThp_oneD_minus == NULL 
-    */
      )
     errorQuda("%s: Cannot allocate memory for Three-point function write Buffers.", fname);
   
@@ -1481,18 +1471,6 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
     Thrp_oneD_HDF5[mu] = 
       (double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
   }   
-  /*
-  double *Thrp_local_HDF5_minus   = 
-    (double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
-  double *Thrp_noether_HDF5_minus = 
-    (double*) malloc(2* 4*alloc_size*2*info.Ntsink*sizeof(double));
-  double **Thrp_oneD_HDF5_minus   = 
-    (double**) malloc(4*sizeof(double*));
-  for(int mu=0;mu<4;mu++){
-    Thrp_oneD_HDF5_minus[mu] = 
-      (double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
-  }   
-  */
   
   double *Twop_mesons_HDF5  = 
     (double*) malloc(2   *alloc_size*2*N_MESONS *sizeof(double));
@@ -1914,27 +1892,30 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	}
 
 
-	/////////////////////////////////////////////
-	// Sequential propagator for part 1: pion+ //
-	/////////////////////////////////////////////
+	//////////////////////////////////////
+	// Sequential propagator for part 1 //
+	//////////////////////////////////////
 
 
 	if( MESON == PION ) printfQuda("Sequential Inversions, flavor %s:\n", "up");
 	else errorQuda("Error: Meson type not supported!");
+
 	t1 = MPI_Wtime();
 	for(int nu = 0 ; nu < 4 ; nu++)
 	  for(int c2 = 0 ; c2 < 3 ; c2++){
 	    t3 = MPI_Wtime();
 	    K_temp->zero_device();
+
 	    if( MESON == PION ) {
 	      //Ensure mu is -ve:
 	      if(param->mu > 0) param->mu *= -1.0;		
 	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		//-CJL: We use the up propogator for the pion+ so that we get back
 		// anti-down after we conjugate during the contractions
-		K_temp->CopyPropogator3D(*K_prop3d_up,my_fixSinkTime,nu,c2);
+		K_temp->copyPropagator3D(*K_prop3D_up,my_fixSinkTime,nu,c2);
 	    }
 	    else errorQuda("Error: Meson type not supported!");
+
 	    comm_barrier();
 	    K_temp->apply_gamma5();
 	    K_vector->castFloatToDouble(*K_temp);
@@ -1947,6 +1928,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 	  
 	    if(MESON == PION){
+
 	      diracDN.prepare(in,out,*x,*b,param->solution_type);
 	      //Ensure mu is -ve
 	      if(param->mu > 0) param->mu *= -1.0;
@@ -1977,8 +1959,8 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      
 	    t4 = MPI_Wtime();
 	      
-	    printfQuda("Inversion time for seq prop part 1 = %d, source = %d at sink-source = %d, projector %s is: %f sec\n",
-		       nu*3+c2,isource,info.tsinkSource[its],proj_str,t4-t3);
+	    printfQuda("Inversion time for seq prop part 1 = %d, source = %d at sink-source = %d, is: %f sec\n",
+		       nu*3+c2,isource,info.tsinkSource[its],t4-t3);
 	  }
 	t2 = MPI_Wtime();
 	switch( MESON ) {
@@ -1990,28 +1972,21 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 	  break; //CJL: Add more here to support kaon
 	}
+
 	  
 	/////////////////////////////
 	// Contractions for part 1 //
 	/////////////////////////////
 
+
 	t1 = MPI_Wtime();
 	if(MESON == PION) {
-	  // Contractions for the pion+
+
 	  K_contract->contractFixSink(*K_seqProp, *K_prop_up, 
 				      *K_gaugeContractions,
 				      corrThp_local, corrThp_noether, 
-				      corrThp_oneD, MESON, 1, 
+				      corrThp_oneD, PID, MESON, 1, 
 				      isource, CorrSpace);
-	  /*
-	  // Contractions for the pion-
-	  K_contract->contractFixSink(*K_seqProp, *K_prop_up, 
-				      *K_gaugeContractions,
-				      corrThp_local_minus, corrThp_noether_minus, 
-				      corrThp_oneD_minus, WHICHPARTICLE PIMINUS, 1, 
-				      isource, CorrSpace);
-	  // Conjugate to get pion- threep
-	  */
 	}
 	else errorQuda("Error: Meson type not supported!");
 	t2 = MPI_Wtime();
@@ -2023,19 +1998,21 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 		     "pion+","up",t2-t1);
 
 	  break; //CJL: Add more here to support kaon
+	default:
+
+	  errorQuda("Error: Meson type not supported!");
+
+	  break;
 	}
 	  
 	t1 = MPI_Wtime();
 	if( CorrFileFormat==ASCII_FORM ){
-	  K_contract_plus->writeThrp_ASCII(corrThp_local, corrThp_noether, 
-				      corrThp_oneD, MESON, 1, 
-				      filename_threep_base, isource, 
-				      info.tsinkSource[its], CorrSpace);
-	  K_contract_minus->writeThrp_ASCII(corrThp_local, corrThp_noether, 
+	  K_contract->writeThrp_ASCII(corrThp_local, corrThp_noether, 
 				      corrThp_oneD, MESON, 1, 
 				      filename_threep_base, isource, 
 				      info.tsinkSource[its], CorrSpace);
 	  t2 = MPI_Wtime();
+
 	  switch( MESON ) {
 	  
 	  case PION:
@@ -2048,7 +2025,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  }
 	}
 	else if( CorrFileFormat==HDF5_FORM ){
-	  int uOrd_plus;
+	  int uOrd;
 	  if(MESON == PION ) uOrd = 0;
 	    
 	  K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_HDF5, 
@@ -2067,33 +2044,15 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 					   uOrd, its, info.Ntsink, 0, 
 					   1, THRP_ONED, CorrSpace,
 					   HighMomForm);
-	  /*
-	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_HDF5_minus, 
-					 (void*)corrThp_local, 0, 
-					 uOrd, its, info.Ntsink, 0, 
-					 1, THRP_LOCAL, CorrSpace,
-					 HighMomForm);
-	  K_contract->copyThrpToHDF5_Buf((void*)Thrp_noether_HDF5_minus, 
-					 (void*)corrThp_noether, 0, 
-					 uOrd, its, info.Ntsink, 0, 
-					 1,THRP_NOETHER,CorrSpace,
-					 HighMomForm);
-	  for(int mu = 0;mu<4;mu++)
-	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_oneD_HDF5_minus[mu],
-					   (void*)corrThp_oneD, mu, 
-					   uOrd, its, info.Ntsink, 0, 
-					   1, THRP_ONED, CorrSpace,
-					   HighMomForm);
-	  */
 	  t2 = MPI_Wtime();
 	  
 	  printfQuda("TIME_REPORT - 3-point function for flavor %s copied to HDF5 write buffers in %f sec.\n","up",t2-t1);
 
 	}
 	  
-	/////////////////////////////////////////////
-	// Sequential propagator for part 2: pion- //
-	/////////////////////////////////////////////
+	//////////////////////////////////////
+	// Sequential propagator for part 2 //
+	//////////////////////////////////////
 
 	switch( MESON ) {
 	  
@@ -2113,11 +2072,12 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      //Ensure mu is +ve
 	      if(param->mu < 0) param->mu *= -1.0;		
 	      if( ( my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
-		K_temp->CopyPropogator3D(*K_prop3d_down,my_fixSinkTime,nu,c2);
+		K_temp->copyPropagator3D(*K_prop3D_down,my_fixSinkTime,nu,c2);
 	      // We use the down propogator for the pion- so that we get back
 	      // anti-up after we conjugate during the contractions
 	    }
 	    else errorQuda("Error: Meson type not supported!");
+
 	    comm_barrier();
 	    K_temp->apply_gamma5();
 	    K_vector->castFloatToDouble(*K_temp);
@@ -2172,6 +2132,11 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 
 	  break; //CJL: Add more here to support kaon
+	default:
+
+	  errorQuda("Error: Meson type not supported!");
+
+	  break;
 	}
 
 	/////////////////////////////
@@ -2183,15 +2148,8 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  K_contract->contractFixSink(*K_seqProp, *K_prop_down, 
 				      *K_gaugeContractions,
 				      corrThp_local, corrThp_noether, 
-				      corrThp_oneD, MESON, 2, 
+				      corrThp_oneD, PID, MESON, 2, 
 				      isource, CorrSpace);
-	  /*
-	  K_contract->contractFixSink(*K_seqProp, *K_prop_down, 
-				      *K_gaugeContractions,
-				      corrThp_local, corrThp_noether, 
-				      corrThp_oneD, WHICHPARTICLE PIPLUS, 2, 
-				      isource, CorrSpace);
-	  */
 	}
 	else errorQuda("Error: Meson type not supported!");
 	t2 = MPI_Wtime();
@@ -2202,6 +2160,11 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  printfQuda("TIME_REPORT - Three-point Contractions, flavor %s: %f sec\n", "dn",t2-t1);
 
 	  break; //CJL: Add more here to support kaon
+	default:
+
+	  errorQuda("Error: Meson type not supported!");
+
+	  break;
 	}
 
 	t1 = MPI_Wtime();
@@ -2211,6 +2174,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 				      filename_threep_base, isource, 
 				      info.tsinkSource[its], CorrSpace);
 	  t2 = MPI_Wtime();
+
 	  switch( MESON ) {
 	  
 	  case PION:
@@ -2219,6 +2183,11 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 		       isource,info.tsinkSource[its],"dn",t2-t1);
 
 	    break; //CJL: Add more here to support kaon
+	  default:
+
+	    errorQuda("Error: Meson type not supported!");
+
+	    break;
 	  }
 	}
 	else if( CorrFileFormat==HDF5_FORM ){
@@ -2269,6 +2238,11 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 		       "dn",t2-t1);
 
 	    break; //CJL: Add more here to support kaon
+	  default:
+
+	    errorQuda("Error: Meson type not supported!");
+
+	    break;
 	  }
 	}	  
       }
@@ -2281,13 +2255,25 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	else if (CorrSpace==POSITION_SPACE) asprintf(&str,"PosSpace");
 
 	t1 = MPI_Wtime();
-	asprintf(&filename_threep_base,"%s_%s_%s_SS.%02d.%02d.%02d.%02d.h5",
-		 filename_threep, 
-		 "pion", str, 
-		 GK_sourcePosition[isource][0],
-		 GK_sourcePosition[isource][1],
-		 GK_sourcePosition[isource][2],
-		 GK_sourcePosition[isource][3]);
+	switch( MESON ) {
+	  
+	case PION:
+
+	  asprintf(&filename_threep_base,"%s_%s_%s_SS.%02d.%02d.%02d.%02d.h5",
+		   filename_threep, 
+		   "pion", str, 
+		   GK_sourcePosition[isource][0],
+		   GK_sourcePosition[isource][1],
+		   GK_sourcePosition[isource][2],
+		   GK_sourcePosition[isource][3]);
+
+	  break; //CJL: Add more here to support kaon
+	default:
+
+	  errorQuda("Error: Meson type not supported!");
+
+	  break;
+	}
 	printfQuda("\nThe three-point function HDF5 filename is: %s\n",
 		   filename_threep_base);
 	
@@ -2299,7 +2285,6 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	
 	t2 = MPI_Wtime();
 	printfQuda("TIME_REPORT - Done: Three-point function for source-position = %d written in HDF5 format in %f sec.\n",isource,t2-t1);
-
       }
       
       printfQuda("\n");

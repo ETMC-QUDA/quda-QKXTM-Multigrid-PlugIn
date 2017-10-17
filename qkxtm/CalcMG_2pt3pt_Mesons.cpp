@@ -620,7 +620,6 @@ int main(int argc, char **argv)
     fscanf(ptr_tsink,"%d\n", &(info.tsinkSource[it]));
   }
   fclose(ptr_tsink);
-  
   // Determine whether to write the correlation functions in position or 
   // momentum space
   if( strcmp(corr_write_space,"MOMENTUM")==0 || 
@@ -745,7 +744,7 @@ int main(int argc, char **argv)
 
   calcMG_threepTwop_Mesons(gauge_APE, gaugeContract, &gauge_param,
 			    &inv_param, info, twop_filename,
-			    threep_filename, NEUTRON);
+			   threep_filename, PION);
 
   // free the multigrid solvers
   destroyMultigridQuda(mg_preconditionerUP);

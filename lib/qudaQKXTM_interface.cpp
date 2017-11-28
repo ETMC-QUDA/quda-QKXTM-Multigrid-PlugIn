@@ -1406,7 +1406,7 @@ void calcLowModeProjection(QudaInvertParam *evInvParam,
 //========= Function which calculates loops using exact Deflation=========//
 //========================================================================//
 
-void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette, 
+void calc_loops(void **gaugeToPlaquette, 
 				  QudaInvertParam *EvInvParam, 
 				  QudaInvertParam *param, 
 				  QudaGaugeParam *gauge_param,
@@ -1416,7 +1416,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 
   double t1,t2,t3,t4,t5;
   char fname[256];
-  sprintf(fname, "calcMG_loop_wOneD_wExact");
+  sprintf(fname, "calc_loops");
   
   //======================================================================//
   //================= P A R A M E T E R   C H E C K S ====================//

@@ -787,7 +787,7 @@ int main(int argc, char **argv)
   //return 0;
 
   //Launch calculation.
-  calcMG_loop_wOneD_wExact(gauge_Plaq, &EVinv_param, &inv_param, 
+  calc_loops(gauge_Plaq, &EVinv_param, &inv_param, 
 			   &gauge_param, arpackInfo, loopInfo, info);
   
   // free the multigrid solver

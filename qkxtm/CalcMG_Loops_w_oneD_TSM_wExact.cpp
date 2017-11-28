@@ -575,6 +575,7 @@ int main(int argc, char **argv)
   info.lL[3] = tdim;
   info.Q_sq = Q_sq;
   info.isEven = isEven;
+  info.Nsources=0;
   if( strcmp(source_type,"random")==0 ) info.source_type = RANDOM;
   else if( strcmp(source_type,"unity")==0 ) info.source_type = UNITY;
   else{

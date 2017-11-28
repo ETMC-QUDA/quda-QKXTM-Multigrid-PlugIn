@@ -77,13 +77,6 @@ if(QKXTM_2FLAVMG)
   target_link_libraries(CalcMG_2pt3pt_EvenOdd ${QKXTM_LIBS})
 endif()  
 
-#CalcMG_Loops_w_oneD_TSM_EvenOdd (DEPRECATED)
-# This function will calculate the All-to-All propagator with a covariant 
-# derivate, and correlation functions thereof. It employs undiluted 
-# stochastic sources, Even/Odd preconditioning, functionality for using 
-# the Trunacted Solver Method, as well as QUDA's MG solver routines.
-#cuda_add_executable(CalcMG_Loops_w_oneD_TSM_EvenOdd CalcMG_Loops_w_oneD_TSM_EvenOdd.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-#target_link_libraries(CalcMG_Loops_w_oneD_TSM_EvenOdd ${QKXTM_LIBS})
 
 #MG_Bench
 # This function will invert a single flavour, Gaussian smeared source
@@ -93,7 +86,7 @@ target_link_libraries(MG_Bench ${QKXTM_LIBS})
 
 if(QKXTM_ARPACK)
 
-#CalcMG_Loops_w_oneD_TSM_wExact
+#Calc_Loops
 # This function will calculate the All-to-All propagator with a covariant 
 # derivate, and correlation functions thereof. It calculates the 
 # eigenvectors of the full operator and the corresponding correlations 
@@ -101,8 +94,8 @@ if(QKXTM_ARPACK)
 # undiluted stochastic sources, Even/Odd preconditioning, functionality 
 # for using the Trunacted Solver Method, as well as QUDA's MG solver 
 # routines for the remainder.
-cuda_add_executable(CalcMG_Loops_w_oneD_TSM_wExact CalcMG_Loops_w_oneD_TSM_wExact.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-target_link_libraries(CalcMG_Loops_w_oneD_TSM_wExact ${QKXTM_LIBS})
+cuda_add_executable(Calc_Loops Calc_Loops.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
+target_link_libraries(Calc_Loops ${QKXTM_LIBS})
 
 #CalcLowModeProjection
 # Ths function will calculate the low modes of the massles M^{dagger}M 

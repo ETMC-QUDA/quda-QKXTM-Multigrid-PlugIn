@@ -50,6 +50,8 @@ extern QudaPrecision prec_precondition;
 extern QudaPrecision prec_null;
 extern QudaReconstructType link_recon_sloppy;
 extern QudaReconstructType link_recon_precondition;
+extern QudaInverterType  inv_type;
+extern QudaInverterType  precon_type;
 extern double mass;  // mass of Dirac operator
 extern double kappa; // kappa of Dirac operator
 extern double mu;
@@ -447,12 +449,18 @@ void setInvertParam(QudaInvertParam &inv_param) {
     inv_param.matpc_type = QUDA_MATPC_ODD_ODD;
   }
   
-  inv_param.inv_type = QUDA_GCR_INVERTER;
+  inv_param.inv_type = inv_type;
 
   inv_param.verbosity = QUDA_VERBOSE;
   inv_param.verbosity_precondition = mg_verbosity[0];
 
-  inv_param.inv_type_precondition = QUDA_MG_INVERTER;
+  if(inv_type == QUDA_GCR_INVERTER)
+    inv_param.inv_type_precondition = QUDA_MG_INVERTER;
+  else if(inv_type == QUDA_CG_INVERTER)
+    inv_param.inv_type_precondition = precon_type;
+  else
+    errorQuda("inv_type not supported yet");
+
   inv_param.pipeline = pipeline;
   inv_param.gcrNkrylov = gcrNkrylov;
   inv_param.tol = tol;
@@ -501,8 +509,16 @@ int main(int argc, char **argv)
 {
 
   using namespace quda;
+  // printfQuda("1\n");
+  // fflush(stdout);
 
+
+  // printfQuda("2\n");
+  // fflush(stdout);
+  // printfQuda("3\n");
+  // fflush(stdout);
   // We give here the default value to some of the array
+  //  if(inv_type == QUDA_GCR_INVERTER)
   for(int i =0; i<QUDA_MAX_MG_LEVEL; i++) {
     mg_verbosity[i] = QUDA_SILENT;
     setup_inv[i] = QUDA_BICGSTAB_INVERTER;
@@ -517,13 +533,15 @@ int main(int argc, char **argv)
     coarse_solver_maxiter[i] = 10;
   }
 
+
   for (int i = 1; i < argc; i++){
     if(process_command_line_option(argc, argv, &i) == 0){
       continue;
     } 
-    printfQuda("ERROR: Invalid option:%s\n", argv[i]);
+    printf("ERROR: Invalid option:%s\n", argv[i]);
     usage(argv);
   }
+
 
   if (prec_sloppy == QUDA_INVALID_PRECISION) prec_sloppy = prec;
   if (prec_precondition == QUDA_INVALID_PRECISION) prec_precondition = prec_sloppy;
@@ -531,13 +549,23 @@ int main(int argc, char **argv)
   if (link_recon_sloppy == QUDA_RECONSTRUCT_INVALID) link_recon_sloppy = link_recon;
   if (link_recon_precondition == QUDA_RECONSTRUCT_INVALID) link_recon_precondition = link_recon_sloppy;
 
+
   // initialize QMP/MPI, QUDA comms grid and RNG (test_util.cpp)
   initComms(argc, argv, gridsize_from_cmdline);
-
   // call srand() with a rank-dependent seed
   initRand();
 
   display_test_info();
+
+  if(inv_type == QUDA_CG_INVERTER){
+    printfQuda("Will use CG inverter\n");
+  }
+  else if(inv_type == QUDA_GCR_INVERTER){
+    printfQuda("Will use GCR inverter with MG\n");
+  }
+  else{
+    errorQuda("This inv_type is not supported\n");
+  }
 
   //QKXTM: qkxtm specific inputs
   //--------------------------------------------------------------------
@@ -575,6 +603,7 @@ int main(int argc, char **argv)
   info.lL[3] = tdim;
   info.Q_sq = Q_sq;
   info.isEven = isEven;
+  info.Nsources=0;
   if( strcmp(source_type,"random")==0 ) info.source_type = RANDOM;
   else if( strcmp(source_type,"unity")==0 ) info.source_type = UNITY;
   else{
@@ -658,14 +687,20 @@ int main(int argc, char **argv)
     printfQuda("This routine is for twisted mass or twisted clover operators only\n");
     exit(-1);
   }
+
   
   QudaGaugeParam gauge_param = newQudaGaugeParam();
   setGaugeParam(gauge_param);
 
-  QudaInvertParam mg_inv_param = newQudaInvertParam();
-  QudaMultigridParam mg_param = newQudaMultigridParam();
-  mg_param.invert_param = &mg_inv_param;
-  setMultigridParam(mg_param);
+
+  QudaInvertParam mg_inv_param;
+  QudaMultigridParam mg_param;
+  if(inv_type == QUDA_GCR_INVERTER){
+    mg_inv_param = newQudaInvertParam();
+    mg_param = newQudaMultigridParam();
+    mg_param.invert_param = &mg_inv_param;
+    setMultigridParam(mg_param);
+  }
 
   QudaInvertParam inv_param = newQudaInvertParam();
   setInvertParam(inv_param);
@@ -725,8 +760,9 @@ int main(int argc, char **argv)
 
   // this line ensures that if we need to construct the clover inverse 
   // (in either the smoother or the solver) we do so
-  if (mg_param.smoother_solve_type[0] == QUDA_DIRECT_PC_SOLVE || 
-      solve_type == QUDA_DIRECT_PC_SOLVE) inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
+  if(inv_type == QUDA_GCR_INVERTER)
+    if (mg_param.smoother_solve_type[0] == QUDA_DIRECT_PC_SOLVE || 
+	solve_type == QUDA_DIRECT_PC_SOLVE) inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
   
   printfQuda("Constructing clover field\n");
   if (dslash_type == QUDA_TWISTED_CLOVER_DSLASH) 
@@ -735,17 +771,28 @@ int main(int argc, char **argv)
   
   // restore actual solve_type we want to do
   inv_param.solve_type = solve_type; 
+  if(inv_type == QUDA_CG_INVERTER)
+    if( (solve_type != QUDA_NORMOP_PC_SOLVE) && (solve_type != QUDA_NORMOP_SOLVE) )
+      errorQuda("CG solver needs a normalized equation to solve");
 
   // setup the multigrid solver.
-  void *mg_preconditioner = newMultigridQuda(&mg_param);
-  inv_param.preconditioner = mg_preconditioner;
+  void *mg_preconditioner = NULL;
+  if(inv_type == QUDA_GCR_INVERTER){
+    mg_preconditioner=newMultigridQuda(&mg_param);
+    inv_param.preconditioner = mg_preconditioner;
+  }
+
+  //  endQuda();
+  //finalizeComms();
+  //return 0;
 
   //Launch calculation.
-  calcMG_loop_wOneD_wExact(gauge_Plaq, &EVinv_param, &inv_param, 
+  calc_loops(gauge_Plaq, &EVinv_param, &inv_param, 
 			   &gauge_param, arpackInfo, loopInfo, info);
   
   // free the multigrid solver
-  destroyMultigridQuda(mg_preconditioner);
+  if(inv_type == QUDA_GCR_INVERTER)
+    destroyMultigridQuda(mg_preconditioner);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_TWISTED_CLOVER_DSLASH) freeCloverQuda();

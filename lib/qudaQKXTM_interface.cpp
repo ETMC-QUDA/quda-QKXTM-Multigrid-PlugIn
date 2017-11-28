@@ -1406,7 +1406,7 @@ void calcLowModeProjection(QudaInvertParam *evInvParam,
 //========= Function which calculates loops using exact Deflation=========//
 //========================================================================//
 
-void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette, 
+void calc_loops(void **gaugeToPlaquette, 
 				  QudaInvertParam *EvInvParam, 
 				  QudaInvertParam *param, 
 				  QudaGaugeParam *gauge_param,
@@ -1416,7 +1416,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 
   double t1,t2,t3,t4,t5;
   char fname[256];
-  sprintf(fname, "calcMG_loop_wOneD_wExact");
+  sprintf(fname, "calc_loops");
   
   //======================================================================//
   //================= P A R A M E T E R   C H E C K S ====================//
@@ -1482,8 +1482,8 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
     errorQuda("%s: Inconsistency between operator types!",fname);
 
   //-Checks for stochastic approximation and generalities 
-  if(param->inv_type != QUDA_GCR_INVERTER) 
-    errorQuda("%s: This function works only with GCR method", fname);  
+  if((param->inv_type != QUDA_GCR_INVERTER) && (param->inv_type != QUDA_CG_INVERTER) )
+    errorQuda("%s: This function works only with GCR/CG solver", fname);  
   if(param->gamma_basis != QUDA_UKQCD_GAMMA_BASIS) 
     errorQuda("%s: This function works only with ukqcd gamma basis\n",fname);
   if(param->dirac_order != QUDA_DIRAC_ORDER) 
@@ -1850,7 +1850,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
   K_gauge->calculatePlaq();
 
   // QKXTM: DMH Calculation should default to these settings.
-  printfQuda("%s: Will solve the stochastic part using Multigrid.\n",fname);
+  //  printfQuda("%s: Will solve the stochastic part using Multigrid.\n",fname);
 
   bool pc_solution = (param->solution_type == QUDA_MATPC_SOLUTION) ||
     (param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION);
@@ -1943,8 +1943,6 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
   QKXTM_Vector<double> *K_vecdef = 
     new QKXTM_Vector<double>(BOTH,VECTOR);
 
-  //Solver operators
-  DiracM m(dirac), mSloppy(diracSloppy), mPre(diracPre);
 
   //-Set Randon Number Generator
   gsl_rng *rNum = gsl_rng_alloc(gsl_rng_ranlux);
@@ -2022,14 +2020,26 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	dirac.prepare(in,out,*x,*b,param->solution_type); 
 
 	SolverParam solverParam(*param);
-	Solver *solve = Solver::create(solverParam, m, mSloppy, 
-					  mPre, profileInvert);
-	    
-	(*solve)(*out,*in);	    
+
+	//Solver operators
+	if(param->inv_type == QUDA_GCR_INVERTER){
+	  DiracM m(dirac), mSloppy(diracSloppy), mPre(diracPre);
+	  Solver *solve = Solver::create(solverParam, m, mSloppy, mPre, profileInvert);
+	  (*solve)(*out,*in);	    
+	  delete solve;
+	}
+	else if(param->inv_type == QUDA_CG_INVERTER){
+	  DiracMdagM m(dirac), mSloppy(diracSloppy), mPre(diracPre);
+	  cudaColorSpinorField tmp(*in);
+	  dirac.Mdag(*in, tmp);
+	  Solver *solve = Solver::create(solverParam, m, mSloppy, mPre, profileInvert);
+	  (*solve)(*out,*in);
+	  delete solve;
+	}
+
 	dirac.reconstruct(*x,*b,param->solution_type);
 	sol = new cudaColorSpinorField(*x);
 	if(is == 0 && ih == 0 && is == 0) saveTuneCache();
-	delete solve;
 	t2 = MPI_Wtime();
 	    
 	t5 += t2 - t1;

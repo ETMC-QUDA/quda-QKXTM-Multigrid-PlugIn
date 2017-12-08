@@ -2382,7 +2382,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 	  H5Gclose(group4_id);
 	}//-projector
       }//-baryon
-      else {// if hadron is a meson
+      else {// if meson
 	for(int part=0;part<2;part++){
 	  char *group4_tag;
 	  asprintf(&group4_tag,"%s", (part==0) ? "up" : "down");
@@ -2638,7 +2638,7 @@ writeThrpHDF5_MomSpace(void *Thrp_local_HDF5,
 	    }//-part
 	  }//-projector
 	}//-baryon
-	else {// if particle is a meson
+	else {// if meson
 	    for(int part=0;part<2;part++){
 	      for(int thrp_int=0;thrp_int<3;thrp_int++){
 		THRP_TYPE type = (THRP_TYPE) thrp_int;
@@ -3034,7 +3034,7 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 	      H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
 
 	      if(GK_timeRank==src_rank) writeThrpBuf = &(thrpBuf[2*Mel*Nmoms*w + 2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its]);
-	      else writeThrpBuf = &(thrpBuf[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its + 2*Mel*Nmoms]);
+	      else writeThrpBuf = &(thrpBuf[2*Mel*Nmoms*Lt*part + 2*Mel*Nmoms*Lt*2*its]);
 
 	      herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, filespace, plist_id, writeThrpBuf);
               
@@ -3153,7 +3153,7 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 	    }//-part
 	  }//-projector
 	}//-baryon
-	else {
+	else { // if meson
 
 	  for(int part=0;part<2;part++){
 	    for(int thrp_int=0;thrp_int<3;thrp_int++){
@@ -3584,7 +3584,6 @@ contractFixSink(QKXTM_Propagator<Float> &seqProp,
 		QKXTM_Gauge<Float> &gauge, 
 		void *corrThp_local, void *corrThp_noether, 
 		void *corrThp_oneD, 
-		WHICHPROJECTOR typeProj , 
 		WHICHPARTICLE testParticle, 
 		int partflag, int isource, 
 		CORR_SPACE CorrSpace){

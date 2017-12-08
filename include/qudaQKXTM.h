@@ -342,7 +342,7 @@ namespace quda {
    void contractFixSink(QKXTM_Propagator<Float> &seqProp, 
 			QKXTM_Propagator<Float> &prop, 
 			QKXTM_Gauge<Float> &gauge, 
-			WHICHPROJECTOR typeProj,
+			WHICHPROJECTOR typeProj, 
 			WHICHPARTICLE testParticle, 
 			int partFlag, char *filename_out, int isource, 
 			int tsinkMtsource);
@@ -351,7 +351,6 @@ namespace quda {
 			QKXTM_Gauge<Float> &gauge, 
 			void *corrThp_local, void *corrThp_noether, 
 			void *corrThp_oneD, 
-			WHICHPROJECTOR typeProj, 
 			WHICHPARTICLE testParticle, 
 			int partFlag, int isource, CORR_SPACE CorrSpace);
 

@@ -1427,8 +1427,8 @@ void calc_loops(void **gaugeToPlaquette,
   unsigned short int* Vc = NULL;
   int k_probing = loopInfo.k_probing;
   bool spinColorDil = loopInfo.spinColorDil;
-  bool isProbing;
-  bool isProbingMstep; // if this is enabled then probing will be done in steps
+  bool isProbing=false;
+  bool isProbingMstep=false; // if this is enabled then probing will be done in steps
 
   int Nc; // number of Hadamard vectors, if not enabled then it is one
   int Nc_low; // from where to start doing hadamard vectors
@@ -1848,7 +1848,7 @@ void calc_loops(void **gaugeToPlaquette,
   K_gauge->packGauge(gaugeToPlaquette);
   K_gauge->loadGauge();
   K_gauge->calculatePlaq();
-
+  delete K_gauge;
   // QKXTM: DMH Calculation should default to these settings.
   //  printfQuda("%s: Will solve the stochastic part using Multigrid.\n",fname);
 
@@ -2220,7 +2220,7 @@ void calc_loops(void **gaugeToPlaquette,
   delete dPre;
   delete K_vecdef;
   delete K_vector;
-  delete K_gauge;
+  //  delete K_gauge;
   delete x;
   delete h_x;
   delete b;

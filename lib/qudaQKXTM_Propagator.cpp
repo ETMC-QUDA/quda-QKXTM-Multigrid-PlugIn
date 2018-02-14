@@ -186,6 +186,49 @@ void QKXTM_Propagator<Float>::rotateToPhysicalBase_host(int sign_int){
       }
 }
 
+template<typename Float>
+void QKXTM_Propagator<Float>::write_ASCII(char *filename){
+
+  std::complex<Float> P[4];
+
+  FILE *ptr_file = NULL;
+
+  ptr_file = fopen(filename,"w");
+
+  for(int iv = 0 ; iv < GK_localVolume ; iv++)
+    for(int c1 = 0 ; c1 < 3 ; c1++)
+      for(int c2 = 0 ; c2 < 3 ; c2++){
+	      
+	for(int mu = 0 ; mu < 4 ; mu++){
+
+	  for(int nu = 0 ; nu < 4 ; nu++){
+	
+	    P[nu].real(CC::h_elem[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
+				       nu*GK_nColor*GK_nColor*GK_localVolume + 
+				       c1*GK_nColor*GK_localVolume + 
+				       c2*GK_localVolume + iv)*2 + 0]);
+	    
+
+	    P[nu].imag(CC::h_elem[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
+				       nu*GK_nColor*GK_nColor*GK_localVolume + 
+				       c1*GK_nColor*GK_localVolume + 
+				       c2*GK_localVolume + iv)*2 + 1]);
+
+	  }
+
+	  fprintf(ptr_file,"%d \t %d \t %d \t %+e %+e \t %+e %+e \t %+e %+e \t %+e %+e\n",
+		  iv,c1,c2,
+		  P[0].real(),P[0].imag(),
+		  P[1].real(),P[1].imag(),
+		  P[2].real(),P[2].imag(),
+		  P[3].real(),P[3].imag());
+
+	}
+      }
+  
+  fclose(ptr_file);
+}
+
 // gpu collect ghost and send it to host
 template<typename Float>
 void QKXTM_Propagator<Float>::ghostToHost(){   

@@ -254,6 +254,8 @@ namespace quda {
 			      int nu, int c2);
     void rotateToPhysicalBase_host(int sign);
     void rotateToPhysicalBase_device(int sign);
+
+    void write_ASCII(char *filename);
   };
   
   ///////////////////////////////
@@ -498,6 +500,13 @@ void calcMG_threepTwop_Mesons(void **gaugeSmeared, void **gauge,
 			       quda::qudaQKXTMinfo info,
 			       char *filename_twop, char *filename_threep,
 			       quda::WHICHPARTICLE MESON);
+
+void calcMG_threepTwop_Mesons_db(void **gaugeSmeared, void **gauge,
+				 QudaGaugeParam *gauge_param,
+				 QudaInvertParam *param,
+				 quda::qudaQKXTMinfo info,
+				 char *filename_twop, char *filename_threep,
+				 quda::WHICHPARTICLE MESON);
 
 /////////////////////////////
 // MG with Exact Deflation //

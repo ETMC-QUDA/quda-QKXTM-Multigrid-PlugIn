@@ -3479,13 +3479,18 @@ writeThrp_ASCII(void *corrThp_local,
     else if(partflag == 2)strcpy(fname_upORdown,"down");
     else errorQuda("writeThrp_ASCII: Got the wrong part! Should be either 1 or 2.");
   }
-  else{
+  else if(testParticle == NEUTRON){
     strcpy(fname_particle,"neutron");
     if(partflag == 1)strcpy(fname_upORdown,"down");
     else if(partflag == 2)strcpy(fname_upORdown,"up");
     else errorQuda("writeThrp_ASCII: Got the wrong part! Should be either 1 or 2.");
   }
-
+  else if(testParticle == PION){
+    strcpy(fname_particle,"pion");
+    if(partflag == 1)strcpy(fname_upORdown,"up");
+    else if(partflag == 2)strcpy(fname_upORdown,"down");
+    else errorQuda("writeThrp_ASCII: Got the wrong part! Should be either 1 or 2.");
+  }
   sprintf(fname_local,"%s.%s.%s.%s.SS.%02d.%02d.%02d.%02d.dat",
 	  filename_out,fname_particle,fname_upORdown,"ultra_local",
 	  GK_sourcePosition[isource][0],

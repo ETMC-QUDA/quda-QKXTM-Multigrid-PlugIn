@@ -214,7 +214,12 @@ namespace quda {
 			  int timeslice, int nu , int c2);
     void copyPropagator(QKXTM_Propagator<Float> &prop, 
 			int nu , int c2);
+    void getVectorProp3D(QKXTM_Propagator3D<Float> &prop, 
+			  int timeslice, int nu , int c2);
+
+    void writeASCII(char* filname, int timeslice);
     void write(char* filename);
+
     void conjugate();
     void apply_gamma5();
   };
@@ -255,7 +260,9 @@ namespace quda {
     void rotateToPhysicalBase_host(int sign);
     void rotateToPhysicalBase_device(int sign);
 
-    void write_ASCII(char *filename);
+    void writeASCII_device(char *filename);
+    void writeASCII_host(char *filename);
+    void print_device();
   };
   
   ///////////////////////////////
@@ -500,13 +507,6 @@ void calcMG_threepTwop_Mesons(void **gaugeSmeared, void **gauge,
 			       quda::qudaQKXTMinfo info,
 			       char *filename_twop, char *filename_threep,
 			       quda::WHICHPARTICLE MESON);
-
-void calcMG_threepTwop_Mesons_db(void **gaugeSmeared, void **gauge,
-				 QudaGaugeParam *gauge_param,
-				 QudaInvertParam *param,
-				 quda::qudaQKXTMinfo info,
-				 char *filename_twop, char *filename_threep,
-				 quda::WHICHPARTICLE MESON);
 
 /////////////////////////////
 // MG with Exact Deflation //

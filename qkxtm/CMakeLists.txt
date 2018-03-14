@@ -84,11 +84,6 @@ if(QKXTM_2FLAVMG)
   cuda_add_executable(CalcMG_2pt3pt_Mesons CalcMG_2pt3pt_Mesons.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
   target_link_libraries(CalcMG_2pt3pt_Mesons ${QKXTM_LIBS})
 
-
-  #CalcMG_2pt3pt_Mesons_db
-  # This function is for debugging CalcMG_2pt3pt_Mesons
-  cuda_add_executable(CalcMG_2pt3pt_Mesons_db CalcMG_2pt3pt_Mesons_db.cpp ${QKXTM_QUDA_HOME}/tests/wilson_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/domain_wall_dslash_reference.cpp ${QKXTM_QUDA_HOME}/tests/clover_reference.cpp ${QKXTM_QUDA_HOME}/tests/blas_reference.cpp)
-  target_link_libraries(CalcMG_2pt3pt_Mesons_db ${QKXTM_LIBS})
 endif()  
 
 #CalcMG_Loops_w_oneD_TSM_EvenOdd (DEPRECATED)

@@ -187,46 +187,96 @@ void QKXTM_Propagator<Float>::rotateToPhysicalBase_host(int sign_int){
 }
 
 template<typename Float>
-void QKXTM_Propagator<Float>::write_ASCII(char *filename){
+void QKXTM_Propagator<Float>::print_device(){
+  run_print((void*) CC::d_elem, sizeof(Float));
+}
 
-  std::complex<Float> P[4];
+template<typename Float>
+void QKXTM_Propagator<Float>::writeASCII_device(char *filename){
+
+  Float *pointProp_dev;
+
+  FILE *ptr_file = NULL;
+
+  ptr_file = fopen(filename,"w");
+
+    for(int c1 = 0 ; c1 < 3 ; c1++)
+      for(int c2 = 0 ; c2 < 3 ; c2++){
+	      
+	fprintf(ptr_file,"c1=%d \t c2=%d \t ",c1,c2);
+
+	for(int mu = 0 ; mu < 4 ; mu++){
+
+	  fprintf(ptr_file,"mu=%d \t ",mu);
+
+	  for(int nu = 0 ; nu < 4 ; nu++){
+	    
+	    pointProp_dev = (CC::d_elem + 
+			     mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume*2 + 
+			     nu*GK_nColor*GK_nColor*GK_localVolume*2 + 
+			     c1*GK_nColor*GK_localVolume*2 + 
+			     c2*GK_localVolume*2);
+
+	    fprintf(ptr_file,"%+e",*pointProp_dev);
+
+	  }
+	}
+
+	fprintf(ptr_file,"\n");
+
+      }
+}
+
+template<typename Float>
+void QKXTM_Propagator<Float>::writeASCII_host(char *filename){
+
+  //Float prop_host;
+  //Float *pointProp_host;
+  std::complex<Float> P[4][4];
 
   FILE *ptr_file = NULL;
 
   ptr_file = fopen(filename,"w");
 
   for(int iv = 0 ; iv < GK_localVolume ; iv++)
-    for(int c1 = 0 ; c1 < 3 ; c1++)
-      for(int c2 = 0 ; c2 < 3 ; c2++){
-	      
-	for(int mu = 0 ; mu < 4 ; mu++){
+    for(int c1 = 0 ; c1 < GK_nColor ; c1++)
+      for(int c2 = 0 ; c2 < GK_nColor ; c2++)
+	for(int mu = 0 ; mu < GK_nSpin ; mu++)
+	  for(int nu = 0 ; nu < GK_nSpin ; nu++){
+	    /*	    
+	    pointProp_host = (CC::h_elem + 
+			      mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume*2 + 
+			      nu*GK_nColor*GK_nColor*GK_localVolume*2 + 
+			      c1*GK_nColor*GK_localVolume*2 + 
+			      c2*GK_localVolume*2);
 
-	  for(int nu = 0 ; nu < 4 ; nu++){
-	
-	    P[nu].real(CC::h_elem[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
+	    prop_host = CC::h_elem[mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume*2 + 
+				   nu*GK_nColor*GK_nColor*GK_localVolume*2 + 
+				   c1*GK_nColor*GK_localVolume*2 + 
+				   c2*GK_localVolume*2];
+
+	    */
+	    P[mu][nu].real(CC::h_elem[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
 				       nu*GK_nColor*GK_nColor*GK_localVolume + 
 				       c1*GK_nColor*GK_localVolume + 
 				       c2*GK_localVolume + iv)*2 + 0]);
 	    
 
-	    P[nu].imag(CC::h_elem[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
+	    P[mu][nu].imag(CC::h_elem[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
 				       nu*GK_nColor*GK_nColor*GK_localVolume + 
 				       c1*GK_nColor*GK_localVolume + 
 				       c2*GK_localVolume + iv)*2 + 1]);
+	    /*
+	    fprintf(ptr_file,"%d \t %d \t %d \t %d \t %+e\n",
+		    c1,c2,mu,nu,prop_host);
+	    */
+	    fprintf(ptr_file,"%d \t %d \t %d \t %d \t %+e %+e\n",
+		    c1,c2,mu,nu,P[mu][nu].real(),P[mu][nu].imag());
 
-	  }
+}
 
-	  fprintf(ptr_file,"%d \t %d \t %d \t %+e %+e \t %+e %+e \t %+e %+e \t %+e %+e\n",
-		  iv,c1,c2,
-		  P[0].real(),P[0].imag(),
-		  P[1].real(),P[1].imag(),
-		  P[2].real(),P[2].imag(),
-		  P[3].real(),P[3].imag());
+    fclose(ptr_file);
 
-	}
-      }
-  
-  fclose(ptr_file);
 }
 
 // gpu collect ghost and send it to host
@@ -528,20 +578,20 @@ absorbTimeSliceFromHost(QKXTM_Propagator<Float> &prop,
   int V3 = GK_localVolume/GK_localL[3];
   
   for(int mu = 0 ; mu < 4 ; mu++)
-  for(int nu = 0 ; nu < 4 ; nu++)
-  for(int c1 = 0 ; c1 < 3 ; c1++)
-  for(int c2 = 0 ; c2 < 3 ; c2++)
-  for(int iv3 = 0 ; iv3 < V3 ; iv3++)
-  for(int ipart = 0 ; ipart < 2 ; ipart++)
-    CC::h_elem[ (mu*GK_nSpin*GK_nColor*GK_nColor*V3 + 
-		 nu*GK_nColor*GK_nColor*V3 + 
-		 c1*GK_nColor*V3 + 
-		 c2*V3 + iv3)*2 + ipart] = 
-      prop.H_elem()[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
-		     nu*GK_nColor*GK_nColor*GK_localVolume + 
-		     c1*GK_nColor*GK_localVolume + 
-		     c2*GK_localVolume + 
-		     timeslice*V3 + iv3)*2 + ipart];
+    for(int nu = 0 ; nu < 4 ; nu++)
+      for(int c1 = 0 ; c1 < 3 ; c1++)
+	for(int c2 = 0 ; c2 < 3 ; c2++)
+	  for(int iv3 = 0 ; iv3 < V3 ; iv3++)
+	    for(int ipart = 0 ; ipart < 2 ; ipart++)
+	      CC::h_elem[ (mu*GK_nSpin*GK_nColor*GK_nColor*V3 + 
+			   nu*GK_nColor*GK_nColor*V3 + 
+			   c1*GK_nColor*V3 + 
+			   c2*V3 + iv3)*2 + ipart] = 
+		prop.H_elem()[(mu*GK_nSpin*GK_nColor*GK_nColor*GK_localVolume + 
+			       nu*GK_nColor*GK_nColor*GK_localVolume + 
+			       c1*GK_nColor*GK_localVolume + 
+			       c2*GK_localVolume + 
+			       timeslice*V3 + iv3)*2 + ipart];
   
   cudaMemcpy(CC::d_elem,CC::h_elem,
 	     GK_nSpin*GK_nSpin*GK_nColor*GK_nColor*V3*2*sizeof(Float),

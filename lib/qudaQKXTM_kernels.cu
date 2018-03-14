@@ -829,6 +829,11 @@ __global__ void rotateToPhysicalBase_kernel(Float2 *inOut, int sign){
 #include <rotateToPhysicalBase_core.h>
 }
 
+template<typename Float2>
+__global__ void print_kernel(Float2 *out){
+#include <print_core.h>
+}
+
 __global__ void castDoubleToFloat_kernel(float2 *out, double2 *in){
 #include <castDoubleToFloat_core.h>
 }
@@ -846,6 +851,12 @@ template<typename Float2>
 __global__ void apply_gamma5_vector_kernel(Float2 *inOut){
 #include <apply_gamma5_vector_core.h>
 }
+/*
+template<typename Float2>
+__global__ void getVectorProp3D_kernel( Float2 *out, int timeslice, int nu, int c2){
+#include <getVectorProp3D_core_.h>
+}
+*/
 
 template<typename Float2>
 __global__ void conjugate_propagator_kernel(Float2 *inOut){
@@ -1343,6 +1354,28 @@ void quda::run_rotateToPhysicalBase(void* inOut, int sign, int precision){
   }
   else if(precision == 8){
     rotateToPhysicalBase_kernel<double2><<<gridDim,blockDim>>>((double2*) inOut,sign);
+  }
+  else{
+    errorQuda("Precision not supported\n");
+  }    
+  checkCudaError();
+}
+
+void quda::run_print(void* out, int precision){
+  dim3 blockDim( THREADS_PER_BLOCK , 1, 1);
+  dim3 gridDim( (GK_localVolume + blockDim.x -1)/blockDim.x , 1 , 1);
+
+  if(precision == 4){
+    cudaPrintfInit();
+    print_kernel<float2><<<gridDim,blockDim>>>((float2*) out);
+    cudaPrintfDisplay(stdout, true);
+    cudaPrintfEnd();
+  }
+  else if(precision == 8){
+    cudaPrintfInit();
+    print_kernel<double2><<<gridDim,blockDim>>>((double2*) out);
+    cudaPrintfDisplay(stdout, true);
+    cudaPrintfEnd();
   }
   else{
     errorQuda("Precision not supported\n");

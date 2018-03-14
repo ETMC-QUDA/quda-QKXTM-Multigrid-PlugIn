@@ -13,6 +13,14 @@ r2 = r1 / c_localL[1];
 x_id[1] = r1 - r2*c_localL[1];
 x_id[2] = r2;
 x_id[3] = it;
+/*
+r1 = sid/(c_localL[0]);
+r2 = r1/(c_localL[1]);
+x_id[0] = sid - r1*(c_localL[0]);
+x_id[1] = r1 - r2*(c_localL[1]);
+x_id[3] = r2/(c_localL[2]);
+x_id[2] = r2 - x_id[3]*(c_localL[2]);
+*/
 //////////////////
 // take forward and backward points index
 int pointPlus[4]; // for prop

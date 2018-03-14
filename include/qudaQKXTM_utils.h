@@ -154,7 +154,6 @@ namespace quda {
 			   int isource, int precision, CORR_SPACE CorrSpace);
   void run_performGPU_FT(void *d_in, void *h_out, int it, int precision);
   void run_rotateToPhysicalBase(void* inOut, int sign, int precision);
-  void run_print(void* out, int precision);
   void run_castDoubleToFloat(void *out, void *in);
   void run_castFloatToDouble(void *out, void *in);
   void run_conjugate_vector(void *inOut, int precision);

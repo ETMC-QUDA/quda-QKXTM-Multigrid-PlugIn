@@ -187,11 +187,6 @@ void QKXTM_Propagator<Float>::rotateToPhysicalBase_host(int sign_int){
 }
 
 template<typename Float>
-void QKXTM_Propagator<Float>::print_device(){
-  run_print((void*) CC::d_elem, sizeof(Float));
-}
-
-template<typename Float>
 void QKXTM_Propagator<Float>::writeASCII_device(char *filename){
 
   Float *pointProp_dev;

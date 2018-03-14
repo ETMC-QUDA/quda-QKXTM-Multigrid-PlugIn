@@ -214,8 +214,6 @@ namespace quda {
 			  int timeslice, int nu , int c2);
     void copyPropagator(QKXTM_Propagator<Float> &prop, 
 			int nu , int c2);
-    void getVectorProp3D(QKXTM_Propagator3D<Float> &prop, 
-			  int timeslice, int nu , int c2);
 
     void writeASCII(char* filname, int timeslice);
     void write(char* filename);

@@ -511,30 +511,6 @@ void QKXTM_Vector<Float>::copyPropagator(QKXTM_Propagator<Float> &prop, int nu ,
 
 }
 
-/*
-template<typname Float>
-void QKXTM_Vector<Float>::getVectorProp3D(QKXTM_Propagator3D<Float> &prop, int timeslice,int nu,int c2){
-
-  //    cudaPrintfInit();    
-  // if(comm_rank() == 0)cudaPrintfDisplay(stdout,true);
-  //cudaPrintfEnd();
-
-  //cudaPrintfInit();    
-  dim3 blockDim( THREADS_PER_BLOCK , 1, 1);
-  dim3 gridDim( (GK_localVolume/GK_localL[3] + blockDim.x -1)/blockDim.x , 1 , 1);  // now is G_localVolume3D
-
-  cudaBindTexture(0, propagator3DTex1, prop1.D_elem(), prop1.Bytes());
-
-  getVectorProp3D_kernel<<<gridDim,blockDim>>>( (Float*) this->D_elem(), timeslice , nu, c2);
-  cudaDeviceSynchronize();
-  // if(comm_rank() == 0)cudaPrintfDisplay(stdout,true);
-
-  cudaUnbindTexture(propagator3DTex1);
-  //  cudaPrintfEnd();
-  checkCudaError();
-}
-*/
-
 template<typename Float>
 void QKXTM_Vector<Float>::writeASCII(char *filename, int timeslice){
 

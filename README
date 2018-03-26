@@ -83,14 +83,14 @@ compiled, rather included in qudaQKXTM_interface.cpp as,
 ... [begin QKXTM calculation functions]
 
 The Loop routines need only a single flavour operator. The 2pt and 3pt
-functions require both UP and DOWN flavour types. QUDA does not yey support
+functions require both flavour types. QUDA does not yey support
 multiple MG preconditioners, but this can be fixed with three minor additions: 
 
 First, one must add to quda/include/quda.h two extra preconditioner pointers:
 
 void *preconditioner; -> void *preconditioner;
-       		         void *preconditionerUP;
-			 void *preconditionerDN;
+       		         void *preconditioner1;
+			 void *preconditioner2;
 
 Then, adjust the quda/lib/check_params.h file:
 
@@ -101,8 +101,8 @@ P(preconditioner, 0); -> P(preconditioner, 0);
 and finally the quda/lib/quda_fortran.F90 file:
 
 integer(8) :: preconditioner -> integer(8) :: preconditioner
-	      		        integer(8) :: preconditionerUP
-				integer(8) :: preconditionerDN
+	      		        integer(8) :: preconditioner1
+				integer(8) :: preconditioner2
 
 This will allow for sucessful compilation of the 2 flavour routines, set 
 by the CMake Flag QKXTM_2FLAVMG.

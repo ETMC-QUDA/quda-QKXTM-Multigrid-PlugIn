@@ -53,8 +53,6 @@ extern QudaReconstructType link_recon_precondition;
 extern double mass;  // mass of Dirac operator
 extern double kappa; // kappa of Dirac operator
 extern double mu;
-extern double mu_l;
-extern double mu_s;
 extern double anisotropy;
 extern double tol; // tolerance for inverter
 extern double tol_hq; // heavy-quark tolerance for inverter
@@ -256,9 +254,7 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.mu = mu_l; 
-    inv_param.mu_l = mu_l;
-    inv_param.mu_s = mu_s;
+    inv_param.mu = mu;
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -413,9 +409,7 @@ void setInvertParam(QudaInvertParam &inv_param) {
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.mu = mu_l;
-    inv_param.mu_l = mu_l;
-    inv_param.mu_s = mu_s;
+    inv_param.mu = mu;
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -729,38 +723,33 @@ int main(int argc, char **argv)
 
   //QKXTM: DMH EXP
   // setup the multigrid solver for UP flavour
-
-  mg_param.invert_param->mu = mg_param.invert_param->mu_l;
-    
-  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
-  inv_param.preconditionerUP = mg_preconditionerUP;
-
-  // setup the multigrid solver for DOWN flavour
-
-  mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_l;
-
-  void *mg_preconditionerDOWN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDOWN = mg_preconditionerDOWN;
-
-  // setup the multigrid solver for STRANGE flavour
-
-  mg_param.invert_param->mu = mg_param.invert_param->mu_s;
+  if( mg_param.invert_param->mu < 0 ) {
+    mg_param.invert_param->mu *= -1.0;
+  }
   
-  void *mg_preconditionerSTRANGE = newMultigridQuda(&mg_param);
-  inv_param.preconditionerSTRANGE = mg_preconditionerSTRANGE;
+  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
+  inv_param.preconditioner1 = mg_preconditionerUP;
 
-  // reset twist flavour to UP
-  mg_param.invert_param->mu = mg_param.invert_param->mu_l;
+  // setup the multigrid solver for DN flavour
+  if( mg_param.invert_param->mu > 0 ) {
+    mg_param.invert_param->mu *= -1.0;
+  }
 
+  void *mg_preconditionerDN = newMultigridQuda(&mg_param);
+  inv_param.preconditioner2 = mg_preconditionerDN;
+
+  // reset twist flavour
+  if( mg_param.invert_param->mu < 0 ) {
+    mg_param.invert_param->mu *= -1.0;
+  }
 
   calcMG_threepTwop_Mesons(gauge_APE, gaugeContract, &gauge_param,
 			    &inv_param, info, twop_filename,
-			   threep_filename, KAON);
+			   threep_filename, PION);
 
   // free the multigrid solvers
   destroyMultigridQuda(mg_preconditionerUP);
-  destroyMultigridQuda(mg_preconditionerDOWN);
-  destroyMultigridQuda(mg_preconditionerSTRANGE);
+  destroyMultigridQuda(mg_preconditionerDN);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 

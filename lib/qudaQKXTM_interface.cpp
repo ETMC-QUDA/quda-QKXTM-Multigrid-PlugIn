@@ -579,7 +579,7 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 				  mPreUP, profileInvert);
 
   if(param->mu > 0) param->mu *= -1.0;
-  param->preconditioner = param->preconditionerDN;
+  param->preconditioner = param->preconditionerDOWN;
   SolverParam solverParamD(*param);
   Solver *solveD = Solver::create(solverParamD, mDN, mSloppyDN, 
 				  mPreDN, profileInvert);
@@ -1357,16 +1357,17 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
     printQudaInvertParam(param);
   
   profileInvert.TPSTART(QUDA_PROFILE_TOTAL);
-  if(param->solve_type != QUDA_DIRECT_PC_SOLVE) 
-    errorQuda("%s: This function works only with Direct solve and even odd preconditioning", fname);
   
-  if(param->inv_type != QUDA_GCR_INVERTER) 
-    errorQuda("%s: This function works only with GCR method", fname);
-
+  if((param->inv_type != QUDA_GCR_INVERTER) && (param->inv_type != QUDA_CG_INVERTER) )
+    errorQuda("%s: This function works only with GCR/CG solver", fname);  
   if(param->gamma_basis != QUDA_UKQCD_GAMMA_BASIS) 
     errorQuda("%s: This function works only with ukqcd gamma basis\n", fname);
   if(param->dirac_order != QUDA_DIRAC_ORDER) 
     errorQuda("%s: This function works only with colors inside the spins\n", fname);
+
+  if( param->inv_type == QUDA_GCR_INVERTER )
+    if(param->solve_type != QUDA_DIRECT_PC_SOLVE) 
+      errorQuda("%s: If this function is using gcr inverter, itworks only with Direct solve and even odd preconditioning", fname);
 
   if( param->matpc_type == QUDA_MATPC_EVEN_EVEN )
     flag_eo = true;
@@ -1549,11 +1550,14 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   printfQuda("Smeared:\n");
   K_gaugeSmeared->calculatePlaq();
 
-  bool pc_solution = false;
-  bool pc_solve = true;
-  bool mat_solution = ((param->solution_type == QUDA_MAT_SOLUTION) || 
-		       (param->solution_type == QUDA_MATPC_SOLUTION));
-  bool direct_solve = true;
+  bool pc_solution = (param->solution_type == QUDA_MATPC_SOLUTION) ||
+    (param->solution_type == QUDA_MATPCDAG_MATPC_SOLUTION);
+  bool pc_solve = (param->solve_type == QUDA_DIRECT_PC_SOLVE) ||
+    (param->solve_type == QUDA_NORMOP_PC_SOLVE) || (param->solve_type == QUDA_NORMERR_PC_SOLVE);
+  bool mat_solution = (param->solution_type == QUDA_MAT_SOLUTION) ||
+    (param->solution_type ==  QUDA_MATPC_SOLUTION);
+  bool direct_solve = (param->solve_type == QUDA_DIRECT_SOLVE) ||
+    (param->solve_type == QUDA_DIRECT_PC_SOLVE);
 
   param->spinorGiB = cudaGauge->VolumeCB() * spinorSiteSize;
   if (!pc_solve) param->spinorGiB *= 2;
@@ -1610,7 +1614,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
  
   profileInvert.TPSTART(QUDA_PROFILE_H2D);
 
-  //QKXTM: DMH rewite for spinor field memalloc
+  //QKXTM: DMH rewrite for spinor field memalloc
   ColorSpinorField *b = NULL;
   ColorSpinorField *x = NULL;
   ColorSpinorField *in = NULL;
@@ -1618,7 +1622,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   const int *X = cudaGauge->X();
 
   void *input_vector = malloc(GK_localL[0]*
-			      GK_localL[1]*
+		      GK_localL[1]*
 			      GK_localL[2]*
 			      GK_localL[3]*spinorSiteSize*sizeof(double));
   
@@ -1647,30 +1651,29 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   x = new cudaColorSpinorField(cudaParam);
 
   profileInvert.TPSTOP(QUDA_PROFILE_H2D);
-  
+
+
   // Create Operators
   DiracM mUP(diracUP), mSloppyUP(diracSloppyUP), mPreUP(diracPreUP);
   DiracM mDOWN(diracDOWN), mSloppyDOWN(diracSloppyDOWN), mPreDOWN(diracPreDOWN);
   DiracM mSTRANGE(diracSTRANGE), mSloppySTRANGE(diracSloppySTRANGE), mPreSTRANGE(diracPreSTRANGE);
+  DiracMdagM mdagmUP(diracUP), mdagmSloppyUP(diracSloppyUP), mdagmPreUP(diracPreUP);
+  DiracMdagM mdagmDOWN(diracDOWN), mdagmSloppyDOWN(diracSloppyDOWN), mdagmPreDOWN(diracPreDOWN);
+  DiracMdagM mdagmSTRANGE(diracSTRANGE), mdagmSloppySTRANGE(diracSloppySTRANGE), mdagmPreSTRANGE(diracPreSTRANGE);
  
-  // Create Solvers
+  // Create SolverParams
+
   param->mu = param->mu_l;
   param->preconditioner = param->preconditionerUP;
   SolverParam solverParamU(*param);
-  Solver *solveU = Solver::create(solverParamU, mUP, mSloppyUP, 
-				  mPreUP, profileInvert);
 
   param->mu = -1.0 * param->mu_l;
   param->preconditioner = param->preconditionerDOWN;
   SolverParam solverParamD(*param);
-  Solver *solveD = Solver::create(solverParamD, mDOWN, mSloppyDOWN, 
-				  mPreDOWN, profileInvert);
-  
+
   param->mu = param->mu_s;
   param->preconditioner = param->preconditionerSTRANGE;
   SolverParam solverParamS(*param);
-  Solver *solveS = Solver::create(solverParamS, mSTRANGE, mSloppySTRANGE, 
-				  mPreSTRANGE, profileInvert);
   
   //======================================================================//
   //================ P R O B L E M   E X E C U T I O N  ==================// 
@@ -1755,12 +1758,35 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
       blas::zero(*x);
       diracUP.prepare(in,out,*x,*b,param->solution_type);
 
-      // in is reference to the b but for a parity singlet
-      // out is reference to the x but for a parity singlet
-      
       printfQuda(" up - %02d: \n",isc);
       tx3 = MPI_Wtime();
-      (*solveU)(*out,*in);
+
+      
+      // in is reference to the b but for a parity singlet
+      // out is reference to the x but for a parity singlet
+
+      // Change mu to up flavor
+      param->mu = param->mu_l;
+      
+      if(param->inv_type == QUDA_GCR_INVERTER){
+	Solver *solveU = Solver::create(solverParamU, mUP, mSloppyUP, 
+				       mPreUP, profileInvert);
+
+	(*solveU)(*out,*in);
+
+	delete solveU;
+      }
+      else if(param->inv_type == QUDA_CG_INVERTER){
+	cudaColorSpinorField tmp(*in);
+	diracUP.Mdag(*in, tmp);
+
+	Solver *solveU = Solver::create(solverParamU, mdagmUP, mdagmSloppyUP, 
+					mdagmPreUP, profileInvert);
+	(*solveU)(*out,*in);
+
+	delete solveU;
+      }
+
       tx4 = MPI_Wtime();
       summ_tx34 += tx4-tx3;
       solverParamU.updateInvertParam(*param);
@@ -1803,14 +1829,32 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	   my_src[0]*24 + 
 	   isc*2 ) = 1.0;
 
-      //Ensure mu is done flavor
-      param->mu = -1.0 * param->mu_l;
       K_guess->uploadToCuda(b,flag_eo);
       blas::zero(*x);
       diracDOWN.prepare(in,out,*x,*b,param->solution_type);
       printfQuda(" dn - %02d: \n",isc);
       tx3 = MPI_Wtime();
-      (*solveD)(*out,*in);
+
+      // Change mu to down flavor
+      param->mu = -1.0 * param->mu_l;
+      if(param->inv_type == QUDA_GCR_INVERTER){
+	Solver *solveD = Solver::create(solverParamD, mDOWN, mSloppyDOWN, 
+					mPreDOWN, profileInvert);
+	(*solveD)(*out,*in);
+
+	delete solveD;
+      }
+      else if(param->inv_type == QUDA_CG_INVERTER){
+	cudaColorSpinorField tmp(*in);
+	diracDOWN.Mdag(*in, tmp);
+
+	Solver *solveD = Solver::create(solverParamD, mdagmDOWN, mdagmSloppyDOWN, 
+					mdagmPreDOWN, profileInvert);
+	(*solveD)(*out,*in);
+
+	delete solveD;
+      }
+
       tx4 = MPI_Wtime();
       summ_tx34 += tx4-tx3;
       solverParamD.updateInvertParam(*param);
@@ -1849,14 +1893,32 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	   my_src[0]*24 + 
 	   isc*2 ) = 1.0;
 
-      //Ensure mu is strange flavor
-      param->mu = param->mu_s;
       K_guess->uploadToCuda(b,flag_eo);
       blas::zero(*x);
       diracSTRANGE.prepare(in,out,*x,*b,param->solution_type);
       printfQuda(" strange - %02d: \n",isc);
       tx3 = MPI_Wtime();
-      (*solveS)(*out,*in);
+
+      // Change mu to strange flavor
+      param->mu = param->mu_s;
+      if(param->inv_type == QUDA_GCR_INVERTER){
+	Solver *solveS = Solver::create(solverParamS, mSTRANGE, mSloppySTRANGE, 
+					mPreSTRANGE, profileInvert);
+	(*solveS)(*out,*in);
+
+	delete solveS;
+      }
+      else if(param->inv_type == QUDA_CG_INVERTER){
+	cudaColorSpinorField tmp(*in);
+	diracSTRANGE.Mdag(*in, tmp);
+
+	Solver *solveS = Solver::create(solverParamS, mdagmSTRANGE, mdagmSloppySTRANGE, 
+					mdagmPreSTRANGE, profileInvert);
+	(*solveS)(*out,*in);
+
+	delete solveS;
+      }
+
       tx4 = MPI_Wtime();
       summ_tx34 += tx4-tx3;
       solverParamS.updateInvertParam(*param);
@@ -2017,30 +2079,50 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	    // initial guess is ready
 	      
 	    printfQuda("%02d - \n",nu*3+c2);
-	    (*solveD)(*out,*in);
+
+	    if(param->inv_type == QUDA_GCR_INVERTER){
+	      Solver *solveD = Solver::create(solverParamD, mDOWN, mSloppyDOWN, 
+					      mPreDOWN, profileInvert);
+	      (*solveD)(*out,*in);
+
+	      delete solveD;
+	    }
+	    else if(param->inv_type == QUDA_CG_INVERTER){
+	      cudaColorSpinorField tmp(*in);
+	      diracDOWN.Mdag(*in, tmp);
+
+	      Solver *solveD = Solver::create(solverParamD, mdagmDOWN, mdagmSloppyDOWN, 
+					      mdagmPreDOWN, profileInvert);
+	      (*solveD)(*out,*in);
+
+	      delete solveD;
+	    }
+
 	    solverParamD.updateInvertParam(*param);
 	    diracDOWN.reconstruct(*x,*b,param->solution_type);
 
-	    K_vector->downloadFromCuda(x,flag_eo);
-	    if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
-		param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
-	      K_vector->scaleVector(2*param->kappa);
-	    }
-	    // Rescale to normal
-	    K_vector->scaleVector(1e-10);
-	      
-	    K_temp->castDoubleToFloat(*K_vector);
-	    K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
-	      
-	    t4 = MPI_Wtime();
-	      
-	    printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
-		       "pion+",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
 	  }
+
+	K_vector->downloadFromCuda(x,flag_eo);
+	if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+	    param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+	  K_vector->scaleVector(2*param->kappa);
+	}
+	// Rescale to normal
+	K_vector->scaleVector(1e-10);
+	      
+	K_temp->castDoubleToFloat(*K_vector);
+	K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
+	      
+	t4 = MPI_Wtime();
+	      
+	printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
+		   "pion+",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
+      
 	t2 = MPI_Wtime();
 
 	printfQuda("TIME_REPORT - Sequential Inversions, particle: %s, %f sec\n",
-		     "pion+",t2-t1);
+		   "pion+",t2-t1);
 
 		  
 	/////////////////////////////
@@ -2051,15 +2133,15 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	t1 = MPI_Wtime();
 
 	K_contract->contractFixSink(*K_seqProp, *K_prop_up, 
-				      *K_gaugeContractions,
-				      corrThp_local, corrThp_noether, 
-				      corrThp_oneD, MESON, 1, 
-				      isource, CorrSpace);
+				    *K_gaugeContractions,
+				    corrThp_local, corrThp_noether, 
+				    corrThp_oneD, MESON, 1, 
+				    isource, CorrSpace);
 	
 	t2 = MPI_Wtime();
 
 	printfQuda("TIME_REPORT - Three-point Contractions, particle: %s, %f sec\n",
-		     "pion+",t2-t1);
+		   "pion+",t2-t1);
 		  
 	t1 = MPI_Wtime();
 	if( CorrFileFormat==ASCII_FORM ){
@@ -2109,8 +2191,6 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	printfQuda("Sequential Inversions, particle %s:\n",
 		   "pion+");
 
-	  break; //CJL: Add more here to support kaon
-	}
 	t1 = MPI_Wtime();
 	for(int nu = 0 ; nu < 4 ; nu++)
 	  for(int c2 = 0 ; c2 < 3 ; c2++){
@@ -2141,12 +2221,29 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	    // initial guess is ready
 		
 	    printfQuda("%02d - ",nu*3+c2);
-	    (*solveU)(*out,*in);
+
+	    if(param->inv_type == QUDA_GCR_INVERTER){
+	      Solver *solveU = Solver::create(solverParamU, mUP, mSloppyUP, 
+					      mPreUP, profileInvert);
+
+	      (*solveU)(*out,*in);
+
+	      delete solveU;
+	    }
+	    else if(param->inv_type == QUDA_CG_INVERTER){
+	      cudaColorSpinorField tmp(*in);
+	      diracUP.Mdag(*in, tmp);
+
+	      Solver *solveU = Solver::create(solverParamU, mdagmUP, mdagmSloppyUP, 
+					      mdagmPreUP, profileInvert);
+	      (*solveU)(*out,*in);
+
+	      delete solveU;
+	    }
+
 	    solverParamU.updateInvertParam(*param);
 	    diracUP.reconstruct(*x,*b,param->solution_type);
 
-	    else errorQuda("Error: Meson type not supported!");
-	    	      
 	    K_vector->downloadFromCuda(x,flag_eo);
 	    if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
 		param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
@@ -2174,11 +2271,11 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	t1 = MPI_Wtime();
 	
 	K_contract->contractFixSink(*K_seqProp, 
-				      *K_prop_down, 
-				      *K_gaugeContractions,
-				      corrThp_local, corrThp_noether, 
-				      corrThp_oneD, MESON, 2, 
-				      isource, CorrSpace);
+				    *K_prop_down, 
+				    *K_gaugeContractions,
+				    corrThp_local, corrThp_noether, 
+				    corrThp_oneD, MESON, 2, 
+				    isource, CorrSpace);
 
 	t2 = MPI_Wtime();
 	
@@ -2245,7 +2342,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 	    break;
 	  }
-	}	  
+	}
       }
       // End loop over sink-source separations      
       
@@ -2391,16 +2488,21 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
   free(input_vector);
   free(output_vector);
+
   delete K_temp;
   delete K_contract;
-  delete K_prop_down;
   delete K_prop_up;
+  delete K_prop_down;
+  delete K_prop_strange;
   delete dUP;
   delete dSloppyUP;
   delete dPreUP;
-  delete dDN;
-  delete dSloppyDN;
-  delete dPreDN;
+  delete dDOWN;
+  delete dSloppyDOWN;
+  delete dPreDOWN;
+  delete dSTRANGE;
+  delete dSloppySTRANGE;
+  delete dPreSTRANGE;
   delete K_guess;
   delete K_vector;
   delete K_gaugeSmeared;
@@ -2412,8 +2514,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   delete K_seqProp;
   delete K_prop3D_up;
   delete K_prop3D_down;
-  delete solveU;
-  delete solveD;
+  delete K_prop3D_strange;
 
   printfQuda("...Done\n");
   

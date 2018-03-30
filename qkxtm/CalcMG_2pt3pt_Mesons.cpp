@@ -50,6 +50,8 @@ extern QudaPrecision prec_precondition;
 extern QudaPrecision prec_null;
 extern QudaReconstructType link_recon_sloppy;
 extern QudaReconstructType link_recon_precondition;
+extern QudaInverterType  inv_type;
+extern QudaInverterType  precon_type;
 extern double mass;  // mass of Dirac operator
 extern double kappa; // kappa of Dirac operator
 extern double mu;
@@ -443,12 +445,18 @@ void setInvertParam(QudaInvertParam &inv_param) {
     inv_param.matpc_type = QUDA_MATPC_ODD_ODD;
   }
 
-  inv_param.inv_type = QUDA_GCR_INVERTER;
+  inv_param.inv_type = inv_type;
 
   inv_param.verbosity = QUDA_VERBOSE;
   inv_param.verbosity_precondition = mg_verbosity[0];
 
-  inv_param.inv_type_precondition = QUDA_MG_INVERTER;
+  if(inv_type == QUDA_GCR_INVERTER)
+    inv_param.inv_type_precondition = QUDA_MG_INVERTER;
+  else if(inv_type == QUDA_CG_INVERTER)
+    inv_param.inv_type_precondition = precon_type;
+  else
+    errorQuda("inv_type not supported yet");
+
   inv_param.pipeline = pipeline;
   inv_param.gcrNkrylov = gcrNkrylov;
   inv_param.tol = tol;
@@ -534,6 +542,16 @@ int main(int argc, char **argv)
   initRand();
 
   display_test_info();
+
+  if(inv_type == QUDA_CG_INVERTER){
+    printfQuda("Will use CG inverter\n");
+  }
+  else if(inv_type == QUDA_GCR_INVERTER){
+    printfQuda("Will use GCR inverter with MG\n");
+  }
+  else{
+    errorQuda("This inv_type is not supported\n");
+  }
 
   //QKXTM: qkxtm specific inputs
   //--------------------------------------------------------------------
@@ -655,10 +673,12 @@ int main(int argc, char **argv)
 
   QudaInvertParam mg_inv_param = newQudaInvertParam();
   QudaMultigridParam mg_param = newQudaMultigridParam();
-  mg_param.invert_param = &mg_inv_param;
-
-  setMultigridParam(mg_param);
-
+  if(inv_type == QUDA_GCR_INVERTER){
+    mg_inv_param = newQudaInvertParam();
+    mg_param = newQudaMultigridParam();
+    mg_param.invert_param = &mg_inv_param;
+    setMultigridParam(mg_param);
+  }
 
   QudaInvertParam inv_param = newQudaInvertParam();
   setInvertParam(inv_param);
@@ -716,10 +736,11 @@ int main(int argc, char **argv)
   printfQuda("Before clover term\n");
   // This line ensures that if we need to construct the clover inverse 
   // (in either the smoother or the solver) we do so
-  if (mg_param.smoother_solve_type[0] == QUDA_DIRECT_PC_SOLVE || 
-      solve_type == QUDA_DIRECT_PC_SOLVE) {
-    inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
-  }
+  if(inv_type == QUDA_GCR_INVERTER)
+    if (mg_param.smoother_solve_type[0] == QUDA_DIRECT_PC_SOLVE || 
+	solve_type == QUDA_DIRECT_PC_SOLVE) {
+      inv_param.solve_type = QUDA_DIRECT_PC_SOLVE;
+    }
 
   if (dslash_type == QUDA_TWISTED_CLOVER_DSLASH) 
     loadCloverQuda(NULL, NULL, &inv_param);
@@ -727,41 +748,53 @@ int main(int argc, char **argv)
 
   inv_param.solve_type = solve_type; // restore actual solve_type we want to do
 
-  //QKXTM: DMH EXP
-  // setup the multigrid solver for UP flavour
+  if(inv_type == QUDA_CG_INVERTER)
+    if( (solve_type != QUDA_NORMOP_PC_SOLVE) && (solve_type != QUDA_NORMOP_SOLVE) )
+      errorQuda("CG solver needs a normalized equation to solve");
 
-  mg_param.invert_param->mu = mg_param.invert_param->mu_l;
-    
-  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
-  inv_param.preconditionerUP = mg_preconditionerUP;
+  void *mg_preconditionerUP = NULL;
+  void *mg_preconditionerDOWN = NULL;
+  void *mg_preconditionerSTRANGE = NULL;
 
-  // setup the multigrid solver for DOWN flavour
-
-  mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_l;
-
-  void *mg_preconditionerDOWN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDOWN = mg_preconditionerDOWN;
-
-  // setup the multigrid solver for STRANGE flavour
-
-  mg_param.invert_param->mu = mg_param.invert_param->mu_s;
+  if(inv_type == QUDA_GCR_INVERTER){
   
-  void *mg_preconditionerSTRANGE = newMultigridQuda(&mg_param);
-  inv_param.preconditionerSTRANGE = mg_preconditionerSTRANGE;
+    // setup the multigrid solver for UP flavour
+    mg_param.invert_param->mu = mg_param.invert_param->mu_l;
+    
+    mg_preconditionerUP = newMultigridQuda(&mg_param);
+    inv_param.preconditionerUP = mg_preconditionerUP;
 
-  // reset twist flavour to UP
-  mg_param.invert_param->mu = mg_param.invert_param->mu_l;
+    // setup the multigrid solver for DN flavour
+    mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_l;
 
+    mg_preconditionerDOWN = newMultigridQuda(&mg_param);
+    inv_param.preconditionerDOWN = mg_preconditionerDOWN;
+
+    // setup the multigrid solver for STRANGE flavour
+
+    mg_param.invert_param->mu = mg_param.invert_param->mu_s;
+  
+    mg_preconditionerSTRANGE = newMultigridQuda(&mg_param);
+    inv_param.preconditionerSTRANGE = mg_preconditionerSTRANGE;
+
+    // reset twist flavour
+    if( mg_param.invert_param->mu < 0 ) {
+      mg_param.invert_param->mu *= -1.0;
+    }
+  }
 
   calcMG_threepTwop_Mesons(gauge_APE, gaugeContract, &gauge_param,
 			    &inv_param, info, twop_filename,
 			   threep_filename, KAON);
 
   // free the multigrid solvers
-  destroyMultigridQuda(mg_preconditionerUP);
-  destroyMultigridQuda(mg_preconditionerDOWN);
-  destroyMultigridQuda(mg_preconditionerSTRANGE);
-  
+
+  if(inv_type == QUDA_GCR_INVERTER){  
+    destroyMultigridQuda(mg_preconditionerUP);
+    destroyMultigridQuda(mg_preconditionerDOWN);
+    destroyMultigridQuda(mg_preconditionerSTRANGE);
+  }
+
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) freeCloverQuda();

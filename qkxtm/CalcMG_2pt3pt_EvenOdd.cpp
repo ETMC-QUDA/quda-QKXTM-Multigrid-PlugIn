@@ -765,7 +765,7 @@ int main(int argc, char **argv)
   }
 
   void *mg_preconditionerDN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDOWN = mg_preconditionerDN;
+  inv_param.preconditionerDN = mg_preconditionerDN;
 
   // reset twist flavour
   if( mg_param.invert_param->mu < 0 ) {

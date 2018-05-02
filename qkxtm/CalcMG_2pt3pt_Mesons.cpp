@@ -55,8 +55,6 @@ extern QudaInverterType  precon_type;
 extern double mass;  // mass of Dirac operator
 extern double kappa; // kappa of Dirac operator
 extern double mu;
-extern double mu_l;
-extern double mu_s;
 extern double anisotropy;
 extern double tol; // tolerance for inverter
 extern double tol_hq; // heavy-quark tolerance for inverter
@@ -258,9 +256,7 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.mu = mu_l; 
-    inv_param.mu_l = mu_l;
-    inv_param.mu_s = mu_s;
+    inv_param.mu = mu;
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -415,9 +411,7 @@ void setInvertParam(QudaInvertParam &inv_param) {
 
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
-    inv_param.mu = mu_l;
-    inv_param.mu_l = mu_l;
-    inv_param.mu_s = mu_s;
+    inv_param.mu = mu;
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -754,28 +748,24 @@ int main(int argc, char **argv)
 
   void *mg_preconditionerUP = NULL;
   void *mg_preconditionerDOWN = NULL;
-  void *mg_preconditionerSTRANGE = NULL;
 
   if(inv_type == QUDA_GCR_INVERTER){
   
     // setup the multigrid solver for UP flavour
-    mg_param.invert_param->mu = mg_param.invert_param->mu_l;
-    
+    if( mg_param.invert_param->mu < 0 ) {
+      mg_param.invert_param->mu *= -1.0;
+    }
+  
     mg_preconditionerUP = newMultigridQuda(&mg_param);
     inv_param.preconditionerUP = mg_preconditionerUP;
 
     // setup the multigrid solver for DN flavour
-    mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_l;
+    if( mg_param.invert_param->mu > 0 ) {
+      mg_param.invert_param->mu *= -1.0;
+    }
 
     mg_preconditionerDOWN = newMultigridQuda(&mg_param);
     inv_param.preconditionerDOWN = mg_preconditionerDOWN;
-
-    // setup the multigrid solver for STRANGE flavour
-
-    mg_param.invert_param->mu = mg_param.invert_param->mu_s;
-  
-    mg_preconditionerSTRANGE = newMultigridQuda(&mg_param);
-    inv_param.preconditionerSTRANGE = mg_preconditionerSTRANGE;
 
     // reset twist flavour
     if( mg_param.invert_param->mu < 0 ) {
@@ -785,14 +775,13 @@ int main(int argc, char **argv)
 
   calcMG_threepTwop_Mesons(gauge_APE, gaugeContract, &gauge_param,
 			    &inv_param, info, twop_filename,
-			   threep_filename, KAON);
+			   threep_filename, PION);
 
   // free the multigrid solvers
 
   if(inv_type == QUDA_GCR_INVERTER){  
     destroyMultigridQuda(mg_preconditionerUP);
     destroyMultigridQuda(mg_preconditionerDOWN);
-    destroyMultigridQuda(mg_preconditionerSTRANGE);
   }
 
   freeGaugeQuda();

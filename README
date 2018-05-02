@@ -88,21 +88,27 @@ multiple MG preconditioners, but this can be fixed with three minor additions:
 
 First, one must add to quda/include/quda.h two extra preconditioner pointers:
 
-void *preconditioner; -> void *preconditioner;
-       		         void *preconditioner1;
-			 void *preconditioner2;
+void *preconditioner; -> void *preconditioner;	     
+       		         void *preconditionerUP;	     
+			 void *preconditionerDOWN;	     
+			 void *preconditionerSTRANGEPLUS; 
+			 void *preconditionerSTRANGEMINUS;
 
 Then, adjust the quda/lib/check_params.h file:
 
-P(preconditioner, 0); -> P(preconditioner, 0);
-		         P(preconditionerUP, 0);
-  			 P(preconditionerDN, 0);
+P(preconditioner, 0); -> P(preconditioner, 0);		   
+			 P(preconditionerUP, 0);	   
+			 P(preconditionerDOWN, 0);	   
+			 P(preconditionerSTRANGEPLUS, 0); 
+		         P(preconditionerSTRANGEMINUS, 0);
 
 and finally the quda/lib/quda_fortran.F90 file:
 
 integer(8) :: preconditioner -> integer(8) :: preconditioner
-	      		        integer(8) :: preconditioner1
-				integer(8) :: preconditioner2
+	      		     	integer(8) :: preconditionerUP          
+				integer(8) :: preconditionerDOWN        
+				integer(8) :: preconditionerSTRANGEPLUS 
+				integer(8) :: preconditionerSTRANGEMINUS
 
 This will allow for sucessful compilation of the 2 flavour routines, set 
 by the CMake Flag QKXTM_2FLAVMG.

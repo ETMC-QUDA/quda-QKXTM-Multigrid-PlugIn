@@ -1594,6 +1594,8 @@ bool verify_results = true;
 double mass = 0.1;
 double kappa = -1.0;
 double mu = 0.1;
+double mu_l = 0.1;
+double mu_s = 0.1;
 double anisotropy = 1.0;
 double clover_coeff = 0.1;
 bool compute_clover = false;
@@ -1765,6 +1767,8 @@ void usage(char** argv )
   printf("    --mass                                    # Mass of Dirac operator (default 0.1)\n");
   printf("    --kappa                                   # Kappa of Dirac operator (default -1.0)\n");
   printf("    --mu                                      # Twisted-Mass of Dirac operator (default 0.1)\n");
+  printf("    --mu_l                                    # Light twisted-Mass of Dirac operator for (default 0.1)\n");
+  printf("    --mu_s                                    # Strange twisted-Mass of Dirac operator for (default 0.1)\n");
   printf("    --compute-clover                          # Compute the clover field or use random numbers (default false)\n");
   printf("    --clover-coeff                            # Clover coefficient (default 1.0)\n");
   printf("    --anisotropy                              # Temporal anisotropy factor (default 1.0)\n");
@@ -2388,6 +2392,26 @@ int process_command_line_option(int argc, char** argv, int* idx)
       usage(argv);
     }
     mu = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mu_l") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    mu_l = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+
+  if( strcmp(argv[i], "--mu_s") == 0){
+    if (i+1 >= argc){
+      usage(argv);
+    }
+    mu_s = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;

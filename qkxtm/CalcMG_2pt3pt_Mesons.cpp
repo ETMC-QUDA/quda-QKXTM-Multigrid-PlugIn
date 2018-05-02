@@ -266,7 +266,7 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
       2 : 1;
     
     if (twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) {
-      printfQuda("Twisted-mass doublet non supported (yet)\n");
+      printfQuda("Twisted-mass doublet not supported (yet)\n");
       exit(0);
     }
   }
@@ -754,45 +754,54 @@ int main(int argc, char **argv)
 
   void *mg_preconditionerUP = NULL;
   void *mg_preconditionerDOWN = NULL;
-  void *mg_preconditionerSTRANGE = NULL;
+  void *mg_preconditionerSTRANGEPLUS = NULL;
+  void *mg_preconditionerSTRANGEMINUS = NULL;
 
   if(inv_type == QUDA_GCR_INVERTER){
   
-    // setup the multigrid solver for UP flavour
+    // setup the multigrid solver for UP mu
     mg_param.invert_param->mu = mg_param.invert_param->mu_l;
     
     mg_preconditionerUP = newMultigridQuda(&mg_param);
     inv_param.preconditionerUP = mg_preconditionerUP;
 
-    // setup the multigrid solver for DN flavour
+    // setup the multigrid solver for DN mu
     mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_l;
 
     mg_preconditionerDOWN = newMultigridQuda(&mg_param);
     inv_param.preconditionerDOWN = mg_preconditionerDOWN;
 
-    // setup the multigrid solver for STRANGE flavour
+    // setup the multigrid solver for STRANGE PLUS mu
 
     mg_param.invert_param->mu = mg_param.invert_param->mu_s;
   
-    mg_preconditionerSTRANGE = newMultigridQuda(&mg_param);
-    inv_param.preconditionerSTRANGE = mg_preconditionerSTRANGE;
+    mg_preconditionerSTRANGEPLUS = newMultigridQuda(&mg_param);
+    inv_param.preconditionerSTRANGEPLUS = mg_preconditionerSTRANGEPLUS;
+
+    // setup the multigrid solver for STRANGE MINUS mu
+
+    mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_s;
+  
+    mg_preconditionerSTRANGEMINUS = newMultigridQuda(&mg_param);
+    inv_param.preconditionerSTRANGEMINUS = mg_preconditionerSTRANGEMINUS;
 
     // reset twist flavour
     if( mg_param.invert_param->mu < 0 ) {
-      mg_param.invert_param->mu *= -1.0;
+      mg_param.invert_param->mu *= mu_l;
     }
   }
 
   calcMG_threepTwop_Mesons(gauge_APE, gaugeContract, &gauge_param,
 			    &inv_param, info, twop_filename,
-			   threep_filename, KAON);
+			   threep_filename, ALL_MESONS);
 
   // free the multigrid solvers
 
   if(inv_type == QUDA_GCR_INVERTER){  
     destroyMultigridQuda(mg_preconditionerUP);
     destroyMultigridQuda(mg_preconditionerDOWN);
-    destroyMultigridQuda(mg_preconditionerSTRANGE);
+    destroyMultigridQuda(mg_preconditionerSTRANGEPLUS);
+    destroyMultigridQuda(mg_preconditionerSTRANGEMINUS);
   }
 
   freeGaugeQuda();

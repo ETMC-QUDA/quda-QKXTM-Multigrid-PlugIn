@@ -8,6 +8,8 @@ switch( flag ){
  case 0: // 1
    switch( TESTPARTICLE ){
    case PROTON: // 1 -> ig5 or -ig5
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][2].y=1.; gamma[1][3].y=1.; gamma[2][0].y=1.; gamma[3][1].y=1.;}
      else{
@@ -19,7 +21,6 @@ switch( flag ){
      else{
        gamma[0][2].y=1.; gamma[1][3].y=1.; gamma[2][0].y=1.; gamma[3][1].y=1.;}
      break;
-   case PION:  // 1 -> ig5
        gamma[0][2].y=1.; gamma[1][3].y=1.; gamma[2][0].y=1.; gamma[3][1].y=1.;
      break;
    }
@@ -39,6 +40,8 @@ switch( flag ){
  case 5: // g5
    switch( TESTPARTICLE ){
    case PROTON: // g5 -> i or -i
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][0].y=1.; gamma[1][1].y=1.; gamma[2][2].y=1.; gamma[3][3].y=1.;}
      else{
@@ -49,9 +52,6 @@ switch( flag ){
        gamma[0][0].y=-1.; gamma[1][1].y=-1.; gamma[2][2].y=-1.; gamma[3][3].y=-1.;}
      else{
        gamma[0][0].y=1.; gamma[1][1].y=1.; gamma[2][2].y=1.; gamma[3][3].y=1.;}
-     break;
-   case PION: // g5 -> i
-       gamma[0][0].y=1.; gamma[1][1].y=1.; gamma[2][2].y=1.; gamma[3][3].y=1.;
      break;
    }
    break;
@@ -70,6 +70,8 @@ switch( flag ){
  case 10: // -0.5*i[g1,g2]
    switch( TESTPARTICLE ){
    case PROTON: // -0.5*i[g1,g2] -> +\- 0.5*g5[g1,g2]
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][2].y=1.; gamma[1][3].y=-1.; gamma[2][0].y=1.; gamma[3][1].y=-1.;}
      else{
@@ -81,14 +83,13 @@ switch( flag ){
      else{
        gamma[0][2].y=1.; gamma[1][3].y=-1.; gamma[2][0].y=1.; gamma[3][1].y=-1.;}
      break;
-   case PION: // -0.5*i[g1,g2] -> 0.5*g5[g1,g2]
-       gamma[0][2].y=1.; gamma[1][3].y=-1.; gamma[2][0].y=1.; gamma[3][1].y=-1.;
-     break;
    }
    break;
  case 11: // 0.5*i[g1,g3]
    switch( TESTPARTICLE ){
    case PROTON: // 0.5*i[g1,g3] -> +\- 0.5*g5[g1,g3]
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][3].x=-1.; gamma[1][2].x=1.; gamma[2][1].x=-1.; gamma[3][0].x=1.;}
      else{
@@ -100,14 +101,13 @@ switch( flag ){
      else{
        gamma[0][3].x=-1.; gamma[1][2].x=1.; gamma[2][1].x=-1.; gamma[3][0].x=1.;}
      break;
-   case PION: // 0.5*i[g1,g3] -> 0.5*g5[g1,g3]
-       gamma[0][3].x=-1.; gamma[1][2].x=1.; gamma[2][1].x=-1.; gamma[3][0].x=1.;
-     break;
    }
    break;
  case 12: // 0.5*i[g2,g3]
    switch( TESTPARTICLE ){
    case PROTON: // 0.5*i[g2,g3] -> +/- 0.5*g5[g2,g3]
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][3].y=1.; gamma[1][2].y=1.; gamma[2][1].y=1.; gamma[3][0].y=1.;}
      else{
@@ -119,14 +119,13 @@ switch( flag ){
      else{
        gamma[0][3].y=1.; gamma[1][2].y=1.; gamma[2][1].y=1.; gamma[3][0].y=1.;}
      break;
-   case PION: // 0.5*i[g2,g3] -> 0.5*g5[g2,g3]
-       gamma[0][3].y=1.; gamma[1][2].y=1.; gamma[2][1].y=1.; gamma[3][0].y=1.;
-     break;
    }
    break;
  case 13: // 0.5*i[g4,g1]
    switch( TESTPARTICLE ){
    case PROTON: // 0.5*i[g4,g1] -> +/- 0.5*g5[g4,g1]
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][1].y=1.; gamma[1][0].y=1.; gamma[2][3].y=1.; gamma[3][2].y=1.;}
      else{
@@ -138,14 +137,13 @@ switch( flag ){
      else{
        gamma[0][1].y=1.; gamma[1][0].y=1.; gamma[2][3].y=1.; gamma[3][2].y=1.;}
      break;
-   case PION: // 0.5*i[g4,g1] -> 0.5*g5[g4,g1]
-       gamma[0][1].y=1.; gamma[1][0].y=1.; gamma[2][3].y=1.; gamma[3][2].y=1.;
-     break;
    }
    break;
  case 14: // 0.5*i[g4,g2]
    switch( TESTPARTICLE ){
    case PROTON: // 0.5*i[g4,g2] -> +/- 0.5*g5[g4,g2]
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][1].x=1.; gamma[1][0].x=-1.; gamma[2][3].x=1.; gamma[3][2].x=-1.;}
      else{
@@ -157,14 +155,13 @@ switch( flag ){
      else{
        gamma[0][1].x=1.; gamma[1][0].x=-1.; gamma[2][3].x=1.; gamma[3][2].x=-1.;}
      break;
-   case PION: // 0.5*i[g4,g2] -> 0.5*g5[g4,g2]
-       gamma[0][1].x=1.; gamma[1][0].x=-1.; gamma[2][3].x=1.; gamma[3][2].x=-1.;
-     break;
    }
    break;
  case 15: // 0.5*i[g4,g3]
    switch( TESTPARTICLE ){
    case PROTON: // 0.5*i[g4,g3] -> +/- 0.5*g5[g4,g3]
+   case PION:
+   case KAON:
      if(partFlag == 1){
        gamma[0][0].y=1.; gamma[1][1].y=-1.; gamma[2][2].y=1.; gamma[3][3].y=-1.;}
      else{
@@ -175,9 +172,6 @@ switch( flag ){
        gamma[0][0].y=-1.; gamma[1][1].y=1.; gamma[2][2].y=-1.; gamma[3][3].y=1.;}
      else{
        gamma[0][0].y=1.; gamma[1][1].y=-1.; gamma[2][2].y=1.; gamma[3][3].y=-1.;}
-     break;
-   case PION: // 0.5*i[g4,g3] -> 0.5*g5[g4,g3]
-       gamma[0][0].y=1.; gamma[1][1].y=-1.; gamma[2][2].y=1.; gamma[3][3].y=-1.;
      break;
    }
    break;

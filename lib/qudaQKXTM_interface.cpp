@@ -60,7 +60,7 @@ void MG_bench(void **gaugeSmeared, void **gauge,
   QKXTM_Vector<double> *K_guess = 
     new QKXTM_Vector<double>(BOTH,VECTOR);
 
-    printfQuda("Memory allocation was successfull\n");
+  printfQuda("Memory allocation was successfull\n");
 
   if(param->gamma_basis != QUDA_UKQCD_GAMMA_BASIS) 
     errorQuda("This function works only with ukqcd gamma basis\n");
@@ -188,7 +188,7 @@ void MG_bench(void **gaugeSmeared, void **gauge,
 
       SolverParam solverParam(*param);
       Solver *solve = Solver::create(solverParam, m, mSloppy, 
-				      mPre, profileInvert);
+				     mPre, profileInvert);
       
       // in is reference to the b but for a parity singlet
       // out is reference to the x but for a parity singlet
@@ -922,7 +922,7 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 	      if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
 		  param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
 		K_vector->scaleVector(2*param->kappa);
-		}
+	      }
 	      // Rescale to normal
 	      K_vector->scaleVector(1e-10);
 	      
@@ -1331,12 +1331,12 @@ void calcMG_threepTwop_EvenOdd(void **gauge_APE, void **gauge,
 }
 
 void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge, 
-			       QudaGaugeParam *gauge_param, 
-			       QudaInvertParam *param, 
-			       qudaQKXTMinfo info, 
-			       char *filename_twop, 
-			       char *filename_threep, 
-			       WHICHPARTICLE MESON){
+			      QudaGaugeParam *gauge_param, 
+			      QudaInvertParam *param, 
+			      qudaQKXTMinfo info, 
+			      char *filename_twop, 
+			      char *filename_threep, 
+			      WHICHPARTICLE MESON){
   
   bool flag_eo;
   double t1,t2,t3,t4,t5,t6;
@@ -1460,36 +1460,73 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   
 
   //-HDF5 buffers for the three-point and two-point function
-  double *Thrp_local_HDF5   = 
-    (double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
-  double *Thrp_noether_HDF5 = 
-    (double*) malloc(2* 4*alloc_size*2*info.Ntsink*sizeof(double));
-  double **Thrp_oneD_HDF5   = 
-    (double**) malloc(4*sizeof(double*));
-  for(int mu=0;mu<4;mu++){
-    Thrp_oneD_HDF5[mu] = 
-      (double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
-  }   
+  double *Thrp_local_pion_HDF5;   
+  double *Thrp_noether_pion_HDF5; 
+  double **Thrp_oneD_pion_HDF5;   
+
+  if( MESON == PION || MESON == ALL_MESONS ) {
+    Thrp_local_pion_HDF5 = (double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
+    Thrp_noether_pion_HDF5 = (double*) malloc(2* 4*alloc_size*2*info.Ntsink*sizeof(double));
+    Thrp_oneD_pion_HDF5 = (double**) malloc(4*sizeof(double*));
+    for(int mu=0;mu<4;mu++){
+      Thrp_oneD_pion_HDF5[mu] = 
+	(double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
+    }   
+  }
+
+  double *Thrp_local_kaon_HDF5;   
+  double *Thrp_noether_kaon_HDF5; 
+  double **Thrp_oneD_kaon_HDF5;   
+
+  if( MESON == KAON || MESON == ALL_MESONS ) {
+    Thrp_local_kaon_HDF5 = (double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
+    Thrp_noether_kaon_HDF5 = (double*) malloc(2* 4*alloc_size*2*info.Ntsink*sizeof(double));
+    Thrp_oneD_kaon_HDF5 = (double**) malloc(4*sizeof(double*));
+    for(int mu=0;mu<4;mu++){
+      Thrp_oneD_kaon_HDF5[mu] = 
+	(double*) malloc(2*16*alloc_size*2*info.Ntsink*sizeof(double));
+    }   
+  }
   
   double *Twop_mesons_HDF5  = 
     (double*) malloc(2   *alloc_size*2*N_MESONS *sizeof(double));
   
   //Settings for HDF5 data write format
   if( CorrFileFormat==HDF5_FORM ){
-    if( Thrp_local_HDF5 == NULL ) 
-      errorQuda("%s: Cannot allocate memory for Thrp_local_HDF5.\n",fname);
-    if( Thrp_noether_HDF5 == NULL ) 
-      errorQuda("%s: Cannot allocate memory for Thrp_noether_HDF5.\n",fname);
+    if( MESON == PION || MESON == ALL_MESONS ) {
+      if( Thrp_local_pion_HDF5 == NULL ) 
+	errorQuda("%s: Cannot allocate memory for Thrp_local_HDF5.\n",fname);
+      if( Thrp_noether_pion_HDF5 == NULL ) 
+	errorQuda("%s: Cannot allocate memory for Thrp_noether_HDF5.\n",fname);
 
-    memset(Thrp_local_HDF5  , 0, 2*16*alloc_size*2*info.Ntsink*sizeof(double));
-    memset(Thrp_noether_HDF5, 0, 2* 4*alloc_size*2*info.Ntsink*sizeof(double));
+      memset(Thrp_local_pion_HDF5  , 0, 2*16*alloc_size*2*info.Ntsink*sizeof(double));
+      memset(Thrp_noether_pion_HDF5, 0, 2* 4*alloc_size*2*info.Ntsink*sizeof(double));
 
-    if( Thrp_oneD_HDF5 == NULL ) 
-      errorQuda("%s: Cannot allocate memory for Thrp_oneD_HDF5.\n",fname);
-    for(int mu=0;mu<4;mu++){
-      if( Thrp_oneD_HDF5[mu] == NULL ) 
-	errorQuda("%s: Cannot allocate memory for Thrp_oned_HDF5[%d].\n",fname,mu);      
-      memset(Thrp_oneD_HDF5[mu], 0, 2*16*alloc_size*2*info.Ntsink*sizeof(double));
+      if( Thrp_oneD_pion_HDF5 == NULL ) 
+	errorQuda("%s: Cannot allocate memory for Thrp_oneD_HDF5.\n",fname);
+      for(int mu=0;mu<4;mu++){
+	if( Thrp_oneD_pion_HDF5[mu] == NULL ) 
+	  errorQuda("%s: Cannot allocate memory for Thrp_oned_HDF5[%d].\n",fname,mu);      
+	memset(Thrp_oneD_pion_HDF5[mu], 0, 2*16*alloc_size*2*info.Ntsink*sizeof(double));
+      }
+    }
+
+    if( MESON == KAON || MESON == ALL_MESONS ) {    
+      if( Thrp_local_kaon_HDF5 == NULL ) 
+	errorQuda("%s: Cannot allocate memory for Thrp_local_HDF5.\n",fname);
+      if( Thrp_noether_kaon_HDF5 == NULL ) 
+	errorQuda("%s: Cannot allocate memory for Thrp_noether_HDF5.\n",fname);
+
+      memset(Thrp_local_kaon_HDF5  , 0, 2*16*alloc_size*2*info.Ntsink*sizeof(double));
+      memset(Thrp_noether_kaon_HDF5, 0, 2* 4*alloc_size*2*info.Ntsink*sizeof(double));
+
+      if( Thrp_oneD_kaon_HDF5 == NULL ) 
+	errorQuda("%s: Cannot allocate memory for Thrp_oneD_HDF5.\n",fname);
+      for(int mu=0;mu<4;mu++){
+	if( Thrp_oneD_kaon_HDF5[mu] == NULL ) 
+	  errorQuda("%s: Cannot allocate memory for Thrp_oned_HDF5[%d].\n",fname,mu);      
+	memset(Thrp_oneD_kaon_HDF5[mu], 0, 2*16*alloc_size*2*info.Ntsink*sizeof(double));
+      }
     }
     
     if( Twop_mesons_HDF5  == NULL ) 
@@ -1514,7 +1551,9 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
     new QKXTM_Propagator<float>(BOTH,PROPAGATOR);
   QKXTM_Propagator<float> *K_prop_down = 
     new QKXTM_Propagator<float>(BOTH,PROPAGATOR); 
-  QKXTM_Propagator<float> *K_prop_strange = 
+  QKXTM_Propagator<float> *K_prop_strangePlus = 
+    new QKXTM_Propagator<float>(BOTH,PROPAGATOR); 
+  QKXTM_Propagator<float> *K_prop_strangeMinus = 
     new QKXTM_Propagator<float>(BOTH,PROPAGATOR); 
   QKXTM_Propagator<float> *K_seqProp = 
     new QKXTM_Propagator<float>(BOTH,PROPAGATOR);
@@ -1523,9 +1562,16 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
     new QKXTM_Propagator3D<float>(BOTH,PROPAGATOR3D);
   QKXTM_Propagator3D<float> *K_prop3D_down = 
     new QKXTM_Propagator3D<float>(BOTH,PROPAGATOR3D);
-  QKXTM_Propagator3D<float> *K_prop3D_stange = 
-    new QKXTM_Propagator3D<float>(BOTH,PROPAGATOR3D);
+  QKXTM_Propagator3D<float> *K_prop3D_strangePlus;
+  QKXTM_Propagator3D<float> *K_prop3D_strangeMinus;
 
+  if( MESON == KAON || MESON == ALL_MESONS ) {
+    K_prop3D_strangePlus = 
+      new QKXTM_Propagator3D<float>(BOTH,PROPAGATOR3D);
+
+    K_prop3D_strangeMinus = 
+      new QKXTM_Propagator3D<float>(BOTH,PROPAGATOR3D);
+  }
   QKXTM_Contraction<float> *K_contract = 
     new QKXTM_Contraction<float>();
 
@@ -1597,17 +1643,35 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   Dirac &diracSloppyDOWN = *dSloppyDOWN;
   Dirac &diracPreDOWN = *dPreDOWN;
 
-  //ensure mu is strange flavor
+  //ensure mu is strange plus flavor
   param->mu *= param->mu_s;
   
-  Dirac *dSTRANGE = NULL;
-  Dirac *dSloppySTRANGE = NULL;
-  Dirac *dPreSTRANGE = NULL;
-  // create the dirac operator
-  createDirac(dSTRANGE, dSloppySTRANGE, dPreSTRANGE, *param, pc_solve);
-  Dirac &diracSTRANGE = *dSTRANGE;
-  Dirac &diracSloppySTRANGE = *dSloppySTRANGE;
-  Dirac &diracPreSTRANGE = *dPreSTRANGE;
+  Dirac *dSTRANGEPLUS = NULL;
+  Dirac *dSloppySTRANGEPLUS = NULL;
+  Dirac *dPreSTRANGEPLUS = NULL;
+  if( MESON == KAON || MESON == ALL_MESONS ) {
+    // create the dirac operator
+    createDirac(dSTRANGEPLUS, dSloppySTRANGEPLUS, dPreSTRANGEPLUS, *param, pc_solve);
+  }
+
+  Dirac &diracSTRANGEPLUS = *dSTRANGEPLUS;
+  Dirac &diracSloppySTRANGEPLUS = *dSloppySTRANGEPLUS;
+  Dirac &diracPreSTRANGEPLUS = *dPreSTRANGEPLUS;
+
+  //ensure mu is strange minus flavor
+  param->mu *= -1.0 * param->mu_s;
+  
+  Dirac *dSTRANGEMINUS = NULL;
+  Dirac *dSloppySTRANGEMINUS = NULL;
+  Dirac *dPreSTRANGEMINUS = NULL;
+  if( MESON == KAON || MESON == ALL_MESONS ) {
+    // create the dirac operator
+    createDirac(dSTRANGEMINUS, dSloppySTRANGEMINUS, dPreSTRANGEMINUS, *param, pc_solve);
+  }
+
+  Dirac &diracSTRANGEMINUS = *dSTRANGEMINUS;
+  Dirac &diracSloppySTRANGEMINUS = *dSloppySTRANGEMINUS;
+  Dirac &diracPreSTRANGEMINUS = *dPreSTRANGEMINUS;
 
   //revert to up flavor
   param->mu = param->mu_l;
@@ -1622,7 +1686,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   const int *X = cudaGauge->X();
 
   void *input_vector = malloc(GK_localL[0]*
-		      GK_localL[1]*
+			      GK_localL[1]*
 			      GK_localL[2]*
 			      GK_localL[3]*spinorSiteSize*sizeof(double));
   
@@ -1654,12 +1718,30 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 
   // Create Operators
-  DiracM mUP(diracUP), mSloppyUP(diracSloppyUP), mPreUP(diracPreUP);
-  DiracM mDOWN(diracDOWN), mSloppyDOWN(diracSloppyDOWN), mPreDOWN(diracPreDOWN);
-  DiracM mSTRANGE(diracSTRANGE), mSloppySTRANGE(diracSloppySTRANGE), mPreSTRANGE(diracPreSTRANGE);
-  DiracMdagM mdagmUP(diracUP), mdagmSloppyUP(diracSloppyUP), mdagmPreUP(diracPreUP);
-  DiracMdagM mdagmDOWN(diracDOWN), mdagmSloppyDOWN(diracSloppyDOWN), mdagmPreDOWN(diracPreDOWN);
-  DiracMdagM mdagmSTRANGE(diracSTRANGE), mdagmSloppySTRANGE(diracSloppySTRANGE), mdagmPreSTRANGE(diracPreSTRANGE);
+  DiracM mUP(diracUP), 
+    mSloppyUP(diracSloppyUP), 
+    mPreUP(diracPreUP);
+  DiracM mDOWN(diracDOWN), 
+    mSloppyDOWN(diracSloppyDOWN), 
+    mPreDOWN(diracPreDOWN);
+  DiracM mSTRANGEPLUS(diracSTRANGEPLUS), 
+    mSloppySTRANGEPLUS(diracSloppySTRANGEPLUS), 
+    mPreSTRANGEPLUS(diracPreSTRANGEPLUS);
+  DiracM mSTRANGEMINUS(diracSTRANGEMINUS), 
+    mSloppySTRANGEMINUS(diracSloppySTRANGEMINUS), 
+    mPreSTRANGEMINUS(diracPreSTRANGEMINUS);
+  DiracMdagM mdagmUP(diracUP), 
+    mdagmSloppyUP(diracSloppyUP), 
+    mdagmPreUP(diracPreUP);
+  DiracMdagM mdagmDOWN(diracDOWN), 
+    mdagmSloppyDOWN(diracSloppyDOWN), 
+    mdagmPreDOWN(diracPreDOWN);
+  DiracMdagM mdagmSTRANGEPLUS(diracSTRANGEPLUS), 
+    mdagmSloppySTRANGEPLUS(diracSloppySTRANGEPLUS), 
+    mdagmPreSTRANGEPLUS(diracPreSTRANGEPLUS);
+  DiracMdagM mdagmSTRANGEMINUS(diracSTRANGEMINUS), 
+    mdagmSloppySTRANGEMINUS(diracSloppySTRANGEMINUS), 
+    mdagmPreSTRANGEMINUS(diracPreSTRANGEMINUS);
  
   // Create SolverParams
 
@@ -1672,8 +1754,12 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   SolverParam solverParamD(*param);
 
   param->mu = param->mu_s;
-  param->preconditioner = param->preconditionerSTRANGE;
-  SolverParam solverParamS(*param);
+  param->preconditioner = param->preconditionerSTRANGEPLUS;
+  SolverParam solverParamSP(*param);
+
+  param->mu = -1.0 * param->mu_s;
+  param->preconditioner = param->preconditionerSTRANGEMINUS;
+  SolverParam solverParamSM(*param);
   
   //======================================================================//
   //================ P R O B L E M   E X E C U T I O N  ==================// 
@@ -1770,7 +1856,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
       
       if(param->inv_type == QUDA_GCR_INVERTER){
 	Solver *solveU = Solver::create(solverParamU, mUP, mSloppyUP, 
-				       mPreUP, profileInvert);
+					mPreUP, profileInvert);
 
 	(*solveU)(*out,*in);
 
@@ -1871,70 +1957,168 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
       t4 = MPI_Wtime();
       printfQuda("Inversion down = %d,  for source = %d finished in time %f sec\n",isc,isource,t4-t2);
 
-      ////////////////////////////////////
-      // Forward prop for strange quark //
-      ////////////////////////////////////
-      memset(input_vector,0,
-	     X[0]*X[1]*X[2]*X[3]*
-	     spinorSiteSize*sizeof(double));
+      if( MESON == KAON || MESON == ALL_MESONS ) {
 
-      for(int i = 0 ; i < 4 ; i++)
-	my_src[i] = (info.sourcePosition[isource][i] - 
-		     comm_coords(default_topo)[i] * X[i]);
+	/////////////////////////////////////////////
+	// Forward prop for positive strange quark //
+	/////////////////////////////////////////////
+	memset(input_vector,0,
+	       X[0]*X[1]*X[2]*X[3]*
+	       spinorSiteSize*sizeof(double));
 
-      if( (my_src[0]>=0) && (my_src[0]<X[0]) && 
-	  (my_src[1]>=0) && (my_src[1]<X[1]) && 
-	  (my_src[2]>=0) && (my_src[2]<X[2]) && 
-	  (my_src[3]>=0) && (my_src[3]<X[3]))
-	*( (double*)input_vector + 
-	   my_src[3]*X[2]*X[1]*X[0]*24 + 
-	   my_src[2]*X[1]*X[0]*24 + 
-	   my_src[1]*X[0]*24 + 
-	   my_src[0]*24 + 
-	   isc*2 ) = 1.0;
+	for(int i = 0 ; i < 4 ; i++)
+	  my_src[i] = (info.sourcePosition[isource][i] - 
+		       comm_coords(default_topo)[i] * X[i]);
 
-      K_guess->uploadToCuda(b,flag_eo);
-      blas::zero(*x);
-      diracSTRANGE.prepare(in,out,*x,*b,param->solution_type);
-      printfQuda(" strange - %02d: \n",isc);
-      tx3 = MPI_Wtime();
+	if( (my_src[0]>=0) && (my_src[0]<X[0]) && 
+	    (my_src[1]>=0) && (my_src[1]<X[1]) && 
+	    (my_src[2]>=0) && (my_src[2]<X[2]) && 
+	    (my_src[3]>=0) && (my_src[3]<X[3]))
+	  *( (double*)input_vector + 
+	     my_src[3]*X[2]*X[1]*X[0]*24 + 
+	     my_src[2]*X[1]*X[0]*24 + 
+	     my_src[1]*X[0]*24 + 
+	     my_src[0]*24 + 
+	     isc*2 ) = 1.0;
 
-      // Change mu to strange flavor
-      param->mu = param->mu_s;
-      if(param->inv_type == QUDA_GCR_INVERTER){
-	Solver *solveS = Solver::create(solverParamS, mSTRANGE, mSloppySTRANGE, 
-					mPreSTRANGE, profileInvert);
-	(*solveS)(*out,*in);
+	K_guess->uploadToCuda(b,flag_eo);
+	blas::zero(*x);
+	diracSTRANGEPLUS.prepare(in,out,*x,*b,param->solution_type);
+	printfQuda(" strange plus - %02d: \n",isc);
+	tx3 = MPI_Wtime();
 
-	delete solveS;
-      }
-      else if(param->inv_type == QUDA_CG_INVERTER){
-	cudaColorSpinorField tmp(*in);
-	diracSTRANGE.Mdag(*in, tmp);
+	// Change mu to strange flavor
+	param->mu = param->mu_s;
+	if(param->inv_type == QUDA_GCR_INVERTER){
+	  Solver *solveSP = Solver::create(solverParamSP, mSTRANGEPLUS, mSloppySTRANGEPLUS, 
+					   mPreSTRANGEPLUS, profileInvert);
+	  (*solveSP)(*out,*in);
 
-	Solver *solveS = Solver::create(solverParamS, mdagmSTRANGE, mdagmSloppySTRANGE, 
-					mdagmPreSTRANGE, profileInvert);
-	(*solveS)(*out,*in);
+	  delete solveSP;
+	}
+	else if(param->inv_type == QUDA_CG_INVERTER){
+	  cudaColorSpinorField tmp(*in);
+	  diracSTRANGEPLUS.Mdag(*in, tmp);
 
-	delete solveS;
-      }
+	  Solver *solveSP = Solver::create(solverParamSP, mdagmSTRANGEPLUS, mdagmSloppySTRANGEPLUS, 
+					   mdagmPreSTRANGEPLUS, profileInvert);
+	  (*solveSP)(*out,*in);
 
-      tx4 = MPI_Wtime();
-      summ_tx34 += tx4-tx3;
-      solverParamS.updateInvertParam(*param);
-      diracSTRANGE.reconstruct(*x,*b,param->solution_type);
-      K_vector->downloadFromCuda(x,flag_eo);
-      if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
-	  param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
-	K_vector->scaleVector(2*param->kappa);
-      }
+	  delete solveSP;
+	}
 
-      K_temp->castDoubleToFloat(*K_vector);
-      K_prop_strange->absorbVectorToDevice(*K_temp,isc/3,isc%3);
+	tx4 = MPI_Wtime();
+	summ_tx34 += tx4-tx3;
+	solverParamSP.updateInvertParam(*param);
+	diracSTRANGEPLUS.reconstruct(*x,*b,param->solution_type);
+	K_vector->downloadFromCuda(x,flag_eo);
+	if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+	    param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+	  K_vector->scaleVector(2*param->kappa);
+	}
 
-      t4 = MPI_Wtime();
-      printfQuda("Inversion strange = %d,  for source = %d finished in time %f sec\n",isc,isource,t4-t2);
+	K_temp->castDoubleToFloat(*K_vector);
+	K_prop_strangePlus->absorbVectorToDevice(*K_temp,isc/3,isc%3);
 
+	t4 = MPI_Wtime();
+	printfQuda("Inversion strange plus = %d,  for source = %d finished in time %f sec\n",isc,isource,t4-t2);
+
+	tx4 = MPI_Wtime();
+	summ_tx34 += tx4-tx3;
+	solverParamSP.updateInvertParam(*param);
+	diracSTRANGEPLUS.reconstruct(*x,*b,param->solution_type);
+	K_vector->downloadFromCuda(x,flag_eo);
+	if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+	    param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+	  K_vector->scaleVector(2*param->kappa);
+	}
+
+	K_temp->castDoubleToFloat(*K_vector);
+	K_prop_strangePlus->absorbVectorToDevice(*K_temp,isc/3,isc%3);
+
+	t4 = MPI_Wtime();
+	printfQuda("Inversion strange plus = %d,  for source = %d finished in time %f sec\n",isc,isource,t4-t2);
+
+	/////////////////////////////////////////////
+	// Forward prop for negative strange quark //
+	/////////////////////////////////////////////
+	memset(input_vector,0,
+	       X[0]*X[1]*X[2]*X[3]*
+	       spinorSiteSize*sizeof(double));
+
+	for(int i = 0 ; i < 4 ; i++)
+	  my_src[i] = (info.sourcePosition[isource][i] - 
+		       comm_coords(default_topo)[i] * X[i]);
+
+	if( (my_src[0]>=0) && (my_src[0]<X[0]) && 
+	    (my_src[1]>=0) && (my_src[1]<X[1]) && 
+	    (my_src[2]>=0) && (my_src[2]<X[2]) && 
+	    (my_src[3]>=0) && (my_src[3]<X[3]))
+	  *( (double*)input_vector + 
+	     my_src[3]*X[2]*X[1]*X[0]*24 + 
+	     my_src[2]*X[1]*X[0]*24 + 
+	     my_src[1]*X[0]*24 + 
+	     my_src[0]*24 + 
+	     isc*2 ) = 1.0;
+
+	K_guess->uploadToCuda(b,flag_eo);
+	blas::zero(*x);
+	diracSTRANGEMINUS.prepare(in,out,*x,*b,param->solution_type);
+	printfQuda(" strange minus - %02d: \n",isc);
+	tx3 = MPI_Wtime();
+
+	// Change mu to strange flavor
+	param->mu = param->mu_s;
+	if(param->inv_type == QUDA_GCR_INVERTER){
+	  Solver *solveSM = Solver::create(solverParamSM, mSTRANGEMINUS, mSloppySTRANGEMINUS, 
+					   mPreSTRANGEMINUS, profileInvert);
+	  (*solveSM)(*out,*in);
+
+	  delete solveSM;
+	}
+	else if(param->inv_type == QUDA_CG_INVERTER){
+	  cudaColorSpinorField tmp(*in);
+	  diracSTRANGEMINUS.Mdag(*in, tmp);
+
+	  Solver *solveSM = Solver::create(solverParamSM, mdagmSTRANGEMINUS, mdagmSloppySTRANGEMINUS, 
+					   mdagmPreSTRANGEMINUS, profileInvert);
+	  (*solveSM)(*out,*in);
+
+	  delete solveSM;
+	}
+
+	tx4 = MPI_Wtime();
+	summ_tx34 += tx4-tx3;
+	solverParamSM.updateInvertParam(*param);
+	diracSTRANGEMINUS.reconstruct(*x,*b,param->solution_type);
+	K_vector->downloadFromCuda(x,flag_eo);
+	if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+	    param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+	  K_vector->scaleVector(2*param->kappa);
+	}
+
+	K_temp->castDoubleToFloat(*K_vector);
+	K_prop_strangeMinus->absorbVectorToDevice(*K_temp,isc/3,isc%3);
+
+	t4 = MPI_Wtime();
+	printfQuda("Inversion strange minus = %d,  for source = %d finished in time %f sec\n",isc,isource,t4-t2);
+
+	tx4 = MPI_Wtime();
+	summ_tx34 += tx4-tx3;
+	solverParamSM.updateInvertParam(*param);
+	diracSTRANGEMINUS.reconstruct(*x,*b,param->solution_type);
+	K_vector->downloadFromCuda(x,flag_eo);
+	if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+	    param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+	  K_vector->scaleVector(2*param->kappa);
+	}
+
+	K_temp->castDoubleToFloat(*K_vector);
+	K_prop_strangeMinus->absorbVectorToDevice(*K_temp,isc/3,isc%3);
+
+	t4 = MPI_Wtime();
+	printfQuda("Inversion strange minus = %d,  for source = %d finished in time %f sec\n",isc,isource,t4-t2);
+      }// End if kaon
     } 
     // Close loop over 12 spin-color
     
@@ -1965,7 +2149,10 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ){
 	  K_prop3D_up->absorbTimeSlice(*K_prop_up,my_fixSinkTime);
 	  K_prop3D_down->absorbTimeSlice(*K_prop_down,my_fixSinkTime);
-	  K_prop3D_strange->absorbTimeSlice(*K_prop_strange,my_fixSinkTime);
+	  if( MESON == KAON || MESON == ALL_MESONS ) {
+	    K_prop3D_strangePlus->absorbTimeSlice(*K_prop_strangePlus,my_fixSinkTime);
+	    K_prop3D_strangeMinus->absorbTimeSlice(*K_prop_strangeMinus,my_fixSinkTime);
+	  }
 	}
 	comm_barrier();
 
@@ -2006,24 +2193,46 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	    comm_barrier();
 	    
 	    K_temp->zero_device();	
-	    ////////////
-	    // stange //
-	    ////////////
-	    if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
-	      K_temp->copyPropagator3D(*K_prop3D_strange,
-				       my_fixSinkTime,nu,c2);
-	    comm_barrier();
-
-	    K_vector->castFloatToDouble(*K_temp);
-	    K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-	    K_temp->castDoubleToFloat(*K_guess);
-	    if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
-	      K_prop3D_strange->absorbVectorTimeSlice(*K_temp,
-						   my_fixSinkTime,nu,c2);
-	    comm_barrier();
 	    
-	    K_temp->zero_device();	
+	    if( MESON == KAON || MESON == ALL_MESONS ) {
+	      //////////////////
+	      // strange plus //
+	      //////////////////
+	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		K_temp->copyPropagator3D(*K_prop3D_strangePlus,
+					 my_fixSinkTime,nu,c2);
+	      comm_barrier();
+
+	      K_vector->castFloatToDouble(*K_temp);
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_temp->castDoubleToFloat(*K_guess);
+	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		K_prop3D_strangePlus->absorbVectorTimeSlice(*K_temp,
+							    my_fixSinkTime,nu,c2);
+	      comm_barrier();
+	    
+	      K_temp->zero_device();	
+
+	      ///////////////////
+	      // strange minus //
+	      ///////////////////
+	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		K_temp->copyPropagator3D(*K_prop3D_strangeMinus,
+					 my_fixSinkTime,nu,c2);
+	      comm_barrier();
+
+	      K_vector->castFloatToDouble(*K_temp);
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_temp->castDoubleToFloat(*K_guess);
+	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		K_prop3D_strangeMinus->absorbVectorTimeSlice(*K_temp,
+							     my_fixSinkTime,nu,c2);
+	      comm_barrier();
+	    
+	      K_temp->zero_device();	
+	    } // End if Kaon
 	  }
+
 	t2 = MPI_Wtime();
 	printfQuda("TIME_REPORT - 3d Props preparation for sink-source[%d]=%d: %f sec\n",
 		   its,info.tsinkSource[its],t2-t1);
@@ -2038,324 +2247,581 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 		     filename_threep_base);
 	}
 
+	if( MESON == PION || MESON == ALL_MESONS ) {
 
-	/////////////////////////////////////
-	// Sequential propagator for Pion+ //
-	/////////////////////////////////////
+	  /////////////////////////////////////
+	  // Sequential propagator for Pion+ //
+	  /////////////////////////////////////
 
-
-	printfQuda("Sequential Inversions, %s:\n", "Pion+");
+	  printfQuda("Sequential Inversions, %s:\n", "Pion+");
 	
-	t1 = MPI_Wtime();
-	for(int nu = 0 ; nu < 4 ; nu++)
-	  for(int c2 = 0 ; c2 < 3 ; c2++){
-	    t3 = MPI_Wtime();
-	    K_temp->zero_device();
+	  t1 = MPI_Wtime();
+	  for(int nu = 0 ; nu < 4 ; nu++)
+	    for(int c2 = 0 ; c2 < 3 ; c2++){
+	      t3 = MPI_Wtime();
+	      K_temp->zero_device();
 
 
-	    //Ensure mu is down flavor:
-	    param->mu *= -1.0 * param->mu_l;		
-	    if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
-	      //-CJL: We use the up propagator for the pion+ so that we get back
-	      // anti-down after we conjugate during the contractions
-	      K_temp->copyPropagator3D(*K_prop3D_up,my_fixSinkTime,nu,c2);
+	      //Ensure mu is down flavor:
+	      param->mu *= -1.0 * param->mu_l;		
+	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		//-CJL: We use the up propagator for the pion+ so that we get back
+		// anti-down after we conjugate during the contractions
+		K_temp->copyPropagator3D(*K_prop3D_up,my_fixSinkTime,nu,c2);
 	    
-	    comm_barrier();
-	    K_temp->apply_gamma5();
-	    K_vector->castFloatToDouble(*K_temp);
+	      comm_barrier();
+	      K_temp->apply_gamma5();
+	      K_vector->castFloatToDouble(*K_temp);
 
-	    //Scale up vector to avoid MP errors
-	    K_vector->scaleVector(1e+10);
+	      //Scale up vector to avoid MP errors
+	      K_vector->scaleVector(1e+10);
 
-	    K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-	    K_guess->uploadToCuda(b,flag_eo);
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->uploadToCuda(b,flag_eo);
 
 	  
-	    diracDN.prepare(in,out,*x,*b,param->solution_type);
+	      diracDOWN.prepare(in,out,*x,*b,param->solution_type);
 	      
-	    K_vector->downloadFromCuda(in,flag_eo);
-	    K_vector->download();
-	    K_guess->uploadToCuda(out,flag_eo); 
-	    // initial guess is ready
+	      K_vector->downloadFromCuda(in,flag_eo);
+	      K_vector->download();
+	      K_guess->uploadToCuda(out,flag_eo); 
+	      // initial guess is ready
 	      
-	    printfQuda("%02d - \n",nu*3+c2);
+	      printfQuda("%02d - \n",nu*3+c2);
 
-	    if(param->inv_type == QUDA_GCR_INVERTER){
-	      Solver *solveD = Solver::create(solverParamD, mDOWN, mSloppyDOWN, 
-					      mPreDOWN, profileInvert);
-	      (*solveD)(*out,*in);
+	      if(param->inv_type == QUDA_GCR_INVERTER){
+		Solver *solveD = Solver::create(solverParamD, mDOWN, mSloppyDOWN, 
+						mPreDOWN, profileInvert);
+		(*solveD)(*out,*in);
 
-	      delete solveD;
-	    }
-	    else if(param->inv_type == QUDA_CG_INVERTER){
-	      cudaColorSpinorField tmp(*in);
-	      diracDOWN.Mdag(*in, tmp);
+		delete solveD;
+	      }
+	      else if(param->inv_type == QUDA_CG_INVERTER){
+		cudaColorSpinorField tmp(*in);
+		diracDOWN.Mdag(*in, tmp);
 
-	      Solver *solveD = Solver::create(solverParamD, mdagmDOWN, mdagmSloppyDOWN, 
-					      mdagmPreDOWN, profileInvert);
-	      (*solveD)(*out,*in);
+		Solver *solveD = Solver::create(solverParamD, mdagmDOWN, mdagmSloppyDOWN, 
+						mdagmPreDOWN, profileInvert);
+		(*solveD)(*out,*in);
 
-	      delete solveD;
-	    }
+		delete solveD;
+	      }
 
-	    solverParamD.updateInvertParam(*param);
-	    diracDOWN.reconstruct(*x,*b,param->solution_type);
+	      solverParamD.updateInvertParam(*param);
+	      diracDOWN.reconstruct(*x,*b,param->solution_type);
 
-	  }
-
-	K_vector->downloadFromCuda(x,flag_eo);
-	if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
-	    param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
-	  K_vector->scaleVector(2*param->kappa);
-	}
-	// Rescale to normal
-	K_vector->scaleVector(1e-10);
+	      K_vector->downloadFromCuda(x,flag_eo);
+	      if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+		  param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+		K_vector->scaleVector(2*param->kappa);
+	      }
+	      // Rescale to normal
+	      K_vector->scaleVector(1e-10);
 	      
-	K_temp->castDoubleToFloat(*K_vector);
-	K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
+	      K_temp->castDoubleToFloat(*K_vector);
+	      K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
 	      
-	t4 = MPI_Wtime();
+	      t4 = MPI_Wtime();
 	      
-	printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
-		   "pion+",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
+	      printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
+			 "pion+",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
       
-	t2 = MPI_Wtime();
+	    }
 
-	printfQuda("TIME_REPORT - Sequential Inversions, particle: %s, %f sec\n",
-		   "pion+",t2-t1);
-
-		  
-	/////////////////////////////
-	// Contractions for part 1 //
-	/////////////////////////////
-
-
-	t1 = MPI_Wtime();
-
-	K_contract->contractFixSink(*K_seqProp, *K_prop_up, 
-				    *K_gaugeContractions,
-				    corrThp_local, corrThp_noether, 
-				    corrThp_oneD, MESON, 1, 
-				    isource, CorrSpace);
-	
-	t2 = MPI_Wtime();
-
-	printfQuda("TIME_REPORT - Three-point Contractions, particle: %s, %f sec\n",
-		   "pion+",t2-t1);
-		  
-	t1 = MPI_Wtime();
-	if( CorrFileFormat==ASCII_FORM ){
-	  K_contract->writeThrp_ASCII(corrThp_local, corrThp_noether, 
-				      corrThp_oneD, MESON, 1, 
-				      filename_threep_base, isource, 
-				      info.tsinkSource[its], CorrSpace);
 	  t2 = MPI_Wtime();
 
-	  printfQuda("TIME_REPORT - Done: 3-pt function for sp = %d, sink-source = %d, particle %s written ASCII format in %f sec.\n",
-		     isource,info.tsinkSource[its],
+	  printfQuda("TIME_REPORT - Sequential Inversions, particle: %s, %f sec\n",
 		     "pion+",t2-t1);
 
-	}
-	else if( CorrFileFormat==HDF5_FORM ){
-	  int uOrd;
-	  uOrd = 0;
-	    
-	  int thrp_sign = 1;
+		  
+	  ////////////////////////////
+	  // Contractions for Pion+ //
+	  ////////////////////////////
+
+
+	  t1 = MPI_Wtime();
+
+	  K_contract->contractFixSink(*K_seqProp, *K_prop_up, 
+				      *K_gaugeContractions,
+				      corrThp_local, corrThp_noether, 
+				      corrThp_oneD, MESON, 1, 
+				      isource, CorrSpace);
+	
+	  t2 = MPI_Wtime();
+
+	  printfQuda("TIME_REPORT - Three-point Contractions, %s: %f sec\n",
+		     "pion+",t2-t1);
+		  
+	  t1 = MPI_Wtime();
+	  if( CorrFileFormat==ASCII_FORM ){
+	    K_contract->writeThrp_ASCII(corrThp_local, corrThp_noether, 
+					corrThp_oneD, PION, 1, 
+					filename_threep_base, isource, 
+					info.tsinkSource[its], CorrSpace);
+	    t2 = MPI_Wtime();
+
+	    printfQuda("TIME_REPORT - Done: 3-pt function for sp = %d, sink-source = %d, %s written ASCII format in %f sec.\n",
+		       isource,info.tsinkSource[its],
+		       "pion+",t2-t1);
+
+	  }
+	  else if( CorrFileFormat==HDF5_FORM ){
+	    int uOrd = 0;
+	    int thrp_sign = 1;
 	  
-	  K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_HDF5, 
-					 (void*)corrThp_local, 0, 
-					 uOrd, its, info.Ntsink, 0, 
-					 thrp_sign, THRP_LOCAL, CorrSpace,
-					 HighMomForm);
-	  K_contract->copyThrpToHDF5_Buf((void*)Thrp_noether_HDF5, 
-					 (void*)corrThp_noether, 0, 
-					 uOrd, its, info.Ntsink, 0, 
-					 thrp_sign,THRP_NOETHER,CorrSpace,
-					 HighMomForm);
-	  for(int mu = 0;mu<4;mu++)
-	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_oneD_HDF5[mu],
-					   (void*)corrThp_oneD, mu, 
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_pion_HDF5, 
+					   (void*)corrThp_local, 0, 
 					   uOrd, its, info.Ntsink, 0, 
-					   thrp_sign, THRP_ONED, CorrSpace,
+					   thrp_sign, THRP_LOCAL, CorrSpace,
 					   HighMomForm);
-	  t2 = MPI_Wtime();
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_noether_pion_HDF5, 
+					   (void*)corrThp_noether, 0, 
+					   uOrd, its, info.Ntsink, 0, 
+					   thrp_sign,THRP_NOETHER,CorrSpace,
+					   HighMomForm);
+	    for(int mu = 0;mu<4;mu++)
+	      K_contract->copyThrpToHDF5_Buf((void*)Thrp_oneD_pion_HDF5[mu],
+					     (void*)corrThp_oneD, mu, 
+					     uOrd, its, info.Ntsink, 0, 
+					     thrp_sign, THRP_ONED, CorrSpace,
+					     HighMomForm);
+	    t2 = MPI_Wtime();
 	  
-	  printfQuda("TIME_REPORT - 3-point function for particle %s copied to HDF5 write buffers in %f sec.\n","pion+",t2-t1);
+	    printfQuda("TIME_REPORT - 3-point function for %s copied to HDF5 write buffers in %f sec.\n","pion+",t2-t1);
 
-	}
-	  
-	/////////////////////////////////////
-	// Sequential propagator for Pion- //
-	/////////////////////////////////////
-
-	printfQuda("Sequential Inversions, particle %s:\n",
-		   "pion+");
-
-	t1 = MPI_Wtime();
-	for(int nu = 0 ; nu < 4 ; nu++)
-	  for(int c2 = 0 ; c2 < 3 ; c2++){
-	    t3 = MPI_Wtime();
-	    K_temp->zero_device();
-	    //Ensure mu is up flavor
-	    param->mu *= param->mu_l;
-	    if( ( my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
-	      K_temp->copyPropagator3D(*K_prop3D_down,my_fixSinkTime,nu,c2);
-	    // We use the down propogator for the pion- so that we get back
-	    // anti-up after we conjugate during the contractions
-
-	    comm_barrier();
-	    K_temp->apply_gamma5();
-	    K_vector->castFloatToDouble(*K_temp);
-
-	    // Scale vector to avoid MP errors
-	    K_vector->scaleVector(1e+10);
-
-	    K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
-	    K_guess->uploadToCuda(b,flag_eo);
+	  }
 	      
-	    diracUP.prepare(in,out,*x,*b,param->solution_type);
+	  /////////////////////////////////////
+	  // Sequential propagator for Pion- //
+	  /////////////////////////////////////
+
+	  printfQuda("Sequential Inversions, %s:\n",
+		     "pion-");
+
+	  t1 = MPI_Wtime();
+	  for(int nu = 0 ; nu < 4 ; nu++)
+	    for(int c2 = 0 ; c2 < 3 ; c2++){
+	      t3 = MPI_Wtime();
+	      K_temp->zero_device();
+	      //Ensure mu is up flavor
+	      param->mu *= param->mu_l;
+	      if( ( my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		K_temp->copyPropagator3D(*K_prop3D_down,my_fixSinkTime,nu,c2);
+	      // We use the down propogator for the pion- so that we get back
+	      // anti-up after we conjugate during the contractions
+
+	      comm_barrier();
+	      K_temp->apply_gamma5();
+	      K_vector->castFloatToDouble(*K_temp);
+
+	      // Scale vector to avoid MP errors
+	      K_vector->scaleVector(1e+10);
+
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->uploadToCuda(b,flag_eo);
+	      
+	      diracUP.prepare(in,out,*x,*b,param->solution_type);
 	    	
-	    K_vector->downloadFromCuda(in,flag_eo);
-	    K_vector->download();
-	    K_guess->uploadToCuda(out,flag_eo); 
-	    // initial guess is ready
+	      K_vector->downloadFromCuda(in,flag_eo);
+	      K_vector->download();
+	      K_guess->uploadToCuda(out,flag_eo); 
+	      // initial guess is ready
 		
-	    printfQuda("%02d - ",nu*3+c2);
+	      printfQuda("%02d - ",nu*3+c2);
 
-	    if(param->inv_type == QUDA_GCR_INVERTER){
-	      Solver *solveU = Solver::create(solverParamU, mUP, mSloppyUP, 
-					      mPreUP, profileInvert);
+	      if(param->inv_type == QUDA_GCR_INVERTER){
+		Solver *solveU = Solver::create(solverParamU, mUP, mSloppyUP, 
+						mPreUP, profileInvert);
 
-	      (*solveU)(*out,*in);
+		(*solveU)(*out,*in);
 
-	      delete solveU;
-	    }
-	    else if(param->inv_type == QUDA_CG_INVERTER){
-	      cudaColorSpinorField tmp(*in);
-	      diracUP.Mdag(*in, tmp);
+		delete solveU;
+	      }
+	      else if(param->inv_type == QUDA_CG_INVERTER){
+		cudaColorSpinorField tmp(*in);
+		diracUP.Mdag(*in, tmp);
 
-	      Solver *solveU = Solver::create(solverParamU, mdagmUP, mdagmSloppyUP, 
-					      mdagmPreUP, profileInvert);
-	      (*solveU)(*out,*in);
+		Solver *solveU = Solver::create(solverParamU, mdagmUP, mdagmSloppyUP, 
+						mdagmPreUP, profileInvert);
+		(*solveU)(*out,*in);
 
-	      delete solveU;
-	    }
+		delete solveU;
+	      }
 
-	    solverParamU.updateInvertParam(*param);
-	    diracUP.reconstruct(*x,*b,param->solution_type);
+	      solverParamU.updateInvertParam(*param);
+	      diracUP.reconstruct(*x,*b,param->solution_type);
 
-	    K_vector->downloadFromCuda(x,flag_eo);
-	    if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
-		param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
-	      K_vector->scaleVector(2*param->kappa);
-	    }
+	      K_vector->downloadFromCuda(x,flag_eo);
+	      if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+		  param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+		K_vector->scaleVector(2*param->kappa);
+	      }
 
-	    // Rescale to normal
-	    K_vector->scaleVector(1e-10);
+	      // Rescale to normal
+	      K_vector->scaleVector(1e-10);
 	      
-	    K_temp->castDoubleToFloat(*K_vector);
-	    K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
-
-	    t4 = MPI_Wtime();
+	      K_temp->castDoubleToFloat(*K_vector);
+	      K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
+	  
+	      t4 = MPI_Wtime();
 	      
-	    printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
-		       "pion-",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
-	  }
-	t2 = MPI_Wtime();
-	printfQuda("TIME_REPORT - Sequential Inversions, particle %s: %f sec\n","pion-",t2-t1);
-	
-	/////////////////////////////
-	// Contractions for part 2 //
-	/////////////////////////////
+	      printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
+			 "pion-",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
+	    }
 
-	t1 = MPI_Wtime();
+	  t2 = MPI_Wtime();
+	  printfQuda("TIME_REPORT - Sequential Inversions, particle %s: %f sec\n","pion-",t2-t1);
 	
-	K_contract->contractFixSink(*K_seqProp, 
-				    *K_prop_down, 
-				    *K_gaugeContractions,
-				    corrThp_local, corrThp_noether, 
-				    corrThp_oneD, MESON, 2, 
-				    isource, CorrSpace);
+	  ////////////////////////////
+	  // Contractions for Pion- //
+	  ////////////////////////////
 
-	t2 = MPI_Wtime();
+	  t1 = MPI_Wtime();
 	
-	printfQuda("TIME_REPORT - Three-point Contractions, partilce %s: %f sec\n", "pion-",t2-t1);
-
-	t1 = MPI_Wtime();
-	if( CorrFileFormat==ASCII_FORM ){
-	  K_contract->writeThrp_ASCII(corrThp_local, corrThp_noether, 
+	  K_contract->contractFixSink(*K_seqProp, 
+				      *K_prop_down, 
+				      *K_gaugeContractions,
+				      corrThp_local, corrThp_noether, 
 				      corrThp_oneD, MESON, 2, 
-				      filename_threep_base, isource, 
-				      info.tsinkSource[its], CorrSpace);
+				      isource, CorrSpace);
+
 	  t2 = MPI_Wtime();
+	
+	  printfQuda("TIME_REPORT - Three-point Contractions, %s: %f sec\n", "pion-",t2-t1);
 
-	  switch( MESON ) {
-	  
-	  case PION:
+	  t1 = MPI_Wtime();
+	  if( CorrFileFormat==ASCII_FORM ){
+	    K_contract->writeThrp_ASCII(corrThp_local, corrThp_noether, 
+					corrThp_oneD, PION, 2, 
+					filename_threep_base, isource, 
+					info.tsinkSource[its], CorrSpace);
+	    t2 = MPI_Wtime();
 
-	    printfQuda("TIME_REPORT - Done: 3-pt function for sp = %d, sink-source = %d, flavor %s written ASCII format in %f sec.\n",
-		       isource,info.tsinkSource[its],"dn",t2-t1);
+	    printfQuda("TIME_REPORT - Done: 3-pt function for sp = %d, sink-source = %d, %s written ASCII format in %f sec.\n",
+		       isource,info.tsinkSource[its],"pion-",t2-t1);
 
-	    break; //CJL: Add more here to support kaon
-	  default:
-
-	    errorQuda("Error: Meson type not supported!");
-
-	    break;
 	  }
-	}
-	else if( CorrFileFormat==HDF5_FORM ){
-	  int uOrd;
-	  if(MESON == PION ) uOrd = 1;
-	  else errorQuda("Error: Meson type not supported!");
+	  else if( CorrFileFormat==HDF5_FORM ){
+	    int uOrd = 1;
 	    
-	  int thrp_sign = 1;
+	    int thrp_sign = 1;
 
-	  K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_HDF5, 
-					 (void*)corrThp_local, 0, 
-					 uOrd, its, info.Ntsink, 
-					 0, thrp_sign, THRP_LOCAL, 
-					 CorrSpace, HighMomForm);
-	  K_contract->copyThrpToHDF5_Buf((void*)Thrp_noether_HDF5, 
-					 (void*)corrThp_noether, 0, 
-					 uOrd, its, info.Ntsink, 
-					 0, thrp_sign, THRP_NOETHER, 
-					 CorrSpace, HighMomForm);
-	  for(int mu = 0;mu<4;mu++)
-	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_oneD_HDF5[mu], 
-					   (void*)corrThp_oneD,mu, 
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_pion_HDF5, 
+					   (void*)corrThp_local, 0, 
 					   uOrd, its, info.Ntsink, 
-					   0, thrp_sign, THRP_ONED, 
+					   0, thrp_sign, THRP_LOCAL, 
 					   CorrSpace, HighMomForm);
-	  t2 = MPI_Wtime();
-	  switch( MESON ) {
-	  
-	  case PION:
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_noether_pion_HDF5, 
+					   (void*)corrThp_noether, 0, 
+					   uOrd, its, info.Ntsink, 
+					   0, thrp_sign, THRP_NOETHER, 
+					   CorrSpace, HighMomForm);
+	    for(int mu = 0;mu<4;mu++)
+	      K_contract->copyThrpToHDF5_Buf((void*)Thrp_oneD_pion_HDF5[mu], 
+					     (void*)corrThp_oneD,mu, 
+					     uOrd, its, info.Ntsink, 
+					     0, thrp_sign, THRP_ONED, 
+					     CorrSpace, HighMomForm);
+	    t2 = MPI_Wtime();
 
-	    printfQuda("TIME_REPORT - 3-point function for flavor %s copied to HDF5 write buffers in %f sec.\n", 
-		       "dn",t2-t1);
+	    printfQuda("TIME_REPORT - 3-point function for %s copied to HDF5 write buffers in %f sec.\n", 
+		       "pion-",t2-t1);
 
-	    break; //CJL: Add more here to support kaon
-	  default:
-
-	    errorQuda("Error: Meson type not supported!");
-
-	    break;
 	  }
-	}
-      }
-      // End loop over sink-source separations      
+	} // End if pion
+
+	if( MESON == KAON || MESON == ALL_MESONS ) {
+
+	  /////////////////////////////////////
+	  // Sequential propagator for Kaon+ //
+	  /////////////////////////////////////
+
+
+	  printfQuda("Sequential Inversions, %s:\n", "Kaon+");
+	
+	  t1 = MPI_Wtime();
+	  for(int nu = 0 ; nu < 4 ; nu++)
+	    for(int c2 = 0 ; c2 < 3 ; c2++){
+	      t3 = MPI_Wtime();
+	      K_temp->zero_device();
+
+	      //Ensure mu is strange minus:
+	      param->mu *= -1.0 * param->mu_s;		
+	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		//-CJL: We use the positive strange propagator for the kaon+ so that we get back
+		// negative strange after we conjugate during the contractions
+		K_temp->copyPropagator3D(*K_prop3D_strangePlus,my_fixSinkTime,nu,c2);
+	    
+	      comm_barrier();
+	      K_temp->apply_gamma5();
+	      K_vector->castFloatToDouble(*K_temp);
+
+	      //Scale up vector to avoid MP errors
+	      K_vector->scaleVector(1e+10);
+
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->uploadToCuda(b,flag_eo);
+
+	  
+	      diracDOWN.prepare(in,out,*x,*b,param->solution_type);
+	      
+	      K_vector->downloadFromCuda(in,flag_eo);
+	      K_vector->download();
+	      K_guess->uploadToCuda(out,flag_eo); 
+	      // initial guess is ready
+	      
+	      printfQuda("%02d - \n",nu*3+c2);
+
+	      if(param->inv_type == QUDA_GCR_INVERTER){
+		Solver *solveD = Solver::create(solverParamD, mDOWN, mSloppyDOWN, 
+						mPreDOWN, profileInvert);
+		(*solveD)(*out,*in);
+
+		delete solveD;
+	      }
+	      else if(param->inv_type == QUDA_CG_INVERTER){
+		cudaColorSpinorField tmp(*in);
+		diracDOWN.Mdag(*in, tmp);
+
+		Solver *solveD = Solver::create(solverParamD, mdagmDOWN, mdagmSloppyDOWN, 
+						mdagmPreDOWN, profileInvert);
+		(*solveD)(*out,*in);
+
+		delete solveD;
+	      }
+
+	      solverParamD.updateInvertParam(*param);
+	      diracDOWN.reconstruct(*x,*b,param->solution_type);
+
+	      K_vector->downloadFromCuda(x,flag_eo);
+	      if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+		  param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+		K_vector->scaleVector(2*param->kappa);
+	      }
+	      // Rescale to normal
+	      K_vector->scaleVector(1e-10);
+	      
+	      K_temp->castDoubleToFloat(*K_vector);
+	      K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
+	      
+	      t4 = MPI_Wtime();
+	      
+	      printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
+			 "kaon+",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
+      
+	    }
+
+	  t2 = MPI_Wtime();
+
+	  printfQuda("TIME_REPORT - Sequential Inversions, %s: %f sec\n",
+		     "kaon+",t2-t1);
+
+		  
+	  ////////////////////////////
+	  // Contractions for Kaon+ //
+	  ////////////////////////////
+
+
+	  t1 = MPI_Wtime();
+
+	  K_contract->contractFixSink(*K_seqProp, *K_prop_up, 
+				      *K_gaugeContractions,
+				      corrThp_local, corrThp_noether, 
+				      corrThp_oneD, MESON, 1, 
+				      isource, CorrSpace);
+	
+	  t2 = MPI_Wtime();
+
+	  printfQuda("TIME_REPORT - Three-point Contractions, %s: %f sec\n",
+		     "kaon+",t2-t1);
+		  
+	  t1 = MPI_Wtime();
+	  if( CorrFileFormat==ASCII_FORM ){
+	    K_contract->writeThrp_ASCII(corrThp_local, corrThp_noether, 
+					corrThp_oneD, KAON, 1, 
+					filename_threep_base, isource, 
+					info.tsinkSource[its], CorrSpace);
+	    t2 = MPI_Wtime();
+
+	    printfQuda("TIME_REPORT - Done: 3-pt function for sp = %d, sink-source = %d, %s written ASCII format in %f sec.\n",
+		       isource,info.tsinkSource[its],
+		       "kaon+",t2-t1);
+
+	  }
+	  else if( CorrFileFormat==HDF5_FORM ){
+	    int uOrd = 0;
+	    
+	    int thrp_sign = 1;
+	  
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_kaon_HDF5, 
+					   (void*)corrThp_local, 0, 
+					   uOrd, its, info.Ntsink, 0, 
+					   thrp_sign, THRP_LOCAL, CorrSpace,
+					   HighMomForm);
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_noether_kaon_HDF5, 
+					   (void*)corrThp_noether, 0, 
+					   uOrd, its, info.Ntsink, 0, 
+					   thrp_sign,THRP_NOETHER,CorrSpace,
+					   HighMomForm);
+	    for(int mu = 0;mu<4;mu++)
+	      K_contract->copyThrpToHDF5_Buf((void*)Thrp_oneD_kaon_HDF5[mu],
+					     (void*)corrThp_oneD, mu, 
+					     uOrd, its, info.Ntsink, 0, 
+					     thrp_sign, THRP_ONED, CorrSpace,
+					     HighMomForm);
+	    t2 = MPI_Wtime();
+	  
+	    printfQuda("TIME_REPORT - 3-point function for %s copied to HDF5 write buffers in %f sec.\n","kaon+",t2-t1);
+
+	  }
+	  
+	  /////////////////////////////////////
+	  // Sequential propagator for kaon- //
+	  /////////////////////////////////////
+
+	  printfQuda("Sequential Inversions, %s:\n",
+		     "kaon-");
+
+	  t1 = MPI_Wtime();
+	  for(int nu = 0 ; nu < 4 ; nu++)
+	    for(int c2 = 0 ; c2 < 3 ; c2++){
+	      t3 = MPI_Wtime();
+	      K_temp->zero_device();
+	      //Ensure mu is up flavor
+	      param->mu *= param->mu_l;
+	      if( ( my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
+		K_temp->copyPropagator3D(*K_prop3D_down,my_fixSinkTime,nu,c2);
+	      // We use the down propogator for the kaon- so that we get back
+	      // anti-up after we conjugate during the contractions
+
+	      comm_barrier();
+	      K_temp->apply_gamma5();
+	      K_vector->castFloatToDouble(*K_temp);
+
+	      // Scale vector to avoid MP errors
+	      K_vector->scaleVector(1e+10);
+
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->uploadToCuda(b,flag_eo);
+	      
+	      diracUP.prepare(in,out,*x,*b,param->solution_type);
+	    	
+	      K_vector->downloadFromCuda(in,flag_eo);
+	      K_vector->download();
+	      K_guess->uploadToCuda(out,flag_eo); 
+	      // initial guess is ready
+		
+	      printfQuda("%02d - ",nu*3+c2);
+
+	      if(param->inv_type == QUDA_GCR_INVERTER){
+		Solver *solveSP = Solver::create(solverParamSP, mSTRANGEPLUS, mSloppySTRANGEPLUS, 
+						 mPreSTRANGEPLUS, profileInvert);
+
+		(*solveSP)(*out,*in);
+
+		delete solveSP;
+	      }
+	      else if(param->inv_type == QUDA_CG_INVERTER){
+		cudaColorSpinorField tmp(*in);
+		diracSTRANGEPLUS.Mdag(*in, tmp);
+
+		Solver *solveSP = Solver::create(solverParamSP, mdagmSTRANGEPLUS, mdagmSloppySTRANGEPLUS, 
+						 mdagmPreSTRANGEPLUS, profileInvert);
+		(*solveSP)(*out,*in);
+
+		delete solveSP;
+	      }
+
+	      solverParamSP.updateInvertParam(*param);
+	      diracSTRANGEPLUS.reconstruct(*x,*b,param->solution_type);
+
+	      K_vector->downloadFromCuda(x,flag_eo);
+	      if (param->mass_normalization == QUDA_MASS_NORMALIZATION || 
+		  param->mass_normalization == QUDA_ASYMMETRIC_MASS_NORMALIZATION) {
+		K_vector->scaleVector(2*param->kappa);
+	      }
+
+	      // Rescale to normal
+	      K_vector->scaleVector(1e-10);
+	      
+	      K_temp->castDoubleToFloat(*K_vector);
+	      K_seqProp->absorbVectorToDevice(*K_temp,nu,c2);
+
+	      t4 = MPI_Wtime();
+	      
+	      printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
+			 "kaon-",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
+	    }
+	  t2 = MPI_Wtime();
+	  printfQuda("TIME_REPORT - Sequential Inversions, %s: %f sec\n","pion-",t2-t1);
+	
+	  ////////////////////////////
+	  // Contractions for Kaon- //
+	  ////////////////////////////
+
+	  t1 = MPI_Wtime();
+	
+	  K_contract->contractFixSink(*K_seqProp, 
+				      *K_prop_strangeMinus, 
+				      *K_gaugeContractions,
+				      corrThp_local, corrThp_noether, 
+				      corrThp_oneD, MESON, 2, 
+				      isource, CorrSpace);
+
+	  t2 = MPI_Wtime();
+	
+	  printfQuda("TIME_REPORT - Three-point Contractions, partilce %s: %f sec\n", "kaon-",t2-t1);
+
+	  t1 = MPI_Wtime();
+	  if( CorrFileFormat==ASCII_FORM ){
+	    K_contract->writeThrp_ASCII(corrThp_local, corrThp_noether, 
+					corrThp_oneD, KAON, 2, 
+					filename_threep_base, isource, 
+					info.tsinkSource[its], CorrSpace);
+	    t2 = MPI_Wtime();
+
+	    printfQuda("TIME_REPORT - Done: 3-pt function for sp = %d, sink-source = %d, %s written ASCII format in %f sec.\n",
+		       isource,info.tsinkSource[its],"kaon-",t2-t1);
+
+	  }
+	  else if( CorrFileFormat==HDF5_FORM ){
+	    int uOrd = 1;
+	    int thrp_sign = 1;
+
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_kaon_HDF5, 
+					   (void*)corrThp_local, 0, 
+					   uOrd, its, info.Ntsink, 
+					   0, thrp_sign, THRP_LOCAL, 
+					   CorrSpace, HighMomForm);
+	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_noether_kaon_HDF5, 
+					   (void*)corrThp_noether, 0, 
+					   uOrd, its, info.Ntsink, 
+					   0, thrp_sign, THRP_NOETHER, 
+					   CorrSpace, HighMomForm);
+	    for(int mu = 0;mu<4;mu++)
+	      K_contract->copyThrpToHDF5_Buf((void*)Thrp_oneD_kaon_HDF5[mu], 
+					     (void*)corrThp_oneD,mu, 
+					     uOrd, its, info.Ntsink, 
+					     0, thrp_sign, THRP_ONED, 
+					     CorrSpace, HighMomForm);
+	    t2 = MPI_Wtime();
+	    printfQuda("TIME_REPORT - 3-point function for %s copied to HDF5 write buffers in %f sec.\n", 
+		       "kaon-",t2-t1);
+
+	  }
+	} // End if kaon
+      } // End loop over sink-source separations      
       
       //-C.K. Write the three-point function in HDF5 format
       if( CorrFileFormat==HDF5_FORM ){
-	char *str;
-	if(CorrSpace==MOMENTUM_SPACE) asprintf(&str,"Qsq%d",info.Q_sq);
-	else if (CorrSpace==POSITION_SPACE) asprintf(&str,"PosSpace");
 
-	t1 = MPI_Wtime();
-	switch( MESON ) {
-	  
-	case PION:
+	if( MESON == PION || MESON == ALL_MESONS ) {
+
+	  char *str;
+	  if(CorrSpace==MOMENTUM_SPACE) asprintf(&str,"Qsq%d",info.Q_sq);
+	  else if (CorrSpace==POSITION_SPACE) asprintf(&str,"PosSpace");
+
+	  t1 = MPI_Wtime();
 
 	  asprintf(&filename_threep_base,"%s_%s_%s_SS.%02d.%02d.%02d.%02d.h5",
 		   filename_threep, 
@@ -2365,26 +2831,47 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 		   GK_sourcePosition[isource][2],
 		   GK_sourcePosition[isource][3]);
 
-	  break; //CJL: Add more here to support kaon
-	default:
-
-	  errorQuda("Error: Meson type not supported!");
-
-	  break;
-	}
-	printfQuda("\nThe three-point function HDF5 filename is: %s\n",
-		   filename_threep_base);
+	  printfQuda("\nThe three-point function HDF5 filename is: %s\n",
+		     filename_threep_base);
 	
-	K_contract->writeThrpHDF5((void*) Thrp_local_HDF5, 
-				  (void*) Thrp_noether_HDF5, 
-				  (void**)Thrp_oneD_HDF5, 
-				  filename_threep_base, info, 
-				  isource, MESON);
+	  K_contract->writeThrpHDF5((void*) Thrp_local_pion_HDF5, 
+				    (void*) Thrp_noether_pion_HDF5, 
+				    (void**)Thrp_oneD_pion_HDF5, 
+				    filename_threep_base, info, 
+				    isource, PION);
 	
-	t2 = MPI_Wtime();
-	printfQuda("TIME_REPORT - Done: Three-point function for source-position = %d written in HDF5 format in %f sec.\n",isource,t2-t1);
+	  t2 = MPI_Wtime();
+	  printfQuda("TIME_REPORT - Done: Three-point function for source-position = %d written in HDF5 format in %f sec.\n",isource,t2-t1);
+	} // End if pion
+	if( MESON == KAON || MESON == ALL_MESONS ) {
+
+	  char *str;
+	  if(CorrSpace==MOMENTUM_SPACE) asprintf(&str,"Qsq%d",info.Q_sq);
+	  else if (CorrSpace==POSITION_SPACE) asprintf(&str,"PosSpace");
+
+	  t1 = MPI_Wtime();
+
+	  asprintf(&filename_threep_base,"%s_%s_%s_SS.%02d.%02d.%02d.%02d.h5",
+		   filename_threep, 
+		   "kaon", str, 
+		   GK_sourcePosition[isource][0],
+		   GK_sourcePosition[isource][1],
+		   GK_sourcePosition[isource][2],
+		   GK_sourcePosition[isource][3]);
+
+	  printfQuda("\nThe three-point function HDF5 filename is: %s\n",
+		     filename_threep_base);
+	
+	  K_contract->writeThrpHDF5((void*) Thrp_local_pion_HDF5, 
+				    (void*) Thrp_noether_pion_HDF5, 
+				    (void**)Thrp_oneD_pion_HDF5, 
+				    filename_threep_base, info, 
+				    isource, KAON);
+	
+	  t2 = MPI_Wtime();
+	  printfQuda("TIME_REPORT - Done: Three-point function for source-position = %d written in HDF5 format in %f sec.\n",isource,t2-t1);
+	} // End if kaon
       }
-      
       printfQuda("\n");
     }
     // End loop if running for the specific isource
@@ -2395,27 +2882,27 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
     for(int nu = 0 ; nu < 4 ; nu++)
       for(int c2 = 0 ; c2 < 3 ; c2++){
-    	K_temp->copyPropagator(*K_prop_up,nu,c2);
-    	K_vector->castFloatToDouble(*K_temp);
+	K_temp->copyPropagator(*K_prop_up,nu,c2);
+	K_vector->castFloatToDouble(*K_temp);
 	K_vector->download();
 	mapNormalToEvenOdd((void*) K_vector->H_elem() , *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, GK_nsmearGauss, GK_alphaGauss);
 	mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	K_guess->packVector((double*) output_vector);
 	K_guess->loadVector();
-    	K_temp->castDoubleToFloat(*K_guess);
-    	K_prop_up->absorbVectorToDevice(*K_temp,nu,c2);
+	K_temp->castDoubleToFloat(*K_guess);
+	K_prop_up->absorbVectorToDevice(*K_temp,nu,c2);
 	
-    	K_temp->copyPropagator(*K_prop_down,nu,c2);
-    	K_vector->castFloatToDouble(*K_temp);
+	K_temp->copyPropagator(*K_prop_down,nu,c2);
+	K_vector->castFloatToDouble(*K_temp);
 	K_vector->download();
 	mapNormalToEvenOdd((void*) K_vector->H_elem() , *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, GK_nsmearGauss, GK_alphaGauss);
 	mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	K_guess->packVector((double*) output_vector);
 	K_guess->loadVector();
-    	K_temp->castDoubleToFloat(*K_guess);
-    	K_prop_down->absorbVectorToDevice(*K_temp,nu,c2);
+	K_temp->castDoubleToFloat(*K_guess);
+	K_prop_down->absorbVectorToDevice(*K_temp,nu,c2);
       }
     
     K_prop_up->rotateToPhysicalBase_device(+1);
@@ -2465,7 +2952,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	       info.sourcePosition[isource][2],
 	       info.sourcePosition[isource][3],
 	       t6-t5);
-  } 
+  }
   // close loop over source positions
 
   //======================================================================//
@@ -2479,10 +2966,16 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   free(corrMesons);
 
   if( CorrFileFormat==HDF5_FORM ){
-    free(Thrp_local_HDF5);
-    free(Thrp_noether_HDF5);
-    for(int mu=0;mu<4;mu++) free(Thrp_oneD_HDF5[mu]);
-    free(Thrp_oneD_HDF5);
+    free(Thrp_local_pion_HDF5);
+    free(Thrp_local_kaon_HDF5);
+    free(Thrp_noether_pion_HDF5);
+    free(Thrp_noether_kaon_HDF5);
+    for(int mu=0;mu<4;mu++) {
+      free(Thrp_oneD_pion_HDF5[mu]);
+      free(Thrp_oneD_kaon_HDF5[mu]);    
+    }
+    free(Thrp_oneD_pion_HDF5);
+    free(Thrp_oneD_kaon_HDF5);
     free(Twop_mesons_HDF5);
   }
 
@@ -2493,16 +2986,20 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   delete K_contract;
   delete K_prop_up;
   delete K_prop_down;
-  delete K_prop_strange;
+  delete K_prop_strangePlus;
+  delete K_prop_strangeMinus;
   delete dUP;
   delete dSloppyUP;
   delete dPreUP;
   delete dDOWN;
   delete dSloppyDOWN;
   delete dPreDOWN;
-  delete dSTRANGE;
-  delete dSloppySTRANGE;
-  delete dPreSTRANGE;
+  delete dSTRANGEPLUS;
+  delete dSTRANGEMINUS;
+  delete dSloppySTRANGEPLUS;
+  delete dSloppySTRANGEMINUS;
+  delete dPreSTRANGEPLUS;
+  delete dPreSTRANGEMINUS;
   delete K_guess;
   delete K_vector;
   delete K_gaugeSmeared;
@@ -2514,7 +3011,8 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   delete K_seqProp;
   delete K_prop3D_up;
   delete K_prop3D_down;
-  delete K_prop3D_strange;
+  delete K_prop3D_strangePlus;
+  delete K_prop3D_strangeMinus;
 
   printfQuda("...Done\n");
   
@@ -2601,12 +3099,12 @@ void calcLowModeProjection(QudaInvertParam *evInvParam,
 //========================================================================//
 
 void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette, 
-				  QudaInvertParam *EvInvParam, 
-				  QudaInvertParam *param, 
-				  QudaGaugeParam *gauge_param,
-				  qudaQKXTM_arpackInfo arpackInfo, 
-				  qudaQKXTM_loopInfo loopInfo, 
-				  qudaQKXTMinfo info){
+			      QudaInvertParam *EvInvParam, 
+			      QudaInvertParam *param, 
+			      QudaGaugeParam *gauge_param,
+			      qudaQKXTM_arpackInfo arpackInfo, 
+			      qudaQKXTM_loopInfo loopInfo, 
+			      qudaQKXTMinfo info){
 
   double t1,t2,t3,t4,t5;
   char fname[256];
@@ -2886,7 +3384,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
       
       if( buf_std_oneD[step][mu] == NULL ) 
 	errorQuda("Allocation of buffer buf_std_oneD[%d][%d] failed.\n",
-		 step,mu);
+		  step,mu);
       if( buf_gen_oneD[step][mu] == NULL ) 
 	errorQuda("Allocation of buffer buf_gen_oneD[%d][%d] failed.\n",
 		  step,mu);
@@ -2972,17 +3470,17 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
     
     if( (n+1)==loopInfo.deflStep[s] ){     
 
-	t1 = MPI_Wtime();
-	performGPU_FT<double>(buf_std_uloc[0], std_uloc[0], iPrint);
-	performGPU_FT<double>(buf_gen_uloc[0], gen_uloc[0], iPrint);
-	for(int mu=0;mu<4;mu++){
-	  performGPU_FT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], iPrint);
-	  performGPU_FT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], iPrint);
-	  performGPU_FT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], iPrint);
-	  performGPU_FT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], iPrint);
-	}
-	t2 = MPI_Wtime();
-	printfQuda("TIME_REPORT: GPU FT in %f sec\n",t2-t1);
+      t1 = MPI_Wtime();
+      performGPU_FT<double>(buf_std_uloc[0], std_uloc[0], iPrint);
+      performGPU_FT<double>(buf_gen_uloc[0], gen_uloc[0], iPrint);
+      for(int mu=0;mu<4;mu++){
+	performGPU_FT<double>(buf_std_oneD[0][mu], std_oneD[0][mu], iPrint);
+	performGPU_FT<double>(buf_std_csvC[0][mu], std_csvC[0][mu], iPrint);
+	performGPU_FT<double>(buf_gen_oneD[0][mu], gen_oneD[0][mu], iPrint);
+	performGPU_FT<double>(buf_gen_csvC[0][mu], gen_csvC[0][mu], iPrint);
+      }
+      t2 = MPI_Wtime();
+      printfQuda("TIME_REPORT: GPU FT in %f sec\n",t2-t1);
 
       //================================================================//
       //=============== D U M P   E X A C T   D A T A  =================// 
@@ -3018,7 +3516,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 			buf_std_oneD[0], buf_std_csvC[0], 
 			buf_gen_oneD[0], buf_gen_csvC[0], 
 			loop_exact_fname, loopInfo, 
-			 exact_part);
+			exact_part);
       }
       
       printfQuda("Writing the Exact part of the loops for NeV = %d completed.\n",n+1);
@@ -3217,7 +3715,7 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 
 	SolverParam solverParam(*param);
 	Solver *solve = Solver::create(solverParam, m, mSloppy, 
-					  mPre, profileInvert);
+				       mPre, profileInvert);
 	    
 	(*solve)(*out,*in);	    
 	dirac.reconstruct(*x,*b,param->solution_type);
@@ -3276,16 +3774,16 @@ void calcMG_loop_wOneD_wExact(void **gaugeToPlaquette,
 	    //iPrint increments the starting points in the write buffers.
 	    if(idx==0) iPrint++;
 	    t1 = MPI_Wtime();
-	      performGPU_FT<double>(buf_std_uloc[idx], std_uloc[idx], iPrint);
-	      performGPU_FT<double>(buf_gen_uloc[idx], gen_uloc[idx], iPrint);
+	    performGPU_FT<double>(buf_std_uloc[idx], std_uloc[idx], iPrint);
+	    performGPU_FT<double>(buf_gen_uloc[idx], gen_uloc[idx], iPrint);
 		
-	      for(int mu=0;mu<4;mu++){
-		performGPU_FT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu], iPrint);
-		performGPU_FT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu], iPrint);
-		performGPU_FT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu], iPrint);
-		performGPU_FT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu], iPrint);
-	      }
-	      t2 = MPI_Wtime();
+	    for(int mu=0;mu<4;mu++){
+	      performGPU_FT<double>(buf_std_oneD[idx][mu], std_oneD[idx][mu], iPrint);
+	      performGPU_FT<double>(buf_std_csvC[idx][mu], std_csvC[idx][mu], iPrint);
+	      performGPU_FT<double>(buf_gen_oneD[idx][mu], gen_oneD[idx][mu], iPrint);
+	      performGPU_FT<double>(buf_gen_csvC[idx][mu], gen_csvC[idx][mu], iPrint);
+	    }
+	    t2 = MPI_Wtime();
 	    printfQuda("TIME_REPORT: %s Stoch = %02d, HadVec = %02d, Spin-colour = %02d, NeV = %04d, Loops FFT and copy %f sec\n",msg_str, is, ih, sc, NeV_defl,  t2-t1);
 	  }// Dump conditonal
 	}// Deflation steps

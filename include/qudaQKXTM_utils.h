@@ -149,6 +149,9 @@ namespace quda {
   void run_contractMesons (cudaTextureObject_t texProp1, 
 			   cudaTextureObject_t texProp2, void* corr, int it, 
 			   int isource, int precision, CORR_SPACE CorrSpace);
+  void run_contractPseudoscalarMesons (cudaTextureObject_t texProp1, 
+			   cudaTextureObject_t texProp2, void* corr, int it, 
+			   int isource, int precision, CORR_SPACE CorrSpace);
   void run_contractBaryons(cudaTextureObject_t texProp1, 
 			   cudaTextureObject_t texProp2, void* corr, int it, 
 			   int isource, int precision, CORR_SPACE CorrSpace);

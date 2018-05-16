@@ -339,13 +339,13 @@ __device__ inline Float2 operator*(const Float2 a, const Float2 b){
 }
 
 /*
-template<typename Float2, typename Float>
-__device__ inline Float2 operator*(const Float a , const Float2 b){
+  template<typename Float2, typename Float>
+  __device__ inline Float2 operator*(const Float a , const Float2 b){
   Float2 res;
   res.x = a*b.x;
   res.y = a*b.y;
   return res;
-} 
+  } 
 */
 
 __device__ inline float2 operator*(const float a , const float2 b){
@@ -484,6 +484,19 @@ __global__ void contractMesons_kernel_float(float2* block,
 #undef FLOAT
 }
 
+__global__ void contractPseudoscalarMesons_kernel_float(float2* block, 
+							cudaTextureObject_t prop1Tex, 
+							cudaTextureObject_t prop2Tex,
+							int it, int x0, int y0, int z0){
+#define FLOAT2 float2
+#define FLOAT float
+#define FETCH_FLOAT2 fetch_float2
+#include <contractPseudoscalarMesons_core.h>
+#undef FETCH_FLOAT2
+#undef FLOAT2
+#undef FLOAT
+}
+
 __global__ void contractMesons_kernel_PosSpace_float(float2* block, 
 						     cudaTextureObject_t prop1Tex, 
 						     cudaTextureObject_t prop2Tex,
@@ -492,6 +505,19 @@ __global__ void contractMesons_kernel_PosSpace_float(float2* block,
 #define FLOAT float
 #define FETCH_FLOAT2 fetch_float2
 #include <contractMesons_core_PosSpace.h>
+#undef FETCH_FLOAT2
+#undef FLOAT2
+#undef FLOAT
+}
+
+__global__ void contractPseudoscalarMesons_kernel_PosSpace_float(float2* block, 
+								 cudaTextureObject_t prop1Tex, 
+								 cudaTextureObject_t prop2Tex,
+								 int it, int x0, int y0, int z0){
+#define FLOAT2 float2
+#define FLOAT float
+#define FETCH_FLOAT2 fetch_float2
+#include <contractPseudoscalarMesons_core_PosSpace.h>
 #undef FETCH_FLOAT2
 #undef FLOAT2
 #undef FLOAT
@@ -538,15 +564,15 @@ __global__ void contractBaryons_kernel_PosSpace_float(float2* block,
 
 
 /*
-__global__ void contractBaryons_kernel_double(double2* block, cudaTextureObject_t prop1Tex, cudaTextureObject_t prop2Tex,int it, int x0, int y0, int z0, int ip){
-#define FLOAT2 double2
-#define FLOAT double
-#define FETCH_FLOAT2 fetch_double2
-#include <contractBaryons_core.h>
-#undef FETCH_FLOAT2
-#undef FLOAT2
-#undef FLOAT
-}
+  __global__ void contractBaryons_kernel_double(double2* block, cudaTextureObject_t prop1Tex, cudaTextureObject_t prop2Tex,int it, int x0, int y0, int z0, int ip){
+  #define FLOAT2 double2
+  #define FLOAT double
+  #define FETCH_FLOAT2 fetch_double2
+  #include <contractBaryons_core.h>
+  #undef FETCH_FLOAT2
+  #undef FLOAT2
+  #undef FLOAT
+  }
 */
 
 __global__ void seqSourceFixSinkPart1_kernel_float(float2* out, int timeslice,
@@ -1208,6 +1234,83 @@ static void contractMesons_kernel(cudaTextureObject_t texProp1,
 
 }
 
+template<typename Float2,typename Float>
+static void contractPseudoscalarMesons_kernel(cudaTextureObject_t texProp1,
+					      cudaTextureObject_t texProp2,
+					      Float (*corr), 
+					      int it, int isource, 
+					      CORR_SPACE CorrSpace){
+
+  if( typeid(Float2) != typeid(float2) ) errorQuda("Unsupported precision for Meson 2pt Contraction kernels!\n");
+
+  int SpVol = GK_localVolume/GK_localL[3];
+
+  dim3 blockDim( THREADS_PER_BLOCK , 1, 1);
+  dim3 gridDim( (SpVol + blockDim.x -1)/blockDim.x , 1 , 1); // spawn threads only for the spatial volume
+
+  Float *h_partial_block = NULL;
+  Float *d_partial_block = NULL;
+
+  if(CorrSpace==POSITION_SPACE){
+    long int alloc_size = blockDim.x * gridDim.x; // That's basically local spatial volume
+    h_partial_block = (Float*)malloc(alloc_size*2*sizeof(Float));
+    if(h_partial_block == NULL) errorQuda("contractPseudoscalarMesons_kernel: Cannot allocate host block.\n");
+
+    cudaMalloc((void**)&d_partial_block, alloc_size*2*sizeof(Float));
+    checkCudaError();
+
+    contractPseudoscalarMesons_kernel_PosSpace_float<<<gridDim,blockDim>>>((float2*) d_partial_block,  texProp1, texProp2, it,  GK_sourcePosition[isource][0] , GK_sourcePosition[isource][1], GK_sourcePosition[isource][2]);
+    checkCudaError();
+
+    cudaMemcpy(h_partial_block , d_partial_block , alloc_size*2*sizeof(Float) , cudaMemcpyDeviceToHost);
+    checkCudaError();
+    
+    //-C.K. Copy host block into corr buffer
+    for(int sv = 0; sv < SpVol ; sv++){
+      corr[ 0 + 2*sv + 2*SpVol*it ] = h_partial_block[ 0 + 2*sv];
+      corr[ 1 + 2*sv + 2*SpVol*it ] = h_partial_block[ 1 + 2*sv];
+    }
+
+    free(h_partial_block);
+    cudaFree(d_partial_block);
+    checkCudaError();
+  }
+  else if(CorrSpace==MOMENTUM_SPACE){
+    h_partial_block = (Float*)malloc(GK_Nmoms*gridDim.x*2*sizeof(Float));
+    if(h_partial_block == NULL) errorQuda("Error problem with allocation\n");
+
+    cudaMalloc((void**)&d_partial_block, GK_Nmoms*gridDim.x*2*sizeof(Float) );
+    checkCudaError();
+
+    Float *reduction =(Float*) calloc(GK_Nmoms*2,sizeof(Float));
+  
+    contractPseudoscalarMesons_kernel_float<<<gridDim,blockDim>>>((float2*) d_partial_block,  texProp1, texProp2, it,  GK_sourcePosition[isource][0] , GK_sourcePosition[isource][1], GK_sourcePosition[isource][2]);
+    checkCudaError();
+
+    cudaMemcpy(h_partial_block , d_partial_block , GK_Nmoms*gridDim.x*2 * sizeof(Float) , cudaMemcpyDeviceToHost);
+    checkCudaError();
+
+    for(int imom = 0 ; imom < GK_Nmoms ; imom++)
+      for(int i =0 ; i < gridDim.x ; i++){
+	reduction[imom*2 + 0] += h_partial_block[imom*gridDim.x*2 + i*2 + 0];
+	reduction[imom*2 + 1] += h_partial_block[imom*gridDim.x*2 + i*2 + 1];
+      }
+    
+    for(int imom = 0 ; imom < GK_Nmoms ; imom++){
+      corr[it*GK_Nmoms*2 + imom*2 + 0] = reduction[imom*2 + 0];
+      corr[it*GK_Nmoms*2 + imom*2 + 1] = reduction[imom*2 + 1];
+  }
+
+
+    free(h_partial_block);
+    cudaFree(d_partial_block);
+    checkCudaError();
+    free(reduction);
+  }//-CorrSpace else
+  else errorQuda("contractPseudoscalarMesons_kernel: Supports only POSITION_SPACE and MOMENTUM_SPACE!\n");
+
+}
+
 void quda::run_contractMesons(cudaTextureObject_t texProp1,
 			      cudaTextureObject_t texProp2,
 			      void* corr,  int it, int isource, 
@@ -1221,6 +1324,22 @@ void quda::run_contractMesons(cudaTextureObject_t texProp1,
   if(precision == 4) contractMesons_kernel<float2,float>(texProp1,texProp2,(float(*)[2][10]) corr,it, isource, CorrSpace);
   else if(precision == 8) errorQuda("Double precision in Meson 2pt Contractions unsupported!!!\n");
   else errorQuda("run_contractMesons: Precision %d not supported\n",precision);
+
+}
+
+void quda::run_contractPseudoscalarMesons(cudaTextureObject_t texProp1,
+					  cudaTextureObject_t texProp2,
+					  void* corr,  int it, int isource, 
+					  int precision, CORR_SPACE CorrSpace){
+
+  if (CorrSpace==POSITION_SPACE)     cudaFuncSetCacheConfig(contractPseudoscalarMesons_kernel_PosSpace_float,cudaFuncCachePreferShared);
+  else if(CorrSpace==MOMENTUM_SPACE) cudaFuncSetCacheConfig(contractPseudoscalarMesons_kernel_float         ,cudaFuncCachePreferShared);
+  else errorQuda("run_contractPseudoscalarMesons: Supports only POSITION_SPACE and MOMENTUM_SPACE!\n");
+  checkCudaError();
+
+  if(precision == 4) contractPseudoscalarMesons_kernel<float2,float>(texProp1,texProp2,(float(*)) corr,it, isource, CorrSpace);
+  else if(precision == 8) errorQuda("Double precision in Meson 2pt Contractions unsupported!!!\n");
+  else errorQuda("run_contractPseudoscalarMesons: Precision %d not supported\n",precision);
 
 }
 

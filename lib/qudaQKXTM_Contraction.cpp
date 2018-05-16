@@ -969,6 +969,26 @@ writeTwopMesonsHDF5(void *twopMesons,
 
 }
 
+template<typename Float>
+void QKXTM_Contraction<Float>::
+writeTwopSingleMesonHDF5(void *twopMesons, 
+				char *filename, 
+				qudaQKXTMinfo info, 
+				int isource){
+
+  if(info.CorrSpace==MOMENTUM_SPACE){
+    if(info.HighMomForm){
+      writeTwopSingleMesonHDF5_MomSpace_HighMomForm((void*)twopMesons, filename, info, isource);
+    }
+    else{
+      writeTwopSingleMesonHDF5_MomSpace((void*)twopMesons, filename, info, isource);
+    }
+  }
+  else if(info.CorrSpace==POSITION_SPACE) writeTwopSingleMesonHDF5_PosSpace((void*)twopMesons, filename, info, isource);
+  else errorQuda("writeTwopSingleMesonHDF5: Unsupported value for info.CorrSpace! Supports only POSITION_SPACE and MOMENTUM_SPACE!\n");
+
+}
+
 //-C.K. - New function to write the mesons two-point function in HDF5 format, position-space
 template<typename Float>
 void QKXTM_Contraction<Float>::
@@ -1095,6 +1115,124 @@ writeTwopMesonsHDF5_PosSpace(void *twopMesons,
 
 }
 
+
+// Function to write a single meson two-point function in HDF5 format, position-space
+template<typename Float>
+void QKXTM_Contraction<Float>::
+writeTwopSingleMesonHDF5_PosSpace(void *twopMesons, 
+					 char *filename, 
+					 qudaQKXTMinfo info, 
+					 int isource){
+  
+  if(info.CorrSpace!=POSITION_SPACE) errorQuda("writeTwopSingleMesonHDF5_PosSpace: Support for writing the Meson two-point function only in position-space!\n");
+
+  hid_t DATATYPE_H5;
+  if( typeid(Float) == typeid(float) ){
+    DATATYPE_H5 = H5T_NATIVE_FLOAT;
+    printfQuda("writeTwopSingleMesonHDF5_PosSpace: Will write in single precision\n");
+  }
+  if( typeid(Float) == typeid(double)){
+    DATATYPE_H5 = H5T_NATIVE_DOUBLE;
+    printfQuda("writeTwopSingleMesonHDF5_PosSpace: Will write in double precision\n");
+  }
+
+  Float *writeTwopBuf;
+
+  int Sdim = 6;
+  int pc[4];
+  int tL[4];
+  int lL[4];
+  for(int i=0;i<4;i++){
+    pc[i] = comm_coords(default_topo)[i];
+    tL[i] = GK_totalL[i];
+    lL[i] = GK_localL[i];
+  }
+  int lV = GK_localVolume;
+
+  // Size of the dataspace -> volume, spin, re-im
+  hsize_t dims[5]  = {tL[3],tL[2],tL[1],tL[0],2}; 
+  // Dimensions of the "local" dataspace, for each rank
+  hsize_t ldims[5] = {lL[3],lL[2],lL[1],lL[0],2}; 
+  // start position for each rank
+  hsize_t start[5] = {pc[3]*lL[3],pc[2]*lL[2],pc[1]*lL[1],pc[0]*lL[0],0};
+  
+  hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+  H5Pset_fapl_mpio(fapl_id, MPI_COMM_WORLD, MPI_INFO_NULL);
+  hid_t file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+  H5Pclose(fapl_id);
+
+  char *group1_tag;
+  asprintf(&group1_tag,"conf_%04d",info.traj);
+  hid_t group1_id = H5Gcreate(file_id, group1_tag, H5P_DEFAULT, 
+			      H5P_DEFAULT, H5P_DEFAULT);
+
+  char *group2_tag;
+  asprintf(&group2_tag,"sx%02dsy%02dsz%02dst%02d",
+	   GK_sourcePosition[isource][0],
+	   GK_sourcePosition[isource][1],
+	   GK_sourcePosition[isource][2],
+	   GK_sourcePosition[isource][3]);
+  hid_t group2_id = H5Gcreate(group1_id, group2_tag, H5P_DEFAULT, 
+			      H5P_DEFAULT, H5P_DEFAULT);
+
+  /* Attribute writing */
+  //- Source position
+  char *src_pos;
+  asprintf(&src_pos," [x, y, z, t] = [%02d, %02d, %02d, %02d]\0",
+	   GK_sourcePosition[isource][0],
+	   GK_sourcePosition[isource][1],
+	   GK_sourcePosition[isource][2],
+	   GK_sourcePosition[isource][3]);
+  hid_t attrdat_id = H5Screate(H5S_SCALAR);
+  hid_t type_id = H5Tcopy(H5T_C_S1);
+  H5Tset_size(type_id, strlen(src_pos));
+  hid_t attr_id = H5Acreate2(group2_id, "source-position", type_id, 
+			     attrdat_id, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(attr_id, type_id, src_pos);
+  H5Aclose(attr_id);
+  H5Tclose(type_id);
+  H5Sclose(attrdat_id);
+
+  //- Index identification-ordering, precision
+  char *corr_info;
+  asprintf(&corr_info,"Position-space meson 2pt-correlator\nIndex Order: [flav, t, z, y, x, real/imag]\nPrecision: %s\0",(typeid(Float) == typeid(float)) ? "single" : "double");
+  hid_t attrdat_id_2 = H5Screate(H5S_SCALAR);
+  hid_t type_id_2 = H5Tcopy(H5T_C_S1);
+  H5Tset_size(type_id_2, strlen(corr_info));
+  hid_t attr_id_2 = H5Acreate2(file_id, "Correlator-info", type_id_2, 
+			       attrdat_id_2, H5P_DEFAULT, H5P_DEFAULT);
+  H5Awrite(attr_id_2, type_id_2, corr_info);
+  H5Aclose(attr_id_2);
+  H5Tclose(type_id_2);
+  H5Sclose(attrdat_id_2);
+  //------------------------------------------------------------
+
+  hid_t filespace  = H5Screate_simple(Sdim, dims,  NULL);
+  hid_t subspace   = H5Screate_simple(Sdim, ldims, NULL);
+  hid_t dataset_id = H5Dcreate(group2_id, "twop-meson", DATATYPE_H5, 
+			       filespace, H5P_DEFAULT, H5P_DEFAULT, 
+			       H5P_DEFAULT);
+  filespace = H5Dget_space(dataset_id);
+  H5Sselect_hyperslab(filespace, H5S_SELECT_SET, start, NULL, ldims, NULL);
+  hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+  H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+  writeTwopBuf = (((Float*)twopMesons));
+
+  herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, filespace, 
+			   plist_id, writeTwopBuf);
+  if(status<0) errorQuda("writeTwopSingleMesonHDF5_PosSpace: Unsuccessful writing of the dataset. Exiting\n");
+
+  H5Dclose(dataset_id);
+  H5Pclose(plist_id);
+  H5Sclose(subspace);
+  H5Sclose(filespace);
+  H5Gclose(group2_id);
+  H5Gclose(group1_id);
+  H5Fclose(file_id);
+
+}
+ 
 
 //-C.K. - New function to write the mesons two-point function in 
 // HDF5 format, momentum-space
@@ -1273,6 +1411,177 @@ writeTwopMesonsHDF5_MomSpace(void *twopMesons,
 	}//-imom
       }//-mes
 
+      H5Fclose(file_idt);
+    }//-tail!=0
+
+  }//-if GK_timeRank >=0 && GK_timeRank < GK_nProc[3]
+
+}
+
+
+// Function to write  a single meson two-point function 
+// in HDF5 format, momentum-space
+template<typename Float>
+void QKXTM_Contraction<Float>::
+writeTwopSingleMesonHDF5_MomSpace(void *twopMesons, 
+				  char *filename, 
+				  qudaQKXTMinfo info, 
+				  int isource){
+
+  if(info.CorrSpace!=MOMENTUM_SPACE || info.HighMomForm) errorQuda("writeTwopSingleMesonHDF5_MomSpace: Supports writing the Meson two-point function only in momentum-space and for NOT High-Momenta Form!\n");
+
+  if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+
+    hid_t DATATYPE_H5;
+    if( typeid(Float) == typeid(float) ){
+      DATATYPE_H5 = H5T_NATIVE_FLOAT;
+      printfQuda("writeTwopSingleMesonHDF5_MomSpace: Will write in single precision\n");
+    }
+    if( typeid(Float) == typeid(double)){
+      DATATYPE_H5 = H5T_NATIVE_DOUBLE;
+      printfQuda("writeTwopSingleMeson_HDF5_MomSpace: Will write in double precision\n");
+    }
+
+    int t_src = GK_sourcePosition[isource][3];
+    int Lt = GK_localL[3];
+    int T  = GK_totalL[3];
+
+    int src_rank = t_src/Lt;
+    int sink_rank = ((t_src-1)%T)/Lt;
+    int h = Lt - t_src%Lt;
+    int tail = t_src%Lt;
+
+    Float *writeTwopBuf;
+
+    hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fapl_mpio(fapl_id, GK_timeComm, MPI_INFO_NULL);
+    hid_t file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+    H5Pclose(fapl_id);
+
+    char *group1_tag;
+    asprintf(&group1_tag,"conf_%04d",info.traj);
+    hid_t group1_id = H5Gcreate(file_id, group1_tag, H5P_DEFAULT, 
+				H5P_DEFAULT, H5P_DEFAULT);
+    
+    char *group2_tag;
+    asprintf(&group2_tag,"sx%02dsy%02dsz%02dst%02d",
+	     GK_sourcePosition[isource][0],
+	     GK_sourcePosition[isource][1],
+	     GK_sourcePosition[isource][2],
+	     GK_sourcePosition[isource][3]);
+    hid_t group2_id = H5Gcreate(group1_id, group2_tag, H5P_DEFAULT, 
+				H5P_DEFAULT, H5P_DEFAULT);
+
+    hid_t group3_id;
+
+    hsize_t dims[2] = {T,2}; // Size of the dataspace
+
+    //-Determine the ldims for each rank (tail not taken into account)
+    hsize_t ldims[2];
+    ldims[1] = dims[1];
+    if(GK_timeRank==src_rank) ldims[0] = h;
+    else ldims[0] = Lt;
+
+    //-Determine the start position for each rank
+    hsize_t start[2];
+    // if src_rank = sink_rank then this is the same
+    if(GK_timeRank==src_rank) start[0] = 0;
+    else{
+      int offs;
+      for(offs=0;offs<GK_nProc[3];offs++){
+	if( GK_timeRank == ((src_rank+offs)%GK_nProc[3]) ) break;
+      }
+      offs--;
+      start[0] = h + offs*Lt;
+    }
+    start[1] = 0; //-This is common among all ranks
+
+    for(int imom=0;imom<GK_Nmoms;imom++){
+      char *group3_tag;
+
+      asprintf(&group3_tag,"mom_xyz_%+d_%+d_%+d",
+	       GK_moms[imom][0],
+	       GK_moms[imom][1],
+	       GK_moms[imom][2]);
+      group3_id = H5Gcreate(group2_id, group3_tag, H5P_DEFAULT, 
+			    H5P_DEFAULT, H5P_DEFAULT);
+
+	
+      hid_t filespace  = H5Screate_simple(2, dims, NULL);
+      hid_t subspace   = H5Screate_simple(2, ldims, NULL);
+
+      char *dset_tag;
+      asprintf(&dset_tag,"twop_meson");
+
+      hid_t dataset_id = H5Dcreate(group3_id, dset_tag, DATATYPE_H5, 
+				   filespace, H5P_DEFAULT, H5P_DEFAULT, 
+				   H5P_DEFAULT);
+      filespace = H5Dget_space(dataset_id);
+      H5Sselect_hyperslab(filespace, H5S_SELECT_SET, start, 
+			  NULL, ldims, NULL);
+      hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+      H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+
+      if(GK_timeRank==src_rank) writeTwopBuf = &(((Float*)twopMesons)[2*tail + 2*Lt*imom]);
+      else writeTwopBuf = &(((Float*)twopMesons)[2*Lt*imom]);
+	
+      herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, 
+			       filespace, plist_id, writeTwopBuf);
+	  
+      H5Dclose(dataset_id);
+      H5Pclose(plist_id);
+      H5Sclose(subspace);
+      H5Sclose(filespace);
+      H5Gclose(group3_id);
+    }//-imom
+  
+    H5Gclose(group2_id);
+    H5Gclose(group1_id);
+    H5Fclose(file_id);
+  
+    //-Write the tail, sink_ranks's task
+    if(tail!=0 && GK_timeRank==sink_rank){ 
+      Float *tailBuf;
+
+      hid_t file_idt = H5Fopen(filename, H5F_ACC_RDWR, H5P_DEFAULT);
+
+      ldims[0] = tail;
+      ldims[1] = 2;
+      start[0] = T-tail;
+      start[1] = 0;
+
+      for(int imom=0;imom<GK_Nmoms;imom++){
+	char *group_tag;
+	asprintf(&group_tag,"conf_%04d/sx%02dsy%02dsz%02dst%02d/mom_xyz_%+d_%+d_%+d",
+		 info.traj,
+		 GK_sourcePosition[isource][0],
+		 GK_sourcePosition[isource][1],
+		 GK_sourcePosition[isource][2],
+		 GK_sourcePosition[isource][3],
+		 GK_moms[imom][0],
+		 GK_moms[imom][1],
+		 GK_moms[imom][2]);  
+	hid_t group_id = H5Gopen(file_idt, group_tag, H5P_DEFAULT);
+	  
+	char *dset_tag;
+	asprintf(&dset_tag,"twop_meson");
+	    
+	hid_t dset_id  = H5Dopen(group_id, dset_tag, H5P_DEFAULT);
+	hid_t mspace_id  = H5Screate_simple(2, ldims, NULL);
+	hid_t dspace_id = H5Dget_space(dset_id);
+	    
+	H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, start, NULL, ldims, NULL);
+	
+	tailBuf = &(((Float*)twopMesons)[2*Lt*imom]);
+
+	herr_t status = H5Dwrite(dset_id, DATATYPE_H5, mspace_id, dspace_id, H5P_DEFAULT, tailBuf);
+	    
+	H5Dclose(dset_id);
+	H5Sclose(mspace_id);
+	H5Sclose(dspace_id);
+	H5Gclose(group_id);
+      }//-imom
+      
       H5Fclose(file_idt);
     }//-tail!=0
 
@@ -1498,6 +1807,209 @@ void QKXTM_Contraction<Float>::writeTwopMesonsHDF5_MomSpace_HighMomForm(void *tw
 }
 
 
+// Function to write a single meson two-point function in HDF5 format, momentum-space, High-Momenta Form
+template<typename Float>
+void QKXTM_Contraction<Float>::writeTwopSingleMesonHDF5_MomSpace_HighMomForm(void *twopMesons, 
+										    char *filename, 
+										    qudaQKXTMinfo info, 
+										    int isource){
+
+  if(info.CorrSpace!=MOMENTUM_SPACE || !info.HighMomForm) errorQuda("writeTwopSingleMesonHDF5_MomSpace_HighMomForm: Supports writing the Meson two-point function only in momentum-space and for HighMomForm!\n");
+
+  if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+
+    hid_t DATATYPE_H5;
+    if( typeid(Float) == typeid(float) ){
+      DATATYPE_H5 = H5T_NATIVE_FLOAT;
+      printfQuda("writeTwopSingleMesonHDF5_MomSpace: Will write in single precision\n");
+    }
+    if( typeid(Float) == typeid(double)){
+      DATATYPE_H5 = H5T_NATIVE_DOUBLE;
+      printfQuda("writeTwopSingleMeson_HDF5_MomSpace: Will write in double precision\n");
+    }
+
+    int t_src = GK_sourcePosition[isource][3];
+    int Lt = GK_localL[3];
+    int T  = GK_totalL[3];
+    int Nmoms = GK_Nmoms;
+
+    int src_rank = t_src/Lt;
+    int sink_rank = ((t_src-1)%T)/Lt;
+    int h = Lt - t_src%Lt;
+    int tail = t_src%Lt;
+
+    Float *writeTwopBuf;
+
+    hid_t fapl_id = H5Pcreate(H5P_FILE_ACCESS);
+    H5Pset_fapl_mpio(fapl_id, GK_timeComm, MPI_INFO_NULL);
+    hid_t file_id = H5Fcreate(filename, H5F_ACC_TRUNC, H5P_DEFAULT, fapl_id);
+    H5Pclose(fapl_id);
+
+    char *group1_tag;
+    asprintf(&group1_tag,"conf_%04d",info.traj);
+    hid_t group1_id = H5Gcreate(file_id, group1_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    char *group2_tag;
+    asprintf(&group2_tag,"sx%02dsy%02dsz%02dst%02d",GK_sourcePosition[isource][0],GK_sourcePosition[isource][1],GK_sourcePosition[isource][2],GK_sourcePosition[isource][3]);
+    hid_t group2_id = H5Gcreate(group1_id, group2_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+    hsize_t dims[3] = {T,Nmoms,2}; // Size of the dataspace
+
+    //-Determine the ldims for each rank (tail not taken into account)
+    hsize_t ldims[3];
+    ldims[1] = dims[1];
+    ldims[2] = dims[2];
+    if(GK_timeRank==src_rank) ldims[0] = h;
+    else ldims[0] = Lt;
+
+    //-Determine the start position for each rank
+    hsize_t start[3];
+    if(GK_timeRank==src_rank) start[0] = 0; // if src_rank = sink_rank then this is the same for both
+    else{
+      int offs;
+      for(offs=0;offs<GK_nProc[3];offs++){
+        if( GK_timeRank == ((src_rank+offs)%GK_nProc[3]) ) break;
+      }
+      offs--;
+      start[0] = h + offs*Lt;
+    }
+    start[1] = 0; //-This is common among all ranks
+    start[2] = 0; //
+
+    hid_t filespace  = H5Screate_simple(3, dims, NULL);
+    hid_t subspace   = H5Screate_simple(3, ldims, NULL);
+      
+    char *dset_tag;
+    asprintf(&dset_tag,"twop_meson");
+        
+    hid_t dataset_id = H5Dcreate(group2_id, dset_tag, DATATYPE_H5, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+    filespace = H5Dget_space(dataset_id);
+    H5Sselect_hyperslab(filespace, H5S_SELECT_SET, start, NULL, ldims, NULL);
+    hid_t plist_id = H5Pcreate(H5P_DATASET_XFER);
+    H5Pset_dxpl_mpio(plist_id, H5FD_MPIO_COLLECTIVE);
+        
+    if(GK_timeRank==src_rank) writeTwopBuf = &(((Float*)twopMesons)[2*Nmoms*tail]);
+    else writeTwopBuf = &(((Float*)twopMesons)[0]);
+        
+    herr_t status = H5Dwrite(dataset_id, DATATYPE_H5, subspace, filespace, plist_id, writeTwopBuf);
+        
+    H5Dclose(dataset_id);
+    H5Pclose(plist_id);
+    H5Sclose(subspace);
+    H5Sclose(filespace);
+    H5Gclose(group2_id);
+    H5Gclose(group1_id);
+    H5Fclose(file_id);
+
+    //-Write the tail, sink_ranks's task
+    if(tail!=0 && GK_timeRank==sink_rank){ 
+      Float *tailBuf;
+
+      hid_t file_idt = H5Fopen(filename, H5F_ACC_RDWR, H5P_DEFAULT);
+
+      ldims[0] = tail;
+      ldims[1] = Nmoms;
+      ldims[2] = 2;
+      start[0] = T-tail;
+      start[1] = 0;
+      start[2] = 0;
+
+      char *group_tag;
+      asprintf(&group_tag,"conf_%04d/sx%02dsy%02dsz%02dst%02d",info.traj,GK_sourcePosition[isource][0],GK_sourcePosition[isource][1],GK_sourcePosition[isource][2],GK_sourcePosition[isource][3]);  
+      hid_t group_id = H5Gopen(file_idt, group_tag, H5P_DEFAULT);
+        
+      char *dset_tag;
+      asprintf(&dset_tag,"twop_meson");
+          
+      hid_t dset_id  = H5Dopen(group_id, dset_tag, H5P_DEFAULT);
+      hid_t mspace_id  = H5Screate_simple(3, ldims, NULL);
+      hid_t dspace_id = H5Dget_space(dset_id);
+          
+      H5Sselect_hyperslab(dspace_id, H5S_SELECT_SET, start, NULL, ldims, NULL);
+          
+      tailBuf = &(((Float*)twopMesons)[0]);
+          
+      herr_t status = H5Dwrite(dset_id, DATATYPE_H5, mspace_id, dspace_id, H5P_DEFAULT, tailBuf);
+          
+      H5Dclose(dset_id);
+      H5Sclose(mspace_id);
+      H5Sclose(dspace_id);
+      H5Gclose(group_id);
+
+      H5Fclose(file_idt);
+    }//-tail!=0
+
+    //-Write the momenta in a separate dataset (including some attributes)
+    if(GK_timeRank==sink_rank){
+      hid_t file_idt   = H5Fopen(filename, H5F_ACC_RDWR, H5P_DEFAULT);
+
+      char *cNmoms, *cQsq,*corr_info,*ens_info;;
+      asprintf(&cNmoms,"%d\0",GK_Nmoms);
+      asprintf(&cQsq,"%d\0",info.Q_sq);
+      asprintf(&corr_info,
+               "Momentum-space meson 2pt-correlator\nQuark field basis: Physical\nIndex Order: [t, mom-index, real/imag]\nPrecision: %s\nInversion tolerance = %e\0",
+               (typeid(Float) == typeid(float)) ? "single" : "double", info.inv_tol);
+      asprintf(&ens_info,"kappa = %10.8f\nmu = %8.6f\nCsw = %8.6f\0",info.kappa, info.mu, info.csw);
+      hid_t attrdat_id1 = H5Screate(H5S_SCALAR);
+      hid_t attrdat_id2 = H5Screate(H5S_SCALAR);
+      hid_t attrdat_id3 = H5Screate(H5S_SCALAR);
+      hid_t attrdat_id4 = H5Screate(H5S_SCALAR);
+      hid_t type_id1 = H5Tcopy(H5T_C_S1);
+      hid_t type_id2 = H5Tcopy(H5T_C_S1);
+      hid_t type_id3 = H5Tcopy(H5T_C_S1);
+      hid_t type_id4 = H5Tcopy(H5T_C_S1);
+      H5Tset_size(type_id1, strlen(cNmoms));
+      H5Tset_size(type_id2, strlen(cQsq));
+      H5Tset_size(type_id3, strlen(corr_info));
+      H5Tset_size(type_id4, strlen(ens_info));
+      hid_t attr_id1 = H5Acreate2(file_idt, "Nmoms", type_id1, attrdat_id1, H5P_DEFAULT, H5P_DEFAULT);
+      hid_t attr_id2 = H5Acreate2(file_idt, "Qsq"  , type_id2, attrdat_id2, H5P_DEFAULT, H5P_DEFAULT);
+      hid_t attr_id3 = H5Acreate2(file_idt, "Correlator-info", type_id3, attrdat_id3, H5P_DEFAULT, H5P_DEFAULT);
+      hid_t attr_id4 = H5Acreate2(file_idt, "Ensemble-info", type_id4, attrdat_id4, H5P_DEFAULT, H5P_DEFAULT);
+      H5Awrite(attr_id1, type_id1, cNmoms);
+      H5Awrite(attr_id2, type_id2, cQsq);
+      H5Awrite(attr_id3, type_id3, corr_info);
+      H5Awrite(attr_id4, type_id4, ens_info);
+      H5Aclose(attr_id1);
+      H5Aclose(attr_id2);
+      H5Aclose(attr_id3);
+      H5Aclose(attr_id4);
+      H5Tclose(type_id1);
+      H5Tclose(type_id2);
+      H5Tclose(type_id3);
+      H5Tclose(type_id4);
+      H5Sclose(attrdat_id1);
+      H5Sclose(attrdat_id2);
+      H5Sclose(attrdat_id3);
+      H5Sclose(attrdat_id4);
+
+      hid_t MOMTYPE_H5 = H5T_NATIVE_INT;
+      char *dset_tag;
+      asprintf(&dset_tag,"Momenta_list_xyz");
+
+      hsize_t Mdims[2] = {(hsize_t)Nmoms,3};
+      hid_t filespace  = H5Screate_simple(2, Mdims, NULL);
+      hid_t dataset_id = H5Dcreate(file_idt, dset_tag, MOMTYPE_H5, filespace, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+      int *Moms_H5 = (int*) malloc(GK_Nmoms*3*sizeof(int));
+      for(int im=0;im<GK_Nmoms;im++){
+        for(int d=0;d<3;d++) Moms_H5[d + 3*im] = GK_moms[im][d];
+      }
+
+      herr_t status = H5Dwrite(dataset_id, MOMTYPE_H5, H5S_ALL, filespace, H5P_DEFAULT, Moms_H5);
+
+      H5Dclose(dataset_id);
+      H5Sclose(filespace);
+      H5Fclose(file_idt);
+
+      free(Moms_H5);
+    }//-if GK_timeRank==0
+
+
+  }//-if GK_timeRank >=0 && GK_timeRank < GK_nProc[3]
+
+}
+
 
 //-C.K. - New function to copy the meson two-point functions into write 
 //Buffers for writing in HDF5 format
@@ -1558,6 +2070,58 @@ copyTwopMesonsToHDF5_Buf(void *Twop_mesons_HDF5,
 }
 
 
+//Function to copy a single meson's two-point functions into 
+//write buffers for writing in HDF5 format
+template<typename Float>
+void QKXTM_Contraction<Float>::
+copyTwopSingleMesonToHDF5_Buf(void *Twop_mesons_HDF5, 
+			 void *corrMesons, 
+			 CORR_SPACE CorrSpace, bool HighMomForm){
+
+  int Lt = GK_localL[3];
+  int Nmoms = GK_Nmoms;
+
+  if(CorrSpace==MOMENTUM_SPACE){
+
+    if(HighMomForm){
+      if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+        
+	for(int imom=0;imom<Nmoms;imom++){
+	  for(int it=0;it<Lt;it++){
+	    ((Float*)Twop_mesons_HDF5)[0 + 2*imom + 2*Nmoms*it] = ((Float(*))corrMesons)[0 + 2*imom + 2*Nmoms*it];
+	    ((Float*)Twop_mesons_HDF5)[1 + 2*imom + 2*Nmoms*it] = ((Float(*))corrMesons)[1 + 2*imom + 2*Nmoms*it];
+	  }
+	}
+
+      }//-if GK_timeRank
+    }//-if HighMomForm
+    else{
+      if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+        
+	for(int imom=0;imom<Nmoms;imom++){
+	  for(int it=0;it<Lt;it++){
+	    ((Float*)Twop_mesons_HDF5)[0 + 2*it + 2*Lt*imom] = ((Float(*))corrMesons)[0 + 2*imom + 2*Nmoms*it];
+	    ((Float*)Twop_mesons_HDF5)[1 + 2*it + 2*Lt*imom] = ((Float(*))corrMesons)[1 + 2*imom + 2*Nmoms*it];
+	  }
+	}
+
+      }//-if GK_timeRank
+    }//-else HighMomForm
+
+  }//-if CorrSpace
+  else if(CorrSpace==POSITION_SPACE){
+    int Lv = GK_localVolume;
+
+    for(int v=0;v<Lv;v++){
+      ((Float*)Twop_mesons_HDF5)[0 + 2*v] = ((Float(*))corrMesons)[0 + 2*v];
+      ((Float*)Twop_mesons_HDF5)[1 + 2*v] = ((Float(*))corrMesons)[1 + 2*v];
+    }
+
+  }//-else if
+
+}
+
+
 //-C.K. New function to write the mesons two-point function in ASCII format
 template<typename Float>
 void QKXTM_Contraction<Float>::writeTwopMesons_ASCII(void *corrMesons, char *filename_out, int isource, CORR_SPACE CorrSpace){
@@ -1595,6 +2159,47 @@ void QKXTM_Contraction<Float>::writeTwopMesons_ASCII(void *corrMesons, char *fil
 		  GLcorrMesons[it_shift*GK_Nmoms*2+imom*2+0][0][ip], GLcorrMesons[it_shift*GK_Nmoms*2+imom*2+1][0][ip],
 		  GLcorrMesons[it_shift*GK_Nmoms*2+imom*2+0][1][ip], GLcorrMesons[it_shift*GK_Nmoms*2+imom*2+1][1][ip]);
 	}
+    fclose(ptr_out);
+  }
+
+  free(GLcorrMesons);
+}
+
+//Function to write two-point functions for a single meson in ASCII format
+template<typename Float>
+void QKXTM_Contraction<Float>::writeTwopSingleMeson_ASCII(void *corrMesons, char *filename_out, int isource, CORR_SPACE CorrSpace){
+
+  if(CorrSpace!=MOMENTUM_SPACE) errorQuda("writeTwopSingleMeson_ASCII: Supports writing only in momentum-space!\n");
+
+  Float (*GLcorrMesons) = (Float(*)) calloc(GK_totalL[3]*GK_Nmoms*2,sizeof(Float));;
+  if( GLcorrMesons == NULL )errorQuda("writeTwopSingleMeson_ASCII: Cannot allocate memory for Meson two-point function buffer.\n");
+
+  MPI_Datatype DATATYPE;
+  if( typeid(Float) == typeid(float)){
+    DATATYPE = MPI_FLOAT;
+    printfQuda("writeTwopSingleMeson_ASCII: Will write in single precision\n");
+  }
+  if( typeid(Float) == typeid(double)){
+    DATATYPE = MPI_DOUBLE;
+    printfQuda("writeTwopSingleMeson_ASCII: Will write in double precision\n");
+  }
+
+  int error;
+  if(GK_timeRank >= 0 && GK_timeRank < GK_nProc[3] ){
+    error = MPI_Gather((Float*) corrMesons,GK_localL[3]*GK_Nmoms*2,DATATYPE,GLcorrMesons,GK_localL[3]*GK_Nmoms*2,DATATYPE,0,GK_timeComm);
+    if(error != MPI_SUCCESS) errorQuda("Error in MPI_gather");
+  }
+
+  FILE *ptr_out = NULL;
+  if(comm_rank() == 0){
+    ptr_out = fopen(filename_out,"w");
+    if(ptr_out == NULL) errorQuda("Error opening file for writing\n");
+    for(int it = 0 ; it < GK_totalL[3] ; it++)
+      for(int imom = 0 ; imom < GK_Nmoms ; imom++){
+	int it_shift = (it+GK_sourcePosition[isource][3])%GK_totalL[3];
+	fprintf(ptr_out,"%d \t %+d %+d %+d \t %+e %+e\n",it,GK_moms[imom][0],GK_moms[imom][1],GK_moms[imom][2],
+		GLcorrMesons[it_shift*GK_Nmoms*2+imom*2+0], GLcorrMesons[it_shift*GK_Nmoms*2+imom*2+1]);
+      }
     fclose(ptr_out);
   }
 
@@ -1644,6 +2249,58 @@ contractMesons(QKXTM_Propagator<Float> &prop1,
   }
   else errorQuda("contractMesons: Supports only POSITION_SPACE and MOMENTUM_SPACE!\n");
 
+  prop1.destroyTexObject(texProp1);
+  prop2.destroyTexObject(texProp2);
+}
+
+//Function to perform the pseudoscalar meson contractions 
+//without writing the data
+template<typename Float>
+void QKXTM_Contraction<Float>::
+contractPseudoscalarMesons(QKXTM_Propagator<Float> &prop1,
+			   QKXTM_Propagator<Float> &prop2, 
+			   void *corrMesons, 
+			   int isource, 
+			   CORR_SPACE CorrSpace){
+
+  cudaTextureObject_t texProp1, texProp2;
+  prop1.createTexObject(&texProp1);
+  prop2.createTexObject(&texProp2);
+
+  if( typeid(Float) == typeid(float))  
+    printfQuda("contractPseudoscalarMesons: Will perform in single precision\n");
+  if( typeid(Float) == typeid(double)) 
+    printfQuda("contractPseudoscalarMesons: Will perform in double precision\n");
+
+  if(CorrSpace==POSITION_SPACE){
+    for(int it = 0 ; it < GK_localL[3] ; it++) {
+      run_contractPseudoscalarMesons(texProp1,
+				     texProp2,
+				     (void*) corrMesons,
+				     it,isource,
+				     sizeof(Float),CorrSpace);
+    }
+  }
+  else if( CorrSpace==MOMENTUM_SPACE ){
+    Float (*corrMesons_local) = (Float(*)) calloc(GK_localL[3]*GK_Nmoms*2,sizeof(Float));
+    if( corrMesons_local == NULL )errorQuda("contractPseudoscalarMesons: Cannot allocate memory for Meson two-point function contract buffer.\n");
+
+    for(int it = 0 ; it < GK_localL[3] ; it++) run_contractPseudoscalarMesons(texProp1,
+									      texProp2,
+									      (void*) corrMesons_local,
+									      it,isource,
+									      sizeof(Float),CorrSpace);
+
+    MPI_Datatype DATATYPE;
+    if( typeid(Float) == typeid(float))  DATATYPE = MPI_FLOAT;
+    if( typeid(Float) == typeid(double)) DATATYPE = MPI_DOUBLE;
+    
+    MPI_Reduce(corrMesons_local, (Float*)corrMesons,GK_localL[3]*GK_Nmoms*2,DATATYPE,MPI_SUM,0, GK_spaceComm);
+
+    free(corrMesons_local);
+  }
+  else errorQuda("contractPseudoscalarMesons: Supports only POSITION_SPACE and MOMENTUM_SPACE!\n");
+  
   prop1.destroyTexObject(texProp1);
   prop2.destroyTexObject(texProp2);
 }
@@ -2839,7 +3496,7 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 
       // CJL: If particle is a baryon, include a projection loop
     
-      if( HADRON != PION ){
+      if( HADRON == PROTON || HADRON == NEUTRON ){
 
 	for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	  char *group4_tag;
@@ -2951,7 +3608,10 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 
 	for(int part=0;part<2;part++){
 	  char *group4_tag;
-	  asprintf(&group4_tag,"%s", (part==0) ? "up" : "down");
+	  if( HADRON == KAON )
+	    asprintf(&group4_tag,"%s", (part==0) ? "up" : "strange");
+	  else
+	    asprintf(&group4_tag,"%s", (part==0) ? "up" : "down");
 	  group4_id = H5Gcreate(group3_id, group4_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         
 	  for(int thrp_int=0;thrp_int<3;thrp_int++){
@@ -3604,10 +4264,14 @@ contractFixSink(QKXTM_Propagator<Float> &seqProp,
   if( typeid(Float) == typeid(double)) 
     printfQuda("contractFixSink: Will perform in double precision\n");
   
-  // seq prop apply gamma5 and conjugate
-  seqProp.apply_gamma5();
-  seqProp.conjugate();
 
+  // apply gamma5 and conjugate for nucleons
+  //if( testParticle == PROTON || testParticle == NEUTRON ) {
+    seqProp.apply_gamma5();
+    //}
+  
+  seqProp.conjugate();
+  
   gauge.ghostToHost();
   // communicate gauge
   gauge.cpuExchangeGhost(); 

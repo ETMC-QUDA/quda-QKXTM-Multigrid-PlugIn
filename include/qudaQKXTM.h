@@ -301,6 +301,9 @@ namespace quda {
    void contractMesons(QKXTM_Propagator<Float> &prop1,
 		       QKXTM_Propagator<Float> &prop2, 
 		       void *corrMesons , int isource, CORR_SPACE CorrSpace);
+   void contractPseudoscalarMesons(QKXTM_Propagator<Float> &prop1,
+				   QKXTM_Propagator<Float> &prop2, 
+				   void *corrMesons , int isource, CORR_SPACE CorrSpace);
    void contractBaryons(QKXTM_Propagator<Float> &prop1,
 			QKXTM_Propagator<Float> &prop2, 
 			void *corrBaryons, int isource,CORR_SPACE CorrSpace);
@@ -309,16 +312,22 @@ namespace quda {
 			       int isource, CORR_SPACE CorrSpace);
    void writeTwopMesons_ASCII (void *corrMesons , char *filename_out, 
 			       int isource, CORR_SPACE CorrSpace);
+   void writeTwopSingleMeson_ASCII (void *corrMesons , char *filename_out, 
+				    int isource, CORR_SPACE CorrSpace);
    
    void copyTwopBaryonsToHDF5_Buf(void *Twop_baryons_HDF5, void *corrBaryons,
 				  int isource, CORR_SPACE CorrSpace, bool HighMomForm);
    void copyTwopMesonsToHDF5_Buf (void *Twop_mesons_HDF5 , void *corrMesons, 
 				  CORR_SPACE CorrSpace, bool HighMomForm);
+   void copyTwopSingleMesonToHDF5_Buf (void *Twop_mesons_HDF5 , void *corrMesons, 
+				       CORR_SPACE CorrSpace, bool HighMomForm);
    
    void writeTwopBaryonsHDF5(void *twopBaryons, char *filename, 
 			     qudaQKXTMinfo info, int isource);
    void writeTwopMesonsHDF5 (void *twopMesons , char *filename, 
 			     qudaQKXTMinfo info, int isource);
+   void writeTwopSingleMesonHDF5 (void *twopMesons , char *filename, 
+				  qudaQKXTMinfo info, int isource);
    
    void writeTwopBaryonsHDF5_MomSpace(void *twopBaryons, char *filename, 
 				      qudaQKXTMinfo info,int isource);
@@ -328,11 +337,17 @@ namespace quda {
 				      qudaQKXTMinfo info,int isource);
    void writeTwopMesonsHDF5_PosSpace (void *twopMesons , char *filename, 
 				      qudaQKXTMinfo info,int isource);
+   void writeTwopSingleMesonHDF5_MomSpace (void *twopMesons , char *filename, 
+					   qudaQKXTMinfo info,int isource);
+   void writeTwopSingleMesonHDF5_PosSpace (void *twopMesons , char *filename, 
+					   qudaQKXTMinfo info,int isource);
 
    void writeTwopBaryonsHDF5_MomSpace_HighMomForm(void *twopBaryons, char *filename,
                                                   qudaQKXTMinfo info, int isource);
    void writeTwopMesonsHDF5_MomSpace_HighMomForm (void *twopMesons , char *filename,
                                                   qudaQKXTMinfo info, int isource);
+   void writeTwopSingleMesonHDF5_MomSpace_HighMomForm (void *twopMesons , char *filename,
+						       qudaQKXTMinfo info, int isource);
 
    void seqSourceFixSinkPart1(QKXTM_Vector<Float> &vec, 
 			      QKXTM_Propagator3D<Float> &prop1, 

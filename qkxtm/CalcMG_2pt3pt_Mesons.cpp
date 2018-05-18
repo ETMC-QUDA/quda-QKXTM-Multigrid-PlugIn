@@ -186,7 +186,6 @@ void setGaugeParam(QudaGaugeParam &gauge_param) {
   gauge_param.type = QUDA_WILSON_LINKS;
   gauge_param.gauge_order = QUDA_QDP_GAUGE_ORDER;
   gauge_param.t_boundary = QUDA_ANTI_PERIODIC_T;
-  //gauge_param.t_boundary = QUDA_PERIODIC_T;
   
   gauge_param.cpu_prec = cpu_prec;
 
@@ -506,8 +505,8 @@ int main(int argc, char **argv)
 
   using namespace quda;
 
-  WHICHPARTICLE MESON = PION;
-  //WHICHPARTICLE MESON = ALL_MESONS;
+  //WHICHPARTICLE MESON = PION;
+  WHICHPARTICLE MESON = ALL_MESONS;
 
   // We give here the default value to some of the array
   for(int i =0; i<QUDA_MAX_MG_LEVEL; i++) {
@@ -686,6 +685,11 @@ int main(int argc, char **argv)
   QudaInvertParam inv_param = newQudaInvertParam();
   setInvertParam(inv_param);
   
+  // Check mu_l and mu_s
+  printfQuda("Light mu: %f\n",inv_param.mu_l);
+  if( MESON == KAON || MESON == ALL_MESONS )
+    printfQuda("Strange mu: %f\n",inv_param.mu_s);
+
   setDims(gauge_param.X);
 
   setSpinorSiteSize(24);
@@ -755,25 +759,38 @@ int main(int argc, char **argv)
     if( (solve_type != QUDA_NORMOP_PC_SOLVE) && (solve_type != QUDA_NORMOP_SOLVE) )
       errorQuda("CG solver needs a normalized equation to solve");
 
-  void *mg_preconditionerUP = NULL;
-  void *mg_preconditionerSTRANGE = NULL;
+  void *mg_preconditioner_u  = NULL;
+  void *mg_preconditioner_d  = NULL;
+  void *mg_preconditioner_ps = NULL;
+  void *mg_preconditioner_ms = NULL;
 
   if(inv_type == QUDA_GCR_INVERTER){
   
-    // setup the multigrid solver for UP flavor
+    // setup the multigrid solver for up flavor
     mg_param.invert_param->mu = mg_param.invert_param->mu_l;
     
-    mg_preconditionerUP = newMultigridQuda(&mg_param);
-    inv_param.preconditionerUP = mg_preconditionerUP;
+    mg_preconditioner_u = newMultigridQuda(&mg_param);
+    inv_param.preconditioner_u = mg_preconditioner_u;
+
+    // setup the multigrid solver for down flavor
+    mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_l;
+    
+    mg_preconditioner_d = newMultigridQuda(&mg_param);
+    inv_param.preconditioner_d = mg_preconditioner_d;
 
     if( MESON == KAON || MESON == ALL_MESONS ) {
 
-      // setup the multigrid solver for STRANGE flavor
+      // setup the multigrid solver for plus strange flavor
 
       mg_param.invert_param->mu = mg_param.invert_param->mu_s;
   
-      mg_preconditionerSTRANGE = newMultigridQuda(&mg_param);
-      inv_param.preconditionerSTRANGE = mg_preconditionerSTRANGE;
+      mg_preconditioner_ps = newMultigridQuda(&mg_param);
+      inv_param.preconditioner_ps = mg_preconditioner_ps;
+
+      mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_s;
+  
+      mg_preconditioner_ms = newMultigridQuda(&mg_param);
+      inv_param.preconditioner_ms = mg_preconditioner_ms;
 
     }
 
@@ -788,8 +805,10 @@ int main(int argc, char **argv)
   // free the multigrid solvers
 
   if(inv_type == QUDA_GCR_INVERTER){  
-    destroyMultigridQuda(mg_preconditionerUP);
-    destroyMultigridQuda(mg_preconditionerSTRANGE);
+    destroyMultigridQuda(mg_preconditioner_u);
+    destroyMultigridQuda(mg_preconditioner_d);
+    destroyMultigridQuda(mg_preconditioner_ps);
+    destroyMultigridQuda(mg_preconditioner_ms);
   }
 
   freeGaugeQuda();

@@ -113,6 +113,26 @@ integer(8) :: preconditioner -> integer(8) :: preconditioner
 This will allow for sucessful compilation of the 2 flavour routines, set 
 by the CMake Flag QKXTM_2FLAVMG.
 
+For the meson program, the strange twisted mass parameter has to be added.
+
+In quda/include/quda.h, make the change:
+
+double mu; -> double mu;  
+	      double mu_l;
+	      double mu_s;
+
+in quda/lib/check_params.h, make the changes (2 cases):
+
+P(mu, INVALID_DOUBLE); -> P(mu, INVALID_DOUBLE);  
+			  P(mu_l, INVALID_DOUBLE);
+			  P(mu_s, INVALID_DOUBLE);
+
+and in ../quda/lib/quda_fortran.F90, make the change:
+
+real(8) :: mu -> real(8) :: mu  
+		 real(8) :: mu_l
+		 real(8) :: mu_s
+
 In order to QUDA's tunecache, you must (at present) edit out line 264 of
 QUDA's tune.cpp file
 

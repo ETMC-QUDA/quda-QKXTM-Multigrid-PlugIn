@@ -4069,6 +4069,81 @@ copyThrpToHDF5_Buf(void *Thrp_HDF5,
 }
 
 
+// Function to take the complex conjugate of the three-point data
+template<typename Float>
+void QKXTM_Contraction<Float>::
+conjugateThrp(void *corrThp_local, 
+	      void *corrThp_noether, 
+	      void *corrThp_oneD, int sign) {
+
+  // The sign depends on the conjugate of the insertion current's gamma structure
+
+  int sign_local[2 * 16] = { 1,-1, // 1
+			    -1, 1, // gx
+			    -1, 1, // gy
+			    -1, 1, // gz
+			    -1, 1, // gt
+			     1,-1, // g5
+			     1,-1, // g5gx
+			     1,-1, // g5gy
+			     1,-1, // g5gz
+			     1,-1, // g5gt
+			    -1, 1, // si_xy
+			    -1, 1, // si_xz
+			    -1, 1, // si_yz
+			    -1, 1, // si_tx
+			    -1, 1, // si_ty
+			    -1, 1, // si_tz
+  };
+
+  int sign_oneD[2 * 16] = {-1, 1, // 1	   
+			    1,-1, // gx   
+			    1,-1, // gy   
+			    1,-1, // gz   
+			    1,-1, // gt   
+			   -1, 1, // g5   
+			   -1, 1, // g5gx 
+			   -1, 1, // g5gy 
+			   -1, 1, // g5gz 
+			   -1, 1, // g5gt 
+			    1,-1, // si_xy
+			    1,-1, // si_xz
+			    1,-1, // si_yz
+			    1,-1, // si_tx
+			    1,-1, // si_ty
+			    1,-1, // si_tz
+  };
+
+  int Lt = GK_localL[3];
+  int Nmoms = GK_Nmoms;
+  
+  for(int it = 0; it<Lt; it++){
+    for(int imom = 0; imom<Nmoms; imom++){
+      // Local
+      for(int im = 0; im<16; im++){
+	((Float*)corrThp_local)[0 + 2*im + 2*16*imom + 2*16*Nmoms*it] 
+	  *= 1.0 * sign * sign_local[0 + 2*im];
+	((Float*)corrThp_local)[1 + 2*im + 2*16*imom + 2*16*Nmoms*it] 
+	  *= 1.0 * sign * sign_local[1 + 2*im];
+      }
+      // Noether
+      for(int im = 0; im<4; im++){
+	((Float*)corrThp_noether)[0 + 2*im + 2*4*imom + 2*4*Nmoms*it] 
+	  *= -1.0 * sign;
+	((Float*)corrThp_noether)[1 + 2*im + 2*4*imom + 2*4*Nmoms*it] 
+	  *= 1.0 * sign;
+      }
+      // OneD
+      for(int mu = 0; mu<4; mu++){
+	for(int im = 0; im<16; im++){
+	  ((Float*)corrThp_oneD)[0 + 2*im + 2*16*mu + 2*16*4*imom + 2*16*4*Nmoms*it] *= 1.0 * sign * sign_oneD[0 + 2*im];
+	  ((Float*)corrThp_oneD)[1 + 2*im + 2*16*mu + 2*16*4*imom + 2*16*4*Nmoms*it] *= 1.0 * sign * sign_oneD[1 + 2*im];
+	}
+      }      
+    } // -imom	
+  } // -it
+}
+
 //-C.K. - New function to write the three-point function in ASCII format
 template<typename Float>
 void QKXTM_Contraction<Float>::

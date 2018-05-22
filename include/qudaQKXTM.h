@@ -383,6 +383,9 @@ namespace quda {
    void copyThrpToHDF5_Buf(void *Thrp_HDF5, void *corrThp,  int mu, int uORd,
 			   int its, int Nsink, int pr, int thrp_sign, 
 			   THRP_TYPE type, CORR_SPACE CorrSpace, bool HighMomForm);
+   void conjugateThrp(void *corrThp_local, 
+		      void *corrThp_noether, 
+		      void *corrThp_oneD, int sign);
    void writeThrpHDF5(void *Thrp_local_HDF5, void *Thrp_noether_HDF5, 
 		      void **Thrp_oneD_HDF5, char *filename, 
 		      qudaQKXTMinfo info, int isource, 

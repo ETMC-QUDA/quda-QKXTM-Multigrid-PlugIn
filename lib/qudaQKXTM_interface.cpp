@@ -2452,9 +2452,9 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  t2 = MPI_Wtime();
 	  printfQuda("TIME_REPORT - Sequential Inversions, %s: %f sec\n","kaon, down part",t2-t1);
 	
-	  //////////////////////////////////////
-	  // Contractions for Kaon, down part //
-	  //////////////////////////////////////
+	  /////////////////////////////////////////
+	  // Contractions for Kaon, strange part //
+	  /////////////////////////////////////////
 
 	  t1 = MPI_Wtime();
 	
@@ -2467,7 +2467,21 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 	  t2 = MPI_Wtime();
 	
-	  printfQuda("TIME_REPORT - Three-point Contractions, partilce %s: %f sec\n", "kaon, down part",t2-t1);
+	  printfQuda("TIME_REPORT - Three-point Contractions, partilce %s: %f sec\n", "kaon, strange part",t2-t1);
+
+	  // We have calculated the three-point functions for the 
+	  // down part of K^0 so we need to take the negative complex 
+	  // conjugate to get the three-point functions for the strange 
+	  // part of K^+
+
+	  t1 = MPI_Wtime();
+	
+	  K_contract->conjugateThrp(corrThp_local, corrThp_noether, 
+				    corrThp_oneD, -1);
+
+	  t2 = MPI_Wtime();
+	
+	  printfQuda("TIME_REPORT - Three-point conjugations, %s: %f sec\n", "kaon, strange part",t2-t1);
 
 	  t1 = MPI_Wtime();
 	  if( CorrFileFormat==ASCII_FORM ){
@@ -2478,7 +2492,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	    t2 = MPI_Wtime();
 
 	    printfQuda("TIME_REPORT - Done: 3-pt function for sp = %d, sink-source = %d, %s written ASCII format in %f sec.\n",
-		       isource,info.tsinkSource[its],"kaon, down part",t2-t1);
+		       isource,info.tsinkSource[its],"kaon, strange part",t2-t1);
 
 	  }
 	  else if( CorrFileFormat==HDF5_FORM ){
@@ -2503,7 +2517,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 					     CorrSpace, HighMomForm);
 	    t2 = MPI_Wtime();
 	    printfQuda("TIME_REPORT - 3-point function for %s copied to HDF5 write buffers in %f sec.\n", 
-		       "kaon, down part",t2-t1);
+		       "kaon, strange part",t2-t1);
 
 	  }
 	} // End if kaon

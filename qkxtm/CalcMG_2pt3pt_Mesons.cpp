@@ -258,8 +258,6 @@ void setMultigridParam(QudaMultigridParam &mg_param) {
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
     inv_param.mu = mu_l; 
-    inv_param.mu_l = mu_l;
-    inv_param.mu_s = mu_s;
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -415,8 +413,6 @@ void setInvertParam(QudaInvertParam &inv_param) {
   if (dslash_type == QUDA_TWISTED_MASS_DSLASH || 
       dslash_type == QUDA_TWISTED_CLOVER_DSLASH) {
     inv_param.mu = mu_l;
-    inv_param.mu_l = mu_l;
-    inv_param.mu_s = mu_s;
     inv_param.twist_flavor = twist_flavor;
     inv_param.Ls = (inv_param.twist_flavor == QUDA_TWIST_NONDEG_DOUBLET) ? 
       2 : 1;
@@ -505,8 +501,8 @@ int main(int argc, char **argv)
 
   using namespace quda;
 
-  //WHICHPARTICLE MESON = PION;
-  WHICHPARTICLE MESON = ALL_MESONS;
+  WHICHPARTICLE MESON = PION;
+  //WHICHPARTICLE MESON = ALL_MESONS;
 
   // We give here the default value to some of the array
   for(int i =0; i<QUDA_MAX_MG_LEVEL; i++) {
@@ -570,6 +566,8 @@ int main(int argc, char **argv)
   info.Nsources = numSourcePositions;
   info.Q_sq = Q_sq;
   info.traj = traj;
+  info.mu_l = mu_l;
+  info.mu_s = mu_s;
 
   if(strcmp(check_file_exist,"yes")==0 || 
      strcmp(check_file_exist,"YES")==0 )  info.check_files = true;
@@ -686,9 +684,9 @@ int main(int argc, char **argv)
   setInvertParam(inv_param);
   
   // Check mu_l and mu_s
-  printfQuda("Light mu: %f\n",inv_param.mu_l);
+  printfQuda("Light mu: %f\n",info.mu_l);
   if( MESON == KAON || MESON == ALL_MESONS )
-    printfQuda("Strange mu: %f\n",inv_param.mu_s);
+    printfQuda("Strange mu: %f\n",info.mu_s);
 
   setDims(gauge_param.X);
 
@@ -767,13 +765,13 @@ int main(int argc, char **argv)
   if(inv_type == QUDA_GCR_INVERTER){
   
     // setup the multigrid solver for up flavor
-    mg_param.invert_param->mu = mg_param.invert_param->mu_l;
+    mg_param.invert_param->mu = info.mu_l;
     
     mg_preconditioner_u = newMultigridQuda(&mg_param);
     inv_param.preconditioner_u = mg_preconditioner_u;
 
     // setup the multigrid solver for down flavor
-    mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_l;
+    mg_param.invert_param->mu = -1.0 * info.mu_l;
     
     mg_preconditioner_d = newMultigridQuda(&mg_param);
     inv_param.preconditioner_d = mg_preconditioner_d;
@@ -782,12 +780,12 @@ int main(int argc, char **argv)
 
       // setup the multigrid solver for plus strange flavor
 
-      mg_param.invert_param->mu = mg_param.invert_param->mu_s;
+      mg_param.invert_param->mu = info.mu_s;
   
       mg_preconditioner_ps = newMultigridQuda(&mg_param);
       inv_param.preconditioner_ps = mg_preconditioner_ps;
 
-      mg_param.invert_param->mu = -1.0 * mg_param.invert_param->mu_s;
+      mg_param.invert_param->mu = -1.0 * info.mu_s;
   
       mg_preconditioner_ms = newMultigridQuda(&mg_param);
       inv_param.preconditioner_ms = mg_preconditioner_ms;
@@ -795,7 +793,7 @@ int main(int argc, char **argv)
     }
 
     // reset twist flavour
-    mg_param.invert_param->mu *= mu_l;
+    mg_param.invert_param->mu = info.mu_l;
   }
 
   calcMG_threepTwop_Mesons(gauge_APE, gaugeContract, &gauge_param,

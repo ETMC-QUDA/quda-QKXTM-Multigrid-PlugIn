@@ -1381,9 +1381,6 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   char filename_twop_pion[257];
   char filename_twop_kaon[257];
 
-  //TEST:
-  char filename_twop_strange[257];
-
   info.thrp_type[0] = "ultra_local";
   info.thrp_type[1] = "noether";
   info.thrp_type[2] = "oneD";
@@ -1456,18 +1453,15 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   if(corrTwp_pion == NULL) 
     errorQuda("%s: Cannot allocate memory for 2-point function write Buffers.", fname);
 
-  double (*corrTwp_kaon) = 
-    (double(*)) calloc(alloc_size*2,sizeof(double));
-  if(corrTwp_kaon == NULL) 
-    errorQuda("%s: Cannot allocate memory for 2-point function write Buffers.", fname);
-  
-  
-  // TEST:
-  double (*corrTwp_strange) = 
-    (double(*)) calloc(alloc_size*2,sizeof(double));
-  if(corrTwp_strange == NULL) 
-    errorQuda("%s: Cannot allocate memory for 2-point function write Buffers.", fname);
+  double (*corrTwp_kaon);
 
+  if( MESON == KAON || MESON == ALL_MESONS ) {
+    corrTwp_kaon = 
+      (double(*)) calloc(alloc_size*2,sizeof(double));
+    if(corrTwp_kaon == NULL) 
+      errorQuda("%s: Cannot allocate memory for 2-point function write Buffers.", fname);
+  }
+  
   //-HDF5 buffers for the three-point and two-point function
   double *Thrp_local_pion_HDF5;   
   double *Thrp_noether_pion_HDF5; 
@@ -1622,7 +1616,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   param->iter = 0;
 
   //ensure mu is up flavor
-  param->mu = param->mu_l;
+  param->mu = info.mu_l;
   Dirac *d_u = NULL;
   Dirac *dSloppy_u = NULL;
   Dirac *dPre_u = NULL;
@@ -1633,7 +1627,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   Dirac &diracPre_u = *dPre_u;
 
   //change mu to down flavor
-  param->mu = -1.0 * param->mu_l;
+  param->mu = -1.0 * info.mu_l;
   Dirac *d_d = NULL;
   Dirac *dSloppy_d = NULL;
   Dirac *dPre_d = NULL;
@@ -1644,7 +1638,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   Dirac &diracPre_d = *dPre_d;
 
   //change mu to plus strange flavor
-  param->mu = param->mu_s;  
+  param->mu = info.mu_s;  
   Dirac *d_ps = NULL;
   Dirac *dSloppy_ps = NULL;
   Dirac *dPre_ps = NULL;
@@ -1657,7 +1651,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   Dirac &diracPre_ps = *dPre_ps;
 
   //change mu to minus strange flavor
-  param->mu = -1.0 * param->mu_s;  
+  param->mu = -1.0 * info.mu_s;  
   Dirac *d_ms = NULL;
   Dirac *dSloppy_ms = NULL;
   Dirac *dPre_ms = NULL;
@@ -1670,7 +1664,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   Dirac &diracPre_ms = *dPre_ms;
 
   //revert to up flavor
-  param->mu = param->mu_l;
+  param->mu = info.mu_l;
 
   profileInvert.TPSTART(QUDA_PROFILE_H2D);
 
@@ -1742,23 +1736,23 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
   // Create SolverParams
 
-  param->mu = param->mu_l;
+  param->mu = info.mu_l;
   param->preconditioner = param->preconditioner_u;
   SolverParam solverParam_u(*param);
 
-  param->mu = -1.0 * param->mu_l;
+  param->mu = -1.0 * info.mu_l;
   param->preconditioner = param->preconditioner_d;
   SolverParam solverParam_d(*param);
 
-  param->mu = param->mu_s;
+  param->mu = info.mu_s;
   param->preconditioner = param->preconditioner_ps;
   SolverParam solverParam_ps(*param);
 
-  param->mu = -1.0 * param->mu_s;
+  param->mu = -1.0 * info.mu_s;
   param->preconditioner = param->preconditioner_ms;
   SolverParam solverParam_ms(*param);
 
-  param->mu = param->mu_l;
+  param->mu = info.mu_l;
 
   //======================================================================//
   //================ P R O B L E M   E X E C U T I O N  ==================// 
@@ -1789,26 +1783,18 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      info.sourcePosition[isource][2],
 	      info.sourcePosition[isource][3]);      
 
-      // TEST:
-      sprintf(filename_twop_strange,"%s.strange.SS.%02d.%02d.%02d.%02d.dat",
-	      filename_twop,
-	      info.sourcePosition[isource][0],
-	      info.sourcePosition[isource][1],
-	      info.sourcePosition[isource][2],
-	      info.sourcePosition[isource][3]);      
-
     }
     else if( CorrFileFormat==HDF5_FORM ){
       char *str;
       if(CorrSpace==MOMENTUM_SPACE) asprintf(&str,"Qsq%d",info.Q_sq);
       else if (CorrSpace==POSITION_SPACE) asprintf(&str,"PosSpace");
-      sprintf(filename_twop_pion ,"%s_light_mesons_%s_SS.%02d.%02d.%02d.%02d.h5" ,
+      sprintf(filename_twop_pion ,"%s_pion_%s_SS.%02d.%02d.%02d.%02d.h5" ,
 	      filename_twop,str,
 	      info.sourcePosition[isource][0],
 	      info.sourcePosition[isource][1],
 	      info.sourcePosition[isource][2],
 	      info.sourcePosition[isource][3]);
-      sprintf(filename_twop_kaon ,"%s_strange_mesons_%s_SS.%02d.%02d.%02d.%02d.h5" ,
+      sprintf(filename_twop_kaon ,"%s_kaon_%s_SS.%02d.%02d.%02d.%02d.h5" ,
 	      filename_twop,str,
 	      info.sourcePosition[isource][0],
 	      info.sourcePosition[isource][1],
@@ -1853,7 +1839,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	   isc*2 ) = 1.0;
       
       //Ensure mu is up flavor
-      param->mu = param->mu_l;
+      param->mu = info.mu_l;
       mapNormalToEvenOdd(input_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
       tx1 = MPI_Wtime();
       performWuppertalnStep(output_vector, input_vector, param, GK_nsmearGauss, GK_alphaGauss);
@@ -1936,7 +1922,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	     isc*2 ) = 1.0;
 
 	//Change mu to strange flavor
-	param->mu = param->mu_s;
+	param->mu = info.mu_s;
 	mapNormalToEvenOdd(input_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	tx1 = MPI_Wtime();
 	performWuppertalnStep(output_vector, input_vector, param, GK_nsmearGauss, GK_alphaGauss);
@@ -2100,7 +2086,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      K_temp->zero_device();
 
 	      //Ensure mu is down flavor:
-	      param->mu = -1.0 * param->mu_l;		
+	      param->mu = -1.0 * info.mu_l;		
 
 	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		K_temp->copyPropagator3D(*K_prop3D_u,my_fixSinkTime,nu,c2);
@@ -2246,7 +2232,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      K_temp->zero_device();
 
 	      //Ensure mu is down flavor:
-	      param->mu = -1.0 * param->mu_l;		
+	      param->mu = -1.0 * info.mu_l;		
 	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		K_temp->copyPropagator3D(*K_prop3D_s,my_fixSinkTime,nu,c2);
 	    
@@ -2386,7 +2372,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      t3 = MPI_Wtime();
 	      K_temp->zero_device();
 	      //Ensure mu is minus strange flavor
-	      param->mu = -1.0 * param->mu_s;
+	      param->mu = -1.0 * info.mu_s;
 	      if( ( my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		K_temp->copyPropagator3D(*K_prop3D_u,my_fixSinkTime,nu,c2);
 
@@ -2462,7 +2448,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 				      *K_prop_s, 
 				      *K_gaugeContractions,
 				      corrThp_local, corrThp_noether, 
-				      corrThp_oneD, KAON, 2, 
+				      corrThp_oneD, KAON, 1, 
 				      isource, CorrSpace);
 
 	  t2 = MPI_Wtime();
@@ -2470,14 +2456,13 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  printfQuda("TIME_REPORT - Three-point Contractions, partilce %s: %f sec\n", "kaon, strange part",t2-t1);
 
 	  // We have calculated the three-point functions for the 
-	  // down part of K^0 so we need to take the negative complex 
-	  // conjugate to get the three-point functions for the strange 
-	  // part of K^+
+	  // down part of K^0 so we need to take the complex conjugate 
+	  // to get the three-point functions for the strange part of K^+
 
 	  t1 = MPI_Wtime();
 	
 	  K_contract->conjugateThrp(corrThp_local, corrThp_noether, 
-				    corrThp_oneD, -1);
+				    corrThp_oneD, +1);
 
 	  t2 = MPI_Wtime();
 	
@@ -2619,13 +2604,16 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
       }
     
     K_prop_u->rotateToPhysicalBase_device(+1);
-    K_prop_s->rotateToPhysicalBase_device(+1);
+
+    if( MESON == KAON || MESON == ALL_MESONS ) {
+      K_prop_s->rotateToPhysicalBase_device(+1);
+    }
     t1 = MPI_Wtime();
     K_contract->contractPseudoscalarMesons (*K_prop_u,*K_prop_u, 
 					    corrTwp_pion, 
 					    isource, CorrSpace);
     t2 = MPI_Wtime();
-    printfQuda("TIME_REPORT - Two-point Contractions, light mesons: %f sec\n",t2-t1);
+    printfQuda("TIME_REPORT - Two-point Contractions, pion: %f sec\n",t2-t1);
     
     if( MESON == KAON || MESON == ALL_MESONS ) {
       t1 = MPI_Wtime();
@@ -2633,13 +2621,8 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 					      corrTwp_kaon, 
 					      isource, CorrSpace);
       
-      //TEST:
-      K_contract->contractPseudoscalarMesons (*K_prop_s,*K_prop_s, 
-					      corrTwp_strange, 
-					      isource, CorrSpace);
-
       t2 = MPI_Wtime();
-      printfQuda("TIME_REPORT - Two-point Contractions, strange mesons: %f sec\n",t2-t1);
+      printfQuda("TIME_REPORT - Two-point Contractions, kaon: %f sec\n",t2-t1);
     }
 
     //======================================================================//
@@ -2689,10 +2672,6 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
  	K_contract->writeTwopSingleMeson_ASCII (corrTwp_kaon , filename_twop_kaon, 
 					   isource, CorrSpace);
 
-	// TEST:
- 	K_contract->writeTwopSingleMeson_ASCII (corrTwp_strange, filename_twop_strange, 
-					   isource, CorrSpace);
-
 	t2 = MPI_Wtime();
 	printfQuda("TIME_REPORT - Done: Two-point function for strange Mesons for source-position = %d written in ASCII format in %f sec.\n",
 		   isource,t2-t1);
@@ -2734,22 +2713,24 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   free(corrThp_noether);
   free(corrThp_oneD);
   free(corrTwp_pion);
-  free(corrTwp_kaon);
-
-  // TEST:
-  free(corrTwp_strange);
-
+  if( MESON == KAON || MESON == ALL_MESONS ) {
+    free(corrTwp_kaon);
+  }
   if( CorrFileFormat==HDF5_FORM ){
-    free(Thrp_local_pion_HDF5);
-    free(Thrp_local_kaon_HDF5);
-    free(Thrp_noether_pion_HDF5);
-    free(Thrp_noether_kaon_HDF5);
-    for(int mu=0;mu<4;mu++) {
-      free(Thrp_oneD_pion_HDF5[mu]);
-      free(Thrp_oneD_kaon_HDF5[mu]);    
+    if( MESON == PION || MESON == ALL_MESONS ) {
+      free(Thrp_local_pion_HDF5);
+      free(Thrp_noether_pion_HDF5);
+      for(int mu=0;mu<4;mu++)
+	free(Thrp_oneD_pion_HDF5[mu]);
+      free(Thrp_oneD_pion_HDF5);
     }
-    free(Thrp_oneD_pion_HDF5);
-    free(Thrp_oneD_kaon_HDF5);
+    if( MESON == KAON || MESON == ALL_MESONS ) {
+      free(Thrp_local_kaon_HDF5);
+      free(Thrp_noether_kaon_HDF5);
+      for(int mu=0;mu<4;mu++)
+	free(Thrp_oneD_kaon_HDF5[mu]);    
+      free(Thrp_oneD_kaon_HDF5);
+    }
     free(Twop_mesons_HDF5);
   }
 
@@ -2759,19 +2740,23 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   delete K_temp;
   delete K_contract;
   delete K_prop_u;
-  delete K_prop_s;
+  delete K_prop3D_u;
   delete d_u;
   delete dSloppy_u;
   delete dPre_u;
   delete d_d;
   delete dSloppy_d;
   delete dPre_d;
-  delete d_ps;
-  delete dSloppy_ps;
-  delete dPre_ps;
-  delete d_ms;
-  delete dSloppy_ms;
-  delete dPre_ms;
+  if( MESON == KAON || MESON == ALL_MESONS ) {
+    delete K_prop_s;
+    delete K_prop3D_s;
+    delete d_ps;
+    delete dSloppy_ps;
+    delete dPre_ps;
+    delete d_ms;
+    delete dSloppy_ms;
+    delete dPre_ms;
+  }
   delete K_guess;
   delete K_vector;
   delete K_gaugeSmeared;
@@ -2781,8 +2766,6 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
   delete b;
   delete K_gaugeContractions;
   delete K_seqProp;
-  delete K_prop3D_u;
-  delete K_prop3D_s;
 
   printfQuda("...Done\n");
   

@@ -70,6 +70,8 @@ namespace quda {
     bool isEven;
     double kappa;
     double mu;
+    double mu_l;
+    double mu_s;
     double csw;
     double inv_tol;
   } qudaQKXTMinfo;

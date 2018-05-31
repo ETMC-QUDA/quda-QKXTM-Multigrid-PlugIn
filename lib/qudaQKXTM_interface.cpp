@@ -2334,7 +2334,6 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  }
 	  else if( CorrFileFormat==HDF5_FORM ){
 	    int uOrd = 0;
-	    
 	    int thrp_sign = 1;
 	  
 	    K_contract->copyThrpToHDF5_Buf((void*)Thrp_local_kaon_HDF5, 
@@ -2359,12 +2358,12 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 	  }
 	  
-	  ///////////////////////////////////////////////
-	  // Sequential propagator for kaon, down part //
-	  ///////////////////////////////////////////////
+	  //////////////////////////////////////////////////
+	  // Sequential propagator for kaon, strange part //
+	  //////////////////////////////////////////////////
 
 	  printfQuda("Sequential Inversions, %s:\n",
-		     "kaon, down part");
+		     "kaon, strange part");
 
 	  t1 = MPI_Wtime();
 	  for(int nu = 0 ; nu < 4 ; nu++)
@@ -2433,10 +2432,10 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      t4 = MPI_Wtime();
 	      
 	      printfQuda("Inversion time for %s seq prop = %d, source = %d at sink-source = %d, is: %f sec\n",
-			 "kaon, down part",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
+			 "kaon, strange part",nu*3+c2,isource,info.tsinkSource[its],t4-t3);
 	    }
 	  t2 = MPI_Wtime();
-	  printfQuda("TIME_REPORT - Sequential Inversions, %s: %f sec\n","kaon, down part",t2-t1);
+	  printfQuda("TIME_REPORT - Sequential Inversions, %s: %f sec\n","kaon, strange part",t2-t1);
 	
 	  /////////////////////////////////////////
 	  // Contractions for Kaon, strange part //
@@ -2453,7 +2452,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 
 	  t2 = MPI_Wtime();
 	
-	  printfQuda("TIME_REPORT - Three-point Contractions, partilce %s: %f sec\n", "kaon, strange part",t2-t1);
+	  printfQuda("TIME_REPORT - Three-point Contractions, %s: %f sec\n", "kaon, strange part",t2-t1);
 
 	  // We have calculated the three-point functions for the 
 	  // down part of K^0 so we need to take the complex conjugate 
@@ -2558,9 +2557,9 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  printfQuda("\nThe three-point function HDF5 filename is: %s\n",
 		     filename_threep_base);
 	
-	  K_contract->writeThrpHDF5((void*) Thrp_local_pion_HDF5, 
-				    (void*) Thrp_noether_pion_HDF5, 
-				    (void**)Thrp_oneD_pion_HDF5, 
+	  K_contract->writeThrpHDF5((void*) Thrp_local_kaon_HDF5, 
+				    (void*) Thrp_noether_kaon_HDF5, 
+				    (void**)Thrp_oneD_kaon_HDF5, 
 				    filename_threep_base, info, 
 				    isource, KAON);
 	

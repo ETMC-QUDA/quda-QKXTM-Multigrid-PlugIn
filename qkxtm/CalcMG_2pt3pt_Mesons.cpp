@@ -501,8 +501,8 @@ int main(int argc, char **argv)
 
   using namespace quda;
 
-  WHICHPARTICLE MESON = PION;
-  //WHICHPARTICLE MESON = ALL_MESONS;
+  //WHICHPARTICLE MESON = PION;
+  WHICHPARTICLE MESON = ALL_MESONS;
 
   // We give here the default value to some of the array
   for(int i =0; i<QUDA_MAX_MG_LEVEL; i++) {

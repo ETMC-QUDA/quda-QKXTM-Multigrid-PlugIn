@@ -3604,10 +3604,10 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 	  H5Gclose(group4_id);
 	}//-projector
       }//-baryon
-      else if ( HADRON == PION ){ // if particle is a meson, do not include 2nd flavor part
+      else if ( HADRON == PION ){ // if particle is a pion, do not include 2nd flavor part
 	int part = 0;
 	char *group4_tag;
-	asprintf(&group4_tag,"%s", (part==0) ? "up" : "down");
+	asprintf(&group4_tag,"up");
 	group4_id = H5Gcreate(group3_id, group4_tag, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
         
 	for(int thrp_int=0;thrp_int<3;thrp_int++){

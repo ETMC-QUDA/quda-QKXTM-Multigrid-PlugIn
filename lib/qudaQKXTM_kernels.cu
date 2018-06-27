@@ -1035,7 +1035,10 @@ static void gaussianSmearing_kernel(void* out,
 void quda::run_GaussianSmearing(void* out, 
 				cudaTextureObject_t vecInTex, 
 				cudaTextureObject_t gaugeTex, 
-				int precision){
+				int precision, double alphaGauss){
+
+  cudaMemcpyToSymbol(c_alphaGauss, &alphaGauss , sizeof(double) );
+    
   if(precision == 4){
     gaussianSmearing_kernel<float>(out,vecInTex,gaugeTex);
   }

@@ -205,6 +205,9 @@ namespace quda {
     void downloadFromCuda(ColorSpinorField *cudaVector, bool isEv = false);
     void gaussianSmearing(QKXTM_Vector<Float> &vecIn,
 			  QKXTM_Gauge<Float> &gaugeAPE);
+    void gaussianSmearing(QKXTM_Vector<Float> &vecIn,
+			  QKXTM_Gauge<Float> &gaugeAPE,
+			  int nsmearGauss, double alphaGauss);
     void scaleVector(double a);
     void castDoubleToFloat(QKXTM_Vector<double> &vecIn);
     void castFloatToDouble(QKXTM_Vector<float> &vecIn);

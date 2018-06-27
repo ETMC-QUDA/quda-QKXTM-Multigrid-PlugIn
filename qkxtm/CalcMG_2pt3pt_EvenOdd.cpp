@@ -756,16 +756,16 @@ int main(int argc, char **argv)
     mg_param.invert_param->mu *= -1.0;
   }
   
-  void *mg_preconditionerUP = newMultigridQuda(&mg_param);
-  inv_param.preconditionerUP = mg_preconditionerUP;
+  void *mg_preconditioner_u = newMultigridQuda(&mg_param);
+  inv_param.preconditioner_u = mg_preconditioner_u;
 
   // setup the multigrid solver for DN flavour
   if( mg_param.invert_param->mu > 0 ) {
     mg_param.invert_param->mu *= -1.0;
   }
 
-  void *mg_preconditionerDN = newMultigridQuda(&mg_param);
-  inv_param.preconditionerDOWN = mg_preconditionerDN;
+  void *mg_preconditioner_d = newMultigridQuda(&mg_param);
+  inv_param.preconditioner_d = mg_preconditioner_d;
 
   // reset twist flavour
   if( mg_param.invert_param->mu < 0 ) {
@@ -777,8 +777,8 @@ int main(int argc, char **argv)
 			    threep_filename, NEUTRON);
 
   // free the multigrid solvers
-  destroyMultigridQuda(mg_preconditionerUP);
-  destroyMultigridQuda(mg_preconditionerDN);
+  destroyMultigridQuda(mg_preconditioner_u);
+  destroyMultigridQuda(mg_preconditioner_d);
   
   freeGaugeQuda();
   if (dslash_type == QUDA_CLOVER_WILSON_DSLASH || 

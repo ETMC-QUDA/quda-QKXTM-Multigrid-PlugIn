@@ -45,8 +45,12 @@ namespace quda {
   typedef struct {
     int nsmearAPE;
     int nsmearGauss;
+    int nsmearGauss_u;
+    int nsmearGauss_s;
     double alphaAPE;
     double alphaGauss;
+    double alphaGauss_u;
+    double alphaGauss_s;
     int lL[QUDAQKXTM_DIM];
     int Nsources;
     int sourcePosition[MAX_NSOURCES][QUDAQKXTM_DIM];
@@ -142,7 +146,8 @@ namespace quda {
   void run_calculatePlaq_kernel(cudaTextureObject_t gaugeTexPlaq, 
 				int precision);
   void run_GaussianSmearing(void* out, cudaTextureObject_t vecTex, 
-			    cudaTextureObject_t gaugeTex, int precision);
+			    cudaTextureObject_t gaugeTex, int precision,
+			    double alphaGauss);
   void run_UploadToCuda(void* in, ColorSpinorField &qudaVec, int precision, 
 			bool isEven);
   void run_DownloadFromCuda(void* out, ColorSpinorField &qudaVec, 

@@ -121,8 +121,12 @@ extern char pathList_tsink[];
 extern int Q_sq;
 extern int nsmearAPE;
 extern int nsmearGauss;
+extern int nsmearGauss_u;
+extern int nsmearGauss_s;
 extern double alphaAPE;
 extern double alphaGauss;
+extern double alphaGauss_u;
+extern double alphaGauss_s;
 extern char twop_filename[];
 extern char threep_filename[];
 
@@ -501,7 +505,6 @@ int main(int argc, char **argv)
 
   using namespace quda;
 
-  //WHICHPARTICLE MESON = PION;
   WHICHPARTICLE MESON = ALL_MESONS;
 
   // We give here the default value to some of the array
@@ -556,8 +559,12 @@ int main(int argc, char **argv)
   qudaQKXTMinfo info;  
   info.nsmearAPE = nsmearAPE;
   info.nsmearGauss = nsmearGauss;
+  info.nsmearGauss_u = nsmearGauss_u;
+  info.nsmearGauss_s = nsmearGauss_s;
   info.alphaAPE = alphaAPE;
   info.alphaGauss = alphaGauss;
+  info.alphaGauss_u = alphaGauss_u;
+  info.alphaGauss_s = alphaGauss_s;
   info.isEven = isEven;
   info.lL[0] = xdim;
   info.lL[1] = ydim;

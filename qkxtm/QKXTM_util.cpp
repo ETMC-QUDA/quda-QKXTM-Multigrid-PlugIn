@@ -1652,8 +1652,12 @@ char pathList_tsink[257] = "list_tsinksource.txt";
 int Q_sq = 0;
 int nsmearAPE = 20;
 int nsmearGauss = 50;
+int nsmearGauss_u = 50;
+int nsmearGauss_s = 50;
 double alphaAPE = 0.5;
 double alphaGauss = 4.0;
+double alphaGauss_u = 4.0;
+double alphaGauss_s = 4.0;
 
 char twop_filename[257] = "twop";
 char threep_filename[257] = "threep";
@@ -1835,7 +1839,11 @@ void usage(char** argv )
   printf("    --nsmearAPE                               # Number of APE smearing iterations (default 20)\n");
   printf("    --alphaAPE                                # APE smearing parameter (default 0.5)\n");
   printf("    --nsmearGauss                             # Number of Gauss smearing iterations (default 50)\n");
+  printf("    --nsmearGauss_u                           # Number of Gauss smearing iterations (default 50)\n");
+  printf("    --nsmearGauss_s                           # Number of Gauss smearing iterations (default 50)\n");
   printf("    --alphaGauss                              # Gauss smearing parameter (default 4.0)\n");
+  printf("    --alphaGauss_u                            # Gauss smearing parameter if a different value is desired for the up quark (default 4.0)\n");
+  printf("    --alphaGauss_s                            # Gauss smearing parameter if a different value is desired for the strange quark(default 4.0)\n");
   printf("    --twop-filename                           # File name to save twopoint function (default \"twop\")\n");
   printf("    --threep-filename                         # File name to save threepoint function (default \"threep\")\n");
   printf("    --prop_path                               # File name to save propagators is (default \"prop_path\")\n");
@@ -3172,11 +3180,51 @@ int process_command_line_option(int argc, char** argv, int* idx)
     goto out;
   }
  
+  if( strcmp(argv[i], "--nsmearGauss_u") ==0){
+    if(i+1 >= argc){
+      usage(argv);
+    }
+    nsmearGauss_u = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+ 
+  if( strcmp(argv[i], "--nsmearGauss_s") ==0){
+    if(i+1 >= argc){
+      usage(argv);
+    }
+    nsmearGauss_s = atoi(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+ 
   if( strcmp(argv[i], "--alphaGauss") ==0){
     if(i+1 >= argc){
       usage(argv);
     }
     alphaGauss = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+ 
+  if( strcmp(argv[i], "--alphaGauss_u") ==0){
+    if(i+1 >= argc){
+      usage(argv);
+    }
+    alphaGauss_u = atof(argv[i+1]);
+    i++;
+    ret = 0;
+    goto out;
+  }
+ 
+  if( strcmp(argv[i], "--alphaGauss_s") ==0){
+    if(i+1 >= argc){
+      usage(argv);
+    }
+    alphaGauss_s = atof(argv[i+1]);
     i++;
     ret = 0;
     goto out;

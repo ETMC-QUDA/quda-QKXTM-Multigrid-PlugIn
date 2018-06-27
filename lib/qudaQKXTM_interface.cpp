@@ -1842,7 +1842,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
       param->mu = info.mu_l;
       mapNormalToEvenOdd(input_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
       tx1 = MPI_Wtime();
-      performWuppertalnStep(output_vector, input_vector, param, GK_nsmearGauss, GK_alphaGauss);
+      performWuppertalnStep(output_vector, input_vector, param, info.nsmearGauss_u, info.alphaGauss_u);
       tx2 = MPI_Wtime();
       summ_tx12 += tx2-tx1;
       mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
@@ -1925,7 +1925,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	param->mu = info.mu_s;
 	mapNormalToEvenOdd(input_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	tx1 = MPI_Wtime();
-	performWuppertalnStep(output_vector, input_vector, param, GK_nsmearGauss, GK_alphaGauss);
+	performWuppertalnStep(output_vector, input_vector, param, info.nsmearGauss_s, info.alphaGauss_s);
 	tx2 = MPI_Wtime();
 	summ_tx12 += tx2-tx1;
 	mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
@@ -2026,7 +2026,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	    comm_barrier();
 
 	    K_vector->castFloatToDouble(*K_temp);
-	    K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	    K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared, info.nsmearGauss_u, info.alphaGauss_u);
 	    K_temp->castDoubleToFloat(*K_guess);
 	    if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 	      K_prop3D_u->absorbVectorTimeSlice(*K_temp,
@@ -2045,7 +2045,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      comm_barrier();
 
 	      K_vector->castFloatToDouble(*K_temp);
-	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared, info.nsmearGauss_s, info.alphaGauss_s);
 	      K_temp->castDoubleToFloat(*K_guess);
 	      if( (my_fixSinkTime >= 0) && ( my_fixSinkTime < X[3] ) ) 
 		K_prop3D_s->absorbVectorTimeSlice(*K_temp,
@@ -2099,7 +2099,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      //Scale up vector to avoid MP errors
 	      K_vector->scaleVector(1e+10);
 
-	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared, info.nsmearGauss_u, info.alphaGauss_u);
 
 	      K_guess->uploadToCuda(b,flag_eo);
 
@@ -2244,7 +2244,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      //Scale up vector to avoid MP errors
 	      K_vector->scaleVector(1e+10);
 
-	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared, info.nsmearGauss_s, info.alphaGauss_s);
 	      K_guess->uploadToCuda(b,flag_eo);
 	  
 	      dirac_d.prepare(in,out,*x,*b,param->solution_type);
@@ -2383,7 +2383,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	      // Scale vector to avoid MP errors
 	      K_vector->scaleVector(1e+10);
 
-	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared);
+	      K_guess->gaussianSmearing(*K_vector,*K_gaugeSmeared, info.nsmearGauss_u, info.alphaGauss_u);
 	      K_guess->uploadToCuda(b,flag_eo);
 	      
 	      dirac_ms.prepare(in,out,*x,*b,param->solution_type);
@@ -2581,7 +2581,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	K_vector->castFloatToDouble(*K_temp);
 	K_vector->download();
 	mapNormalToEvenOdd((void*) K_vector->H_elem() , *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
-	performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, GK_nsmearGauss, GK_alphaGauss);
+	performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, info.nsmearGauss_u, info.alphaGauss_u);
 	mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	K_guess->packVector((double*) output_vector);
 	K_guess->loadVector();
@@ -2593,7 +2593,7 @@ void calcMG_threepTwop_Mesons(void **gauge_APE, void **gauge,
 	  K_vector->castFloatToDouble(*K_temp);
 	  K_vector->download();
 	  mapNormalToEvenOdd((void*) K_vector->H_elem() , *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
-	  performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, GK_nsmearGauss, GK_alphaGauss);
+	  performWuppertalnStep(output_vector, (void*) K_vector->H_elem(), param, info.nsmearGauss_s, info.alphaGauss_s);
 	  mapEvenOddToNormal(output_vector, *param, GK_localL[0], GK_localL[1], GK_localL[2], GK_localL[3]);
 	  K_guess->packVector((double*) output_vector);
 	  K_guess->loadVector();

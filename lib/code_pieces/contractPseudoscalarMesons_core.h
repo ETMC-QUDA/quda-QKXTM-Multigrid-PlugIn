@@ -51,7 +51,7 @@ for(int imom = 0 ; imom < c_Nmoms ; imom++){
   phase = ( ((FLOAT) c_moms[imom][0]*x)/c_totalL[0] + ((FLOAT) c_moms[imom][1]*y)/c_totalL[1] + ((FLOAT) c_moms[imom][2]*z)/c_totalL[2] ) * 2. * PI;
   expon.x = cos(phase);
   expon.y = -sin(phase);
-  shared_cache[0*THREADS_PER_BLOCK + cacheIndex] = accum * expon; 
+  shared_cache[cacheIndex] = accum * expon; 
   __syncthreads();
   i = blockDim.x/2;
   while (i != 0){
@@ -64,7 +64,7 @@ for(int imom = 0 ; imom < c_Nmoms ; imom++){
   }
 
   if(cacheIndex == 0){
-    block[imom*2*gridDim.x + 0*gridDim.x + blockIdx.x] = shared_cache[0*THREADS_PER_BLOCK + 0];
+    block[imom*gridDim.x + blockIdx.x] = shared_cache[0*THREADS_PER_BLOCK + 0];
   }
 
  } // close momentum

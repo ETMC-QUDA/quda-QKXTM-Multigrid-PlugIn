@@ -399,13 +399,13 @@ void QKXTM_Vector<Float>::gaussianSmearing(QKXTM_Vector<Float> &vecIn,QKXTM_Gaug
   
   for(int i = 0 ; i < GK_nsmearGauss ; i++){
     if( (i%2) == 0){
-      run_GaussianSmearing((void*)this->D_elem(),texVecIn,texGauge, sizeof(Float));
+      run_GaussianSmearing((void*)this->D_elem(),texVecIn,texGauge, sizeof(Float), GK_alphaGauss);
       this->ghostToHost();
       this->cpuExchangeGhost();
       this->ghostToDevice();
     }
     else{
-      run_GaussianSmearing((void*)vecIn.D_elem(),texVecOut,texGauge, sizeof(Float));
+      run_GaussianSmearing((void*)vecIn.D_elem(),texVecOut,texGauge, sizeof(Float), GK_alphaGauss);
       vecIn.ghostToHost();
       vecIn.cpuExchangeGhost();
       vecIn.ghostToDevice();
@@ -413,6 +413,44 @@ void QKXTM_Vector<Float>::gaussianSmearing(QKXTM_Vector<Float> &vecIn,QKXTM_Gaug
   }
 
   if( (GK_nsmearGauss%2) == 0) cudaMemcpy(this->D_elem(),vecIn.D_elem(),CC::bytes_total_length,cudaMemcpyDeviceToDevice);
+  
+  this->destroyTexObject(texVecOut);
+  vecIn.destroyTexObject(texVecIn);
+  gaugeAPE.destroyTexObject(texGauge);
+  checkCudaError();
+}
+
+template<typename Float>
+void QKXTM_Vector<Float>::gaussianSmearing(QKXTM_Vector<Float> &vecIn,QKXTM_Gauge<Float> &gaugeAPE, int nsmearGauss, double alphaGauss){
+  gaugeAPE.ghostToHost();
+  gaugeAPE.cpuExchangeGhost();
+  gaugeAPE.ghostToDevice();
+
+  vecIn.ghostToHost();
+  vecIn.cpuExchangeGhost();
+  vecIn.ghostToDevice();
+
+  cudaTextureObject_t texVecIn,texVecOut,texGauge;
+  this->createTexObject(&texVecOut);
+  vecIn.createTexObject(&texVecIn);
+  gaugeAPE.createTexObject(&texGauge);
+
+  for(int i = 0 ; i < nsmearGauss ; i++){
+    if( (i%2) == 0){
+      run_GaussianSmearing((void*)this->D_elem(),texVecIn,texGauge, sizeof(Float), alphaGauss);
+      this->ghostToHost();
+      this->cpuExchangeGhost();
+      this->ghostToDevice();
+    }
+    else{
+      run_GaussianSmearing((void*)vecIn.D_elem(),texVecOut,texGauge, sizeof(Float), alphaGauss);
+      vecIn.ghostToHost();
+      vecIn.cpuExchangeGhost();
+      vecIn.ghostToDevice();
+    }
+  }
+
+  if( (nsmearGauss%2) == 0) cudaMemcpy(this->D_elem(),vecIn.D_elem(),CC::bytes_total_length,cudaMemcpyDeviceToDevice);
   
   this->destroyTexObject(texVecOut);
   vecIn.destroyTexObject(texVecIn);

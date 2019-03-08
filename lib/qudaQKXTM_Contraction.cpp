@@ -2477,7 +2477,7 @@ writeThrpHDF5_PosSpace(void *Thrp_local_HDF5,
 
     // CJL: If particle is a baryon, include a projection loop
 
-    if( HADRON != PION ){
+    if( HADRON == PROTON || HADRON == NEUTRON ){
     
       for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	char *group4_tag;
@@ -3832,8 +3832,8 @@ void QKXTM_Contraction<Float>::writeThrpHDF5_MomSpace_HighMomForm(void *Thrp_loc
 	
 	// CJL: If particle is a baryon, include a projection loop
 
-	if( HADRON != PION ){
-
+	if( HADRON == PROTON || HADRON == NEUTRON ){
+	
 	  for(int ipr=0;ipr<info.Nproj[its];ipr++){
 	    for(int part=0;part<2;part++){
 	      for(int thrp_int=0;thrp_int<3;thrp_int++){
